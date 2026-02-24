@@ -1,0 +1,188 @@
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+export default function Home() {
+  const stablecoins = [
+    { name: "USDT", issuer: "Tether", peg: 1.0, status: "Healthy", collateral: "Cash & Treasuries", icon: "/icons/usdt.png", slug: "usdt", bgColor: "#26a17b" },
+    { name: "USDC", issuer: "Circle", peg: 1.0, status: "Healthy", collateral: "Cash & Treasuries", icon: "/icons/usdc.png", slug: "usdc", bgColor: "#2775ca" },
+    { name: "USDS", issuer: "MakerDAO", peg: 0.999, status: "Slight Depeg", collateral: "Overcollateralised Crypto", icon: "/icons/usds.png", slug: "usds", bgColor: "#f4b731" },
+    { name: "Ethena", issuer: "Ethena Labs", peg: 1.0, status: "Healthy", collateral: "Delta-neutral strategy", icon: "/icons/ethena.png", slug: "ethena", bgColor: "#1a1a2e" },
+    { name: "PYUSD", issuer: "PayPal", peg: 1.0, status: "Healthy", collateral: "Cash & equivalents", icon: "/icons/pyusd.png", slug: "pyusd", bgColor: "#003087" },
+    { name: "FDUSD", issuer: "First Digital", peg: 1.0, status: "Healthy", collateral: "Cash reserves", icon: "/icons/fdusd.png", slug: "fdusd", bgColor: "#1a1a1a" },
+    { name: "RLUSD", issuer: "Ripple", peg: 1.0, status: "Healthy", collateral: "Cash & Treasuries", icon: "/icons/rlusd.png", slug: "rlusd", bgColor: "#346aa9" },
+    { name: "TUSD", issuer: "TrueUSD", peg: 0.997, status: "Warning", collateral: "Attested reserves", icon: "/icons/tusd.png", slug: "tusd", bgColor: "#1a3a5c" },
+  ];
+
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [lastUpdated, setLastUpdated] = useState<string>("Loading...");
+  const [hoveredCoin, setHoveredCoin] = useState<string | null>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const res = await fetch("/api/prices");
+        const data = await res.json();
+        if (data.prices) {
+          setPrices(data.prices);
+          const now = new Date();
+          setLastUpdated(now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
+        }
+      } catch (error) {
+        console.error("Failed to fetch prices", error);
+      }
+    };
+
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getLivePrice = (slug: string, fallback: number) => {
+    return prices[slug] ?? fallback;
+  };
+
+  const getStatus = (price: number) => {
+    if (price >= 0.999) return "Healthy";
+    if (price >= 0.995) return "Slight Depeg";
+    if (price >= 0.990) return "Warning";
+    return "At Risk";
+  };
+
+  const statusColor = (status: string) => {
+    if (status === "Healthy") return "#16a34a";
+    if (status === "Slight Depeg") return "#d97706";
+    if (status === "Warning") return "#ea580c";
+    return "#dc2626";
+  };
+
+  const statusBg = (status: string) => {
+    if (status === "Healthy") return "#f0fdf4";
+    if (status === "Slight Depeg") return "#fffbeb";
+    if (status === "Warning") return "#fff7ed";
+    return "#fef2f2";
+  };
+
+  const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg)) === "Healthy").length;
+  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg)) === "Slight Depeg").length;
+  const warningCount = stablecoins.filter((c) => ["Warning", "At Risk"].includes(getStatus(getLivePrice(c.slug, c.peg)))).length;
+
+  return (
+    <main style={{ fontFamily: "'Segoe UI', sans-serif", background: "#f8f9fb", minHeight: "100vh", paddingBottom: "70px" }}>
+
+      <div style={{ background: "#ffffff", padding: "14px 20px", borderBottom: "1px solid #eaecf0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ width: "34px", height: "34px", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "14px" }}>P✓</div>
+          <div>
+            <div style={{ fontSize: "18px", fontWeight: "700", color: "#111827" }}>PegCheck</div>
+            <div style={{ fontSize: "11px", color: "#9ca3af" }}>Simple, real-time stablecoin health monitor</div>
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: "10px", color: "#9ca3af", fontFamily: "monospace" }}>Updated {lastUpdated}</div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: "8px", padding: "12px 20px", background: "#ffffff", borderBottom: "1px solid #eaecf0", flexWrap: "wrap" }}>
+        {healthyCount > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px", borderRadius: "20px", background: "#f0fdf4" }}>
+            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#16a34a" }}></div>
+            <span style={{ fontSize: "11px", fontWeight: "600", color: "#16a34a" }}>{healthyCount} Healthy</span>
+          </div>
+        )}
+        {cautionCount > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px", borderRadius: "20px", background: "#fffbeb" }}>
+            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#d97706" }}></div>
+            <span style={{ fontSize: "11px", fontWeight: "600", color: "#d97706" }}>{cautionCount} Caution</span>
+          </div>
+        )}
+        {warningCount > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px", borderRadius: "20px", background: "#fef2f2" }}>
+            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#dc2626" }}></div>
+            <span style={{ fontSize: "11px", fontWeight: "600", color: "#dc2626" }}>{warningCount} Warning</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px", padding: "8px 20px", background: "#f8f9fb", borderBottom: "1px solid #eaecf0" }}>
+        <span style={{ fontSize: "11px", fontWeight: "600", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px" }}>Coin</span>
+        <span style={{ fontSize: "11px", fontWeight: "600", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "center" }}>Peg</span>
+        <span style={{ fontSize: "11px", fontWeight: "600", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right" }}>Status</span>
+      </div><div style={{ background: "#ffffff" }}>
+        {stablecoins.map((coin) => {
+          const livePrice = getLivePrice(coin.slug, coin.peg);
+          const liveStatus = getStatus(livePrice);
+          return (
+            <Link
+              key={coin.name}
+              href={`/coin/${coin.slug}`}
+              onMouseEnter={() => setHoveredCoin(coin.slug)}
+              onMouseLeave={() => setHoveredCoin(null)}
+              style={{
+                textDecoration: "none",
+                display: "grid",
+                gridTemplateColumns: "1fr 80px 100px",
+                alignItems: "center",
+                padding: "14px 20px",
+                borderBottom: "1px solid #f3f4f6",
+                background: hoveredCoin === coin.slug ? "#f9fafb" : "#ffffff",
+                transition: "background 0.15s ease",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    <img src={coin.icon} alt={coin.name} style={{ width: "24px", height: "24px", objectFit: "contain" }} />
+                  </div>
+                  <div style={{ position: "absolute", bottom: "-1px", right: "-1px", width: "11px", height: "11px", borderRadius: "50%", background: statusColor(liveStatus), border: "2px solid #ffffff" }}></div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827" }}>{coin.name}</span>
+                  <span style={{ fontSize: "11px", color: "#9ca3af" }}>{coin.issuer}</span>
+                </div>
+              </div>
+
+              <div style={{ fontFamily: "monospace", fontSize: "13px", fontWeight: "500", color: livePrice < 0.995 ? statusColor(liveStatus) : "#374151", textAlign: "center" }}>
+                ${livePrice.toFixed(4)}
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <span style={{ padding: "3px 9px", borderRadius: "20px", fontSize: "11px", fontWeight: "600", background: statusBg(liveStatus), color: statusColor(liveStatus), whiteSpace: "nowrap" }}>
+                  {liveStatus}
+                </span>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      <div style={{ padding: "12px 20px", textAlign: "center" }}>
+        <span style={{ fontSize: "11px", color: "#d1d5db" }}>Tap any coin for full reserve details →</span>
+      </div>
+
+      <div style={{ padding: "12px 20px 4px", textAlign: "center" }}>
+        <span style={{ fontSize: "10px", color: "#d1d5db", fontFamily: "monospace" }}>PegCheck v0.6 — live data · Not financial advice</span>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#ffffff", borderTop: "1px solid #eaecf0", display: "flex", justifyContent: "around", padding: "8px 0", zIndex: 100 }}>
+        <a href="/" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
+          <span style={{ fontSize: "20px" }}>🏠</span>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === "/" ? "#1a56db" : "#9ca3af" }}>Home</span>
+        </a>
+        <a href="/alerts" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
+          <span style={{ fontSize: "20px" }}>🔔</span>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === "/alerts" ? "#1a56db" : "#9ca3af" }}>Alerts</span>
+        </a>
+        <a href="/about" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
+          <span style={{ fontSize: "20px" }}>ℹ️</span>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === "/about" ? "#1a56db" : "#9ca3af" }}>About</span>
+        </a>
+      </div>
+
+    </main>
+  );
+}
