@@ -58,6 +58,13 @@ export default function AlertsPage() {
     }
   };
 
+  const NavIcon = ({ path, label, children }: { path: string, label: string, children: React.ReactNode }) => (
+    <a href={path} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
+      {children}
+      <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === path ? "#1a56db" : "#9ca3af" }}>{label}</span>
+    </a>
+  );
+
   return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: "#f8f9fb", minHeight: "100vh", paddingBottom: "70px" }}>
 
@@ -100,11 +107,10 @@ export default function AlertsPage() {
       </div>
 
       <div style={{ margin: "16px 20px 0", background: "#ffffff", borderRadius: "12px", padding: "20px", border: "1px solid #eaecf0" }}>
-        <div style={{ fontSize: "16px", fontWeight: "700", color: "#111827", marginBottom: "6px" }}>🔔 Get Depeg Alerts</div>
+        <div style={{ fontSize: "16px", fontWeight: "700", color: "#111827", marginBottom: "6px" }}>Get Depeg Alerts</div>
         <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px", lineHeight: "1.5" }}>Be the first to know when a stablecoin loses its peg. Free email alerts, no spam, cancel anytime.</div>
         {submitted ? (
           <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", textAlign: "center" }}>
-            <div style={{ fontSize: "20px", marginBottom: "4px" }}>🎉</div>
             <div style={{ fontSize: "14px", fontWeight: "600", color: "#16a34a" }}>You're on the list!</div>
             <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>We'll alert you the moment anything changes.</div>
           </div>
@@ -132,7 +138,9 @@ export default function AlertsPage() {
         {["Instant SMS alerts", "Custom depeg thresholds", "Portfolio value at risk calculator", "Weekly stablecoin health report"].map((feature) => (
           <div key={feature} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
             <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <span style={{ fontSize: "10px" }}>⚡</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a56db" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
             </div>
             <span style={{ fontSize: "13px", color: "#374151" }}>{feature}</span>
           </div>
@@ -143,18 +151,27 @@ export default function AlertsPage() {
         <span style={{ fontSize: "10px", color: "#d1d5db", fontFamily: "monospace" }}>PegCheck v0.6 — Not financial advice</span>
       </div>
 
-      {/* Bottom Navigation */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#ffffff", borderTop: "1px solid #eaecf0", display: "flex", padding: "8px 0", zIndex: 100 }}>
         <a href="/" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <span style={{ fontSize: "20px" }}>🏠</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
           <span style={{ fontSize: "10px", fontWeight: "600", color: "#9ca3af" }}>Home</span>
         </a>
         <a href="/alerts" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <span style={{ fontSize: "20px" }}>🔔</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a56db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
           <span style={{ fontSize: "10px", fontWeight: "600", color: "#1a56db" }}>Alerts</span>
         </a>
         <a href="/about" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <span style={{ fontSize: "20px" }}>ℹ️</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
           <span style={{ fontSize: "10px", fontWeight: "600", color: "#9ca3af" }}>About</span>
         </a>
       </div>
