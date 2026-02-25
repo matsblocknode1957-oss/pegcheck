@@ -1,12 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
 
 export default function AlertsPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [prices, setPrices] = useState<Record<string, number>>({});
-  const pathname = usePathname();
 
   const coins = [
     { name: "USDT", issuer: "Tether", slug: "usdt", icon: "/icons/usdt.png", bgColor: "#26a17b" },
@@ -52,18 +50,18 @@ export default function AlertsPage() {
     return getStatus(price) !== "Healthy";
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (email.includes("@")) {
+      try {
+        await fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+      } catch (e) {}
       setSubmitted(true);
     }
   };
-
-  const NavIcon = ({ path, label, children }: { path: string, label: string, children: React.ReactNode }) => (
-    <a href={path} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-      {children}
-      <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === path ? "#1a56db" : "#9ca3af" }}>{label}</span>
-    </a>
-  );
 
   return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: "#f8f9fb", minHeight: "100vh", paddingBottom: "70px" }}>
