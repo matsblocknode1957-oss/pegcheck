@@ -38,20 +38,21 @@ export async function GET() {
       tusd: "TUSD (TrueUSD)",
     };
 
-    // Find depegged coins (below 0.995)
-    const depegged = Object.entries(prices).filter(([_, price]) => price < 0.995);
+    // Find coins below 0.975 - genuine depeg threshold
+    const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
 
     if (depegged.length === 0) {
-      return NextResponse.json({ message: "All stable, no alerts sent" });
+      return NextResponse.json({ message: "All stable, no alerts needed" });
     }
 
-    // Get all subscribers
+    // Get premium subscribers only
     const { data: subscribers, error } = await supabase
       .from("subscribers")
-      .select("email");
+      .select("email")
+      .eq("tier", "premium");
 
     if (error || !subscribers || subscribers.length === 0) {
-      return NextResponse.json({ message: "No subscribers" });
+      return NextResponse.json({ message: "No premium subscribers to alert" });
     }
 
     // Build email content
@@ -61,24 +62,24 @@ export async function GET() {
 
     const emailHtml = `
       <h2>⚠️ PegCheck Depeg Alert</h2>
-      <p>The following stablecoins have lost their peg:</p>
+      <p>The following stablecoins have dropped below $0.975:</p>
       <ul>${depegList}</ul>
-      <p>View live data: <a href="https://pegcheck.vercel.app">pegcheck.vercel.app</a></p>
-      <p style="color:#9ca3af;font-size:12px;">You're receiving this because you signed up for PegCheck alerts. Not financial advice.</p>
+      <p>This is a serious depeg event. View live data: <a href="https://pegcheck.vercel.app">pegcheck.vercel.app</a></p>
+      <p style="color:#9ca3af;font-size:12px;">You're receiving this as a PegCheck premium subscriber. Not financial advice.</p>
     `;
 
-    // Send to all subscribers
+    // Send to all premium subscribers
     for (const subscriber of subscribers) {
       await resend.emails.send({
         from: "PegCheck <onboarding@resend.dev>",
         to: subscriber.email,
-        subject: `⚠️ Depeg Alert — ${depegged.length} stablecoin${depegged.length > 1 ? "s" : ""} off peg`,
+        subject: `⚠️ Depeg Alert — ${depegged.length} stablecoin${depegged.length > 1 ? "s" : ""} critical`,
         html: emailHtml,
       });
     }
 
     return NextResponse.json({ 
-      message: `Alerts sent to ${subscribers.length} subscribers for ${depegged.length} depegged coins` 
+      message: `Alerts sent to ${subscribers.length} premium subscribers` 
     });
 
   } catch (error) {
