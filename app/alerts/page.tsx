@@ -5,6 +5,10 @@ export default function AlertsPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [prices, setPrices] = useState<Record<string, number>>({});
+  const [upgrading, setUpgrading] = useState(false);
+
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const upgraded = searchParams?.get("upgraded") === "true";
 
   const coins = [
     { name: "USDT", issuer: "Tether", slug: "usdt", icon: "/icons/usdt.png", bgColor: "#26a17b" },
@@ -63,6 +67,27 @@ export default function AlertsPage() {
     }
   };
 
+  const handleUpgrade = async () => {
+    if (!email.includes("@")) {
+      alert("Please enter your email first");
+      return;
+    }
+    setUpgrading(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (e) {
+      setUpgrading(false);
+    }
+  };
+
   return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: "#f8f9fb", minHeight: "100vh", paddingBottom: "70px" }}>
 
@@ -70,6 +95,13 @@ export default function AlertsPage() {
         <div style={{ width: "34px", height: "34px", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "14px" }}>P✓</div>
         <span style={{ fontSize: "16px", fontWeight: "700", color: "#111827" }}>Alerts</span>
       </div>
+
+      {upgraded && (
+        <div style={{ margin: "16px 20px 0", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "12px", padding: "16px", textAlign: "center" }}>
+          <div style={{ fontSize: "16px", fontWeight: "700", color: "#16a34a" }}>🎉 Welcome to Premium!</div>
+          <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "4px" }}>You'll receive instant alerts when any stablecoin drops below $0.975</div>
+        </div>
+      )}
 
       <div style={{ margin: "16px 20px 0", borderRadius: "12px", overflow: "hidden", border: "1px solid #eaecf0" }}>
         <div style={{ background: "#1a56db", padding: "12px 16px" }}>
@@ -106,11 +138,18 @@ export default function AlertsPage() {
 
       <div style={{ margin: "16px 20px 0", background: "#ffffff", borderRadius: "12px", padding: "20px", border: "1px solid #eaecf0" }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: "#111827", marginBottom: "6px" }}>Get Depeg Alerts</div>
-        <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px", lineHeight: "1.5" }}>Be the first to know when a stablecoin loses its peg. Free email alerts, no spam, cancel anytime.</div>
-        {submitted ? (
+        <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px", lineHeight: "1.5" }}>Enter your email to get started — free dashboard access or upgrade for instant alerts.</div>
+        
+        {submitted && !upgrading ? (
           <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", textAlign: "center" }}>
             <div style={{ fontSize: "14px", fontWeight: "600", color: "#16a34a" }}>You're on the list!</div>
-            <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>We'll alert you the moment anything changes.</div>
+            <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>Upgrade to Premium for instant depeg alerts.</div>
+            <button
+              onClick={handleUpgrade}
+              style={{ marginTop: "12px", width: "100%", padding: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer" }}
+            >
+              Upgrade to Premium — £4.99/month
+            </button>
           </div>
         ) : (
           <div>
@@ -123,17 +162,23 @@ export default function AlertsPage() {
             />
             <button
               onClick={handleSubmit}
-              style={{ width: "100%", padding: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", color: "white", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer" }}
+              style={{ width: "100%", padding: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", color: "white", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer", marginBottom: "8px" }}
             >
-              Notify Me Free →
+              Get Free Access →
+            </button>
+            <button
+              onClick={handleUpgrade}
+              style={{ width: "100%", padding: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer" }}
+            >
+              {upgrading ? "Redirecting to checkout..." : "Upgrade to Premium — £4.99/month ⚡"}
             </button>
           </div>
         )}
       </div>
 
       <div style={{ margin: "16px 20px 0", background: "#ffffff", borderRadius: "12px", padding: "20px", border: "1px solid #eaecf0" }}>
-        <div style={{ fontSize: "13px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Coming Soon — Premium</div>
-        {["Instant SMS alerts", "Custom depeg thresholds", "Portfolio value at risk calculator", "Weekly stablecoin health report"].map((feature) => (
+        <div style={{ fontSize: "13px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Premium Features ⚡</div>
+        {["Instant alerts when any coin drops below $0.975", "Email notification within seconds of detection", "Be first to know before the market reacts", "Cancel anytime"].map((feature) => (
           <div key={feature} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
             <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a56db" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
