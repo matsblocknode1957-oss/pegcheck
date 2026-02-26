@@ -1,16 +1,16 @@
-import { Resend } from "resend";
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export async function GET() {
   try {
-    // Fetch live prices
+    const { Resend } = await import("resend");
+    const { createClient } = await import("@supabase/supabase-js");
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
     const res = await fetch(
       "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd&vs_currencies=usd"
     );
@@ -38,14 +38,12 @@ export async function GET() {
       tusd: "TUSD (TrueUSD)",
     };
 
-    // Find coins below 0.975 - genuine depeg threshold
     const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
 
     if (depegged.length === 0) {
       return NextResponse.json({ message: "All stable, no alerts needed" });
     }
 
-    // Get premium subscribers only
     const { data: subscribers, error } = await supabase
       .from("subscribers")
       .select("email")
@@ -55,7 +53,6 @@ export async function GET() {
       return NextResponse.json({ message: "No premium subscribers to alert" });
     }
 
-    // Build email content
     const depegList = depegged
       .map(([slug, price]) => `<li><strong>${coinNames[slug]}</strong> — $${price.toFixed(4)}</li>`)
       .join("");
@@ -64,11 +61,10 @@ export async function GET() {
       <h2>⚠️ PegCheck Depeg Alert</h2>
       <p>The following stablecoins have dropped below $0.975:</p>
       <ul>${depegList}</ul>
-      <p>This is a serious depeg event. View live data: <a href="https://pegcheck.vercel.app">pegcheck.vercel.app</a></p>
-      <p style="color:#9ca3af;font-size:12px;">You're receiving this as a PegCheck premium subscriber. Not financial advice.</p>
+      <p>View live data: <a href="https://pegcheck.vercel.app">pegcheck.vercel.app</a></p>
+      <p style="color:#9ca3af;font-size:12px;">PegCheck premium alert. Not financial advice.</p>
     `;
 
-    // Send to all premium subscribers
     for (const subscriber of subscribers) {
       await resend.emails.send({
         from: "PegCheck <onboarding@resend.dev>",
@@ -78,9 +74,7 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json({ 
-      message: `Alerts sent to ${subscribers.length} premium subscribers` 
-    });
+    return NextResponse.json({ message: `Alerts sent to ${subscribers.length} premium subscribers` });
 
   } catch (error) {
     return NextResponse.json({ error: "Cron job failed" }, { status: 500 });
