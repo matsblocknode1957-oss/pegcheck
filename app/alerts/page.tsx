@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 
 export default function AlertsPage() {
   const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [upgrading, setUpgrading] = useState(false);
 
@@ -55,19 +54,6 @@ export default function AlertsPage() {
     const price = prices[c.slug] ?? 1.0;
     return getStatus(price) !== "Healthy";
   });
-
-  const handleSubmit = async () => {
-    if (email.includes("@")) {
-      try {
-        await fetch("/api/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
-      } catch (e) {}
-      setSubmitted(true);
-    }
-  };
 
   const handleUpgrade = async () => {
     if (!email.includes("@")) {
@@ -139,43 +125,21 @@ export default function AlertsPage() {
       </div>
 
       <div style={{ margin: "16px 20px 0", background: "#ffffff", borderRadius: "12px", padding: "20px", border: "1px solid #eaecf0" }}>
-        <div style={{ fontSize: "16px", fontWeight: "700", color: "#111827", marginBottom: "6px" }}>Get Depeg Alerts</div>
-        <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px", lineHeight: "1.5" }}>Enter your email to get started — free dashboard access or upgrade for instant alerts.</div>
-        
-        {submitted && !upgrading ? (
-          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", textAlign: "center" }}>
-            <div style={{ fontSize: "14px", fontWeight: "600", color: "#16a34a" }}>You're on the list!</div>
-            <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>Upgrade to Premium for instant depeg alerts.</div>
-            <button
-              onClick={handleUpgrade}
-              style={{ marginTop: "12px", width: "100%", padding: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer" }}
-            >
-              Upgrade to Premium — £4.99/month
-            </button>
-          </div>
-        ) : (
-          <div>
-            <input
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "14px", marginBottom: "10px", boxSizing: "border-box", outline: "none" }}
-            />
-            <button
-              onClick={handleSubmit}
-              style={{ width: "100%", padding: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", color: "white", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer", marginBottom: "8px" }}
-            >
-              Get Free Access →
-            </button>
-            <button
-              onClick={handleUpgrade}
-              style={{ width: "100%", padding: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer" }}
-            >
-              {upgrading ? "Redirecting to checkout..." : "Upgrade to Premium — £4.99/month ⚡"}
-            </button>
-          </div>
-        )}
+        <div style={{ fontSize: "16px", fontWeight: "700", color: "#111827", marginBottom: "6px" }}>Get Instant Depeg Alerts</div>
+        <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px", lineHeight: "1.5" }}>Enter your email and upgrade to Premium — be first to know when a stablecoin depegs.</div>
+        <input
+          type="email"
+          placeholder="your@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "14px", marginBottom: "10px", boxSizing: "border-box", outline: "none" }}
+        />
+        <button
+          onClick={handleUpgrade}
+          style={{ width: "100%", padding: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer" }}
+        >
+          {upgrading ? "Redirecting to checkout..." : "Upgrade to Premium — £4.99/month ⚡"}
+        </button>
       </div>
 
       <div style={{ margin: "16px 20px 0", background: "#ffffff", borderRadius: "12px", padding: "20px", border: "1px solid #eaecf0" }}>
@@ -193,7 +157,7 @@ export default function AlertsPage() {
       </div>
 
       <div style={{ padding: "20px", textAlign: "center" }}>
-        <span style={{ fontSize: "10px", color: "#d1d5db", fontFamily: "monospace" }}>PegCheck v0.6 — Not financial advice</span>
+        <span style={{ fontSize: "10px", color: "#d1d5db", fontFamily: "monospace" }}>PegCheck v0.8 — Not financial advice</span>
       </div>
 
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#ffffff", borderTop: "1px solid #eaecf0", display: "flex", padding: "8px 0", zIndex: 100 }}>
