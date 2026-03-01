@@ -96,11 +96,6 @@ export default function Home() {
   const navBg = dark ? "#0d1628" : "#ffffff";
   const navBorder = dark ? "#1e2a40" : "#eaecf0";
   const dotBorder = dark ? "#0d1628" : "#ffffff";
-
-Yo B <matsblocknode1957@gmail.com>
-8:34 PM (0 minutes ago)
-to me
-
 return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: bg, minHeight: "100vh", paddingBottom: "70px", transition: "background 0.2s ease" }}>
 
