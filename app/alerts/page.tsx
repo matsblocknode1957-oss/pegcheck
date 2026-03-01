@@ -1,4 +1,8 @@
 
+Yo B <matsblocknode1957@gmail.com>
+10:51 PM (0 minutes ago)
+to me
+
 "use client";
 export const dynamic = "force-dynamic";
 
@@ -22,6 +26,41 @@ export default function AlertsPage() {
     const next = !dark;
     setDark(next);
     localStorage.setItem("pegcheck-dark", String(next));
+  };
+
+  useEffect(() => {
+    fetch("/api/prices")
+      .then((r) => r.json())
+      .then((d) => { if (d.prices) setPrices(d.prices); })
+      .catch(() => {});
+  }, []);
+
+  const coins = [
+    { name: "USDT", issuer: "Tether", slug: "usdt", icon: "/icons/usdt.png", bgColor: "#26a17b" },
+    { name: "USDC", issuer: "Circle", slug: "usdc", icon: "/icons/usdc.png", bgColor: "#2775ca" },
+    { name: "USDS", issuer: "MakerDAO", slug: "usds", icon: "/icons/usds.png", bgColor: "#f4b731" },
+    { name: "Ethena", issuer: "Ethena Labs", slug: "ethena", icon: "/icons/ethena.png", bgColor: "#1a1a2e" },
+    { name: "PYUSD", issuer: "PayPal", slug: "pyusd", icon: "/icons/pyusd.png", bgColor: "#003087" },
+    { name: "FDUSD", issuer: "First Digital", slug: "fdusd", icon: "/icons/fdusd.png", bgColor: "#1a1a1a" },
+    { name: "RLUSD", issuer: "Ripple", slug: "rlusd", icon: "/icons/rlusd.png", bgColor: "#346aa9" },
+    { name: "TUSD", issuer: "TrueUSD", slug: "tusd", icon: "/icons/tusd.png", bgColor: "#1a3a5c" },
+  ];
+
+  const getStatus = (price: number) => {
+    if (price >= 0.999) return "Healthy";
+    if (price >= 0.995) return "Slight Depeg";
+    if (price >= 0.990) return "Warning";
+    return "At Risk";
+  };
+
+  const statusColor = (status: string) => {
+    if (status === "Healthy") return "#16a34a";
+    if (status === "Slight Depeg") return "#d97706";
+    if (status === "Warning") return "#ea580c";
+    return "#dc2626";
+  };
+
+  const statusBg = (status: string) => {
     if (dark) {
       if (status === "Healthy") return "#052e16";
       if (status === "Slight Depeg") return "#451a03";
@@ -35,17 +74,6 @@ export default function AlertsPage() {
   };
 
   const depegged = coins.filter((c) => {
-    const coins = [
-    { name: "USDT", issuer: "Tether", slug: "usdt", icon: "/icons/usdt.png", bgColor: "#26a17b" },
-    { name: "USDC", issuer: "Circle", slug: "usdc", icon: "/icons/usdc.png", bgColor: "#2775ca" },
-    { name: "USDS", issuer: "MakerDAO", slug: "usds", icon: "/icons/usds.png", bgColor: "#f4b731" },
-    { name: "Ethena", issuer: "Ethena Labs", slug: "ethena", icon: "/icons/ethena.png", bgColor: "#1a1a2e" },
-    { name: "PYUSD", issuer: "PayPal", slug: "pyusd", icon: "/icons/pyusd.png", bgColor: "#003087" },
-    { name: "FDUSD", issuer: "First Digital", slug: "fdusd", icon: "/icons/fdusd.png", bgColor: "#1a1a1a" },
-    { name: "RLUSD", issuer: "Ripple", slug: "rlusd", icon: "/icons/rlusd.png", bgColor: "#346aa9" },
-    { name: "TUSD", issuer: "TrueUSD", slug: "tusd", icon: "/icons/tusd.png", bgColor: "#1a3a5c" },
-  ];
-
     const price = prices[c.slug] ?? 1.0;
     return getStatus(price) !== "Healthy";
   });
@@ -80,7 +108,7 @@ export default function AlertsPage() {
   const inputBorder = dark ? "#1e2a40" : "#e5e7eb";
   const navBg = dark ? "#0d1628" : "#ffffff";
   const navBorder = dark ? "#1e2a40" : "#eaecf0";
-  return (
+return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: bg, minHeight: "100vh", paddingBottom: "70px", transition: "background 0.2s ease" }}>
 
       <div style={{ background: headerBg, padding: "14px 20px", borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.2s ease" }}>
@@ -149,9 +177,7 @@ export default function AlertsPage() {
         >
           {upgrading ? "Redirecting to checkout..." : "Upgrade to Premium — £4.99/month ⚡"}
         </button>
-      </div>
-
-      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
+      </div><div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "13px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Premium Features ⚡</div>
         {["Instant alerts when any coin drops below $0.975", "Email notification within seconds of detection", "Be first to know before the market reacts", "Cancel anytime"].map((feature) => (
           <div key={feature} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
