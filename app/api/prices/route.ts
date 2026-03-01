@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server";
+
 function median(values: number[]): number {
   const sorted = values.filter(v => v > 0.5 && v < 1.5).sort((a, b) => a - b);
   if (sorted.length === 0) return 1.0;
@@ -49,8 +51,7 @@ export async function GET() {
     dlCoins.forEach((coin: { symbol: string; price: number }) => {
       dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;
     });
-
-    const prices = {
+const prices = {
       usdt: median([
         cgData["tether"]?.usd ?? 0,
         cbResults["USDT-USD"] ?? 0,
@@ -98,16 +99,10 @@ export async function GET() {
         kr["TUSDUSD"]?.c?.[0] ? parseFloat(kr["TUSDUSD"].c[0]) : 0,
         dlResults["tusd"] ?? 0,
       ]),
-};
+    };
 
-    return Response.json({ prices });
+    return NextResponse.json({ prices });
   } catch (error) {
-    return Response.json({ error: "Failed to fetch prices" }, { status: 500 });
-  }
-};
-
-    return Response.json({ prices });
-  } catch (error) {
-    return Response.json({ error: "Failed to fetch prices" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch prices" }, { status: 500 });
   }
 }
