@@ -29,8 +29,8 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      success_url: "https://pegcheck.vercel.app/alerts?upgraded=true",
-      cancel_url: "https://pegcheck.vercel.app/alerts",
+      success_url: "https://pegcheck.uk/alerts?upgraded=true",
+      cancel_url: "https://pegcheck.uk/alerts",
     });
 
     return NextResponse.json({ url: session.url });
