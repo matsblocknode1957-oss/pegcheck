@@ -35,6 +35,17 @@ export default function AlertsPage() {
   };
 
   const depegged = coins.filter((c) => {
+    const coins = [
+    { name: "USDT", issuer: "Tether", slug: "usdt", icon: "/icons/usdt.png", bgColor: "#26a17b" },
+    { name: "USDC", issuer: "Circle", slug: "usdc", icon: "/icons/usdc.png", bgColor: "#2775ca" },
+    { name: "USDS", issuer: "MakerDAO", slug: "usds", icon: "/icons/usds.png", bgColor: "#f4b731" },
+    { name: "Ethena", issuer: "Ethena Labs", slug: "ethena", icon: "/icons/ethena.png", bgColor: "#1a1a2e" },
+    { name: "PYUSD", issuer: "PayPal", slug: "pyusd", icon: "/icons/pyusd.png", bgColor: "#003087" },
+    { name: "FDUSD", issuer: "First Digital", slug: "fdusd", icon: "/icons/fdusd.png", bgColor: "#1a1a1a" },
+    { name: "RLUSD", issuer: "Ripple", slug: "rlusd", icon: "/icons/rlusd.png", bgColor: "#346aa9" },
+    { name: "TUSD", issuer: "TrueUSD", slug: "tusd", icon: "/icons/tusd.png", bgColor: "#1a3a5c" },
+  ];
+
     const price = prices[c.slug] ?? 1.0;
     return getStatus(price) !== "Healthy";
   });
