@@ -21,13 +21,17 @@ export async function GET() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    // Source 1 — CoinGecko
+    // ----------------------------
+    // Fetch Prices from Multiple Sources
+    // ----------------------------
+
+    // CoinGecko
     const cgRes = await fetch(
       "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd&vs_currencies=usd"
     );
     const cgData = await cgRes.json();
 
-    // Source 2 — Coinbase
+    // Coinbase
     const cbSlugs = ["USDT-USD","USDC-USD","DAI-USD","PYUSD-USD","TUSD-USD"];
     const cbResults: Record<string, number> = {};
     await Promise.allSettled(
@@ -38,22 +42,22 @@ export async function GET() {
       })
     );
 
-    // Source 3 — Binance
+    // Binance
     const bnSlugs = ["USDTUSDT","USDCUSDT","DAIUSDT","PYUSDUSDT","TUSDUSDT"];
     const bnRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbols=${JSON.stringify(bnSlugs)}`);
     const bnData: {symbol: string; price: string}[] = await bnRes.json();
     const bnResults: Record<string, number> = {};
     if (Array.isArray(bnData)) {
-  bnData.forEach(item => { bnResults[item.symbol] = parseFloat(item.price); });
-}
+      bnData.forEach(item => { bnResults[item.symbol] = parseFloat(item.price); });
+    }
 
-    // Source 4 — Kraken
-    const krRes = await fetch(`https://api.kraken.com/0/public/Ticker?pair=USDTUSD,USDCUSD,DAIUSD,PYUSDUSD,TUSDUSD`);
+    // Kraken
+    const krRes = await fetch("https://api.kraken.com/0/public/Ticker?pair=USDTUSD,USDCUSD,DAIUSD,PYUSDUSD,TUSDUSD");
     const krData = await krRes.json();
     const kr = krData?.result ?? {};
 
-    // Source 5 — DefiLlama
-    const dlRes = await fetch(`https://stablecoins.llama.fi/stablecoins?includePrices=true`);
+    // DefiLlama
+    const dlRes = await fetch("https://stablecoins.llama.fi/stablecoins?includePrices=true");
     const dlData = await dlRes.json();
     const dlCoins = dlData?.peggedAssets ?? [];
     const dlResults: Record<string, number> = {};
@@ -61,54 +65,18 @@ export async function GET() {
       dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;
     });
 
-const prices: Record<string, number> = {
-      usdt: median([
-        cgData["tether"]?.usd ?? 0,
-        cbResults["USDT-USD"] ?? 0,
-        bnResults["USDTUSDT"] ?? 0,
-        kr["USDTUSD"]?.c?.[0] ? parseFloat(kr["USDTUSD"].c[0]) : 0,
-        dlResults["usdt"] ?? 0,
-      ]),
-      usdc: median([
-        cgData["usd-coin"]?.usd ?? 0,
-        cbResults["USDC-USD"] ?? 0,
-        bnResults["USDCUSDT"] ?? 0,
-        kr["USDCUSD"]?.c?.[0] ? parseFloat(kr["USDCUSD"].c[0]) : 0,
-        dlResults["usdc"] ?? 0,
-      ]),
-      usds: median([
-        cgData["dai"]?.usd ?? 0,
-        cbResults["DAI-USD"] ?? 0,
-        bnResults["DAIUSDT"] ?? 0,
-        kr["DAIUSD"]?.c?.[0] ? parseFloat(kr["DAIUSD"].c[0]) : 0,
-        dlResults["dai"] ?? 0,
-      ]),
-      ethena: median([
-        cgData["ethena-usde"]?.usd ?? 0,
-        dlResults["usde"] ?? 0,
-      ]),
-      pyusd: median([
-        cgData["paypal-usd"]?.usd ?? 0,
-        cbResults["PYUSD-USD"] ?? 0,
-        bnResults["PYUSDUSDT"] ?? 0,
-        kr["PYUSDUSD"]?.c?.[0] ? parseFloat(kr["PYUSDUSD"].c[0]) : 0,
-        dlResults["pyusd"] ?? 0,
-      ]),
-      fdusd: median([
-        cgData["first-digital-usd"]?.usd ?? 0,
-        dlResults["fdusd"] ?? 0,
-      ]),
-      rlusd: median([
-        cgData["ripple-usd"]?.usd ?? 0,
-        dlResults["rlusd"] ?? 0,
-      ]),
-      tusd: median([
-        cgData["true-usd"]?.usd ?? 0,
-        cbResults["TUSD-USD"] ?? 0,
-        bnResults["TUSDUSDT"] ?? 0,
-        kr["TUSDUSD"]?.c?.[0] ? parseFloat(kr["TUSDUSD"].c[0]) : 0,
-        dlResults["tusd"] ?? 0,
-      ]),
+    // ----------------------------
+    // Compute Median Prices
+    // ----------------------------
+    const prices: Record<string, number> = {
+      usdt: median([cgData["tether"]?.usd ?? 0, cbResults["USDT-USD"] ?? 0, bnResults["USDTUSDT"] ?? 0, kr["USDTUSD"]?.c?.[0] ? parseFloat(kr["USDTUSD"].c[0]) : 0, dlResults["usdt"] ?? 0]),
+      usdc: median([cgData["usd-coin"]?.usd ?? 0, cbResults["USDC-USD"] ?? 0, bnResults["USDCUSDT"] ?? 0, kr["USDCUSD"]?.c?.[0] ? parseFloat(kr["USDCUSD"].c[0]) : 0, dlResults["usdc"] ?? 0]),
+      usds: median([cgData["dai"]?.usd ?? 0, cbResults["DAI-USD"] ?? 0, bnResults["DAIUSDT"] ?? 0, kr["DAIUSD"]?.c?.[0] ? parseFloat(kr["DAIUSD"].c[0]) : 0, dlResults["dai"] ?? 0]),
+      ethena: median([cgData["ethena-usde"]?.usd ?? 0, dlResults["usde"] ?? 0]),
+      pyusd: median([cgData["paypal-usd"]?.usd ?? 0, cbResults["PYUSD-USD"] ?? 0, bnResults["PYUSDUSDT"] ?? 0, kr["PYUSDUSD"]?.c?.[0] ? parseFloat(kr["PYUSDUSD"].c[0]) : 0, dlResults["pyusd"] ?? 0]),
+      fdusd: median([cgData["first-digital-usd"]?.usd ?? 0, dlResults["fdusd"] ?? 0]),
+      rlusd: median([cgData["ripple-usd"]?.usd ?? 0, dlResults["rlusd"] ?? 0]),
+      tusd: median([cgData["true-usd"]?.usd ?? 0, cbResults["TUSD-USD"] ?? 0, bnResults["TUSDUSDT"] ?? 0, kr["TUSDUSD"]?.c?.[0] ? parseFloat(kr["TUSDUSD"].c[0]) : 0, dlResults["tusd"] ?? 0]),
     };
 
     const coinNames: Record<string, string> = {
@@ -121,30 +89,37 @@ const prices: Record<string, number> = {
       rlusd: "RLUSD (Ripple)",
       tusd: "TUSD (TrueUSD)",
     };
-// Save price snapshot to history
+
+    // ----------------------------
+    // Save Price Snapshot to Supabase (historical data)
+    // ----------------------------
     const snapshots = Object.entries(prices).map(([slug, price]) => ({
       slug,
       price,
+      timestamp: new Date().toISOString()
     }));
-    await supabase.from("price_history").insert(snapshots);
-    const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
 
+    const { data: snapshotData, error: snapshotError } = await supabase.from("price_history").insert(snapshots);
+    if (snapshotError) console.error("Supabase insert failed:", snapshotError);
+
+    // ----------------------------
+    // Check for Depegs and Alert Paid Users
+    // ----------------------------
+    const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
     if (depegged.length === 0) {
       return NextResponse.json({ message: "All stable, no alerts needed" });
     }
 
-    const { data: subscribers, error } = await supabase
+    const { data: subscribers, error: subError } = await supabase
       .from("subscribers")
       .select("email")
       .eq("tier", "premium");
 
-    if (error || !subscribers || subscribers.length === 0) {
+    if (subError || !subscribers || subscribers.length === 0) {
       return NextResponse.json({ message: "No premium subscribers to alert" });
     }
 
-    const depegList = depegged
-      .map(([slug, price]) => `<li><strong>${coinNames[slug]}</strong> — $${price.toFixed(4)}</li>`)
-      .join("");
+    const depegList = depegged.map(([slug, price]) => `<li><strong>${coinNames[slug]}</strong> — $${price.toFixed(4)}</li>`).join("");
 
     const emailHtml = `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 500px; margin: 0 auto;">
@@ -171,7 +146,7 @@ const prices: Record<string, number> = {
       });
     }
 
-    return NextResponse.json({ message: `Alerts sent to ${subscribers.length} premium subscribers` });
+    return NextResponse.json({ message: `Snapshots saved. Alerts sent to ${subscribers.length} premium subscribers.` });
 
   } catch (error) {
     console.error("Cron error:", error);
