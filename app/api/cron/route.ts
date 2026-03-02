@@ -175,3 +175,4 @@ const prices: Record<string, number> = {
     console.error("Cron error:", error);
     return NextResponse.json({ error: "Cron job failed", details: String(error) }, { status: 500 });
   }
+}
