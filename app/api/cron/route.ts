@@ -64,6 +64,32 @@ export async function GET() {
     dlCoins.forEach((coin: { symbol: string; price: number }) => {
       dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;
     });
+// Etherscan — USDT Mint/Burn Activity
+    const usdtContract = "0xdac17f958d2ee523a2206206994597c13d831ec7";
+    const ethRes = await fetch(
+      `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx&contractaddress=${usdtContract}&page=1&offset=10&sort=desc&apikey=${process.env.ETHERSCAN_API_KEY}`
+    );
+    const ethData = await ethRes.json();
+    const txList = ethData?.result ?? [];
+
+    if (Array.isArray(txList)) {
+      const mintBurnTxs = txList.filter((tx: any) => 
+        tx.from === "0x0000000000000000000000000000000000000000" || 
+        tx.to === "0x0000000000000000000000000000000000000000"
+      );
+
+      const mintBurnRows = mintBurnTxs.map((tx: any) => ({
+        slug: "usdt",
+        action: tx.from === "0x0000000000000000000000000000000000000000" ? "mint" : "burn",
+        amount: parseFloat(tx.value) / 1e6,
+        tx_hash: tx.hash,
+        wallet: tx.from === "0x0000000000000000000000000000000000000000" ? tx.to : tx.from,
+      }));
+
+      if (mintBurnRows.length > 0) {
+        await supabase.from("mint_burn_activity").insert(mintBurnRows);
+      }
+    }
 
     // ----------------------------
     // Compute Median Prices
