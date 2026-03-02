@@ -105,7 +105,7 @@ return (
           <div style={{ width: "34px", height: "34px", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "14px" }}>P✓</div>
           <div>
             <div style={{ fontSize: "18px", fontWeight: "700", color: textPrimary }}>PegCheck</div>
-            <div style={{ fontSize: "11px", color: textSecondary }}>Real-time stablecoin health monitor</div>
+            <div style={{ fontSize: "11px", color: textSecondary }}>Prices from 5 independent sources</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
