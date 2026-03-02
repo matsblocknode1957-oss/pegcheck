@@ -96,7 +96,6 @@ export async function GET() {
     const snapshots = Object.entries(prices).map(([slug, price]) => ({
       slug,
       price,
-      timestamp: new Date().toISOString()
     }));
 
     const { data: snapshotData, error: snapshotError } = await supabase.from("price_history").insert(snapshots);
