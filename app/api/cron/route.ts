@@ -58,16 +58,24 @@ export async function GET() {
       .join("");
 
     const emailHtml = `
-      <h2>⚠️ PegCheck Depeg Alert</h2>
-      <p>The following stablecoins have dropped below $0.975:</p>
-      <ul>${depegList}</ul>
-      <p>View live data: <a href="https://pegcheck.vercel.app">pegcheck.vercel.app</a></p>
-      <p style="color:#9ca3af;font-size:12px;">PegCheck premium alert. Not financial advice.</p>
+      <div style="font-family: 'Segoe UI', sans-serif; max-width: 500px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1a56db, #0e3fa8); padding: 24px; border-radius: 12px 12px 0 0;">
+          <h2 style="color: white; margin: 0; font-size: 20px;">⚠️ PegCheck Depeg Alert</h2>
+        </div>
+        <div style="background: #ffffff; padding: 24px; border: 1px solid #eaecf0; border-top: none; border-radius: 0 0 12px 12px;">
+          <p style="color: #374151; margin-top: 0;">The following stablecoins have dropped below $0.975:</p>
+          <ul style="color: #374151; padding-left: 20px;">
+            ${depegList}
+          </ul>
+          <a href="https://pegcheck.uk" style="display: inline-block; background: linear-gradient(135deg, #1a56db, #0e3fa8); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; margin-top: 8px;">View Live Data →</a>
+          <p style="color: #9ca3af; font-size: 12px; margin-top: 24px; margin-bottom: 0;">PegCheck premium alert. Not financial advice.</p>
+        </div>
+      </div>
     `;
 
     for (const subscriber of subscribers) {
       await resend.emails.send({
-        from: "PegCheck <onboarding@resend.dev>",
+        from: "PegCheck <alerts@pegcheck.uk>",
         to: subscriber.email,
         subject: `⚠️ Depeg Alert — ${depegged.length} stablecoin${depegged.length > 1 ? "s" : ""} critical`,
         html: emailHtml,
