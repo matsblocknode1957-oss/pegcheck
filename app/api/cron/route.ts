@@ -43,7 +43,9 @@ export async function GET() {
     const bnRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbols=${JSON.stringify(bnSlugs)}`);
     const bnData: {symbol: string; price: string}[] = await bnRes.json();
     const bnResults: Record<string, number> = {};
-    bnData.forEach(item => { bnResults[item.symbol] = parseFloat(item.price); });
+    if (Array.isArray(bnData)) {
+  bnData.forEach(item => { bnResults[item.symbol] = parseFloat(item.price); });
+}
 
     // Source 4 — Kraken
     const krRes = await fetch(`https://api.kraken.com/0/public/Ticker?pair=USDTUSD,USDCUSD,DAIUSD,PYUSDUSD,TUSDUSD`);
