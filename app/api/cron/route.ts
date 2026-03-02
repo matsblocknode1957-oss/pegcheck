@@ -38,7 +38,7 @@ export async function GET() {
       tusd: "TUSD (TrueUSD)",
     };
 
-    const depegged = Object.entries(prices).filter(([_, price]) => price < 1.1);
+    const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
 
     if (depegged.length === 0) {
       return NextResponse.json({ message: "All stable, no alerts needed" });
