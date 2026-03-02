@@ -172,6 +172,6 @@ const prices: Record<string, number> = {
     return NextResponse.json({ message: `Alerts sent to ${subscribers.length} premium subscribers` });
 
   } catch (error) {
-    return NextResponse.json({ error: "Cron job failed" }, { status: 500 });
+    console.error("Cron error:", error);
+    return NextResponse.json({ error: "Cron job failed", details: String(error) }, { status: 500 });
   }
-}
