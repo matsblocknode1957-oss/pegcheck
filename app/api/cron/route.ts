@@ -71,7 +71,7 @@ export async function GET() {
     );
     const ethData = await ethRes.json();
     const txList = ethData?.result ?? [];
-
+console.error("Etherscan response:", JSON.stringify(ethData));
     if (Array.isArray(txList)) {
       const mintBurnTxs = txList.filter((tx: any) => 
         tx.from === "0x0000000000000000000000000000000000000000" || 
