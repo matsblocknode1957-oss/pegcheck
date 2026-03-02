@@ -119,7 +119,12 @@ const prices: Record<string, number> = {
       rlusd: "RLUSD (Ripple)",
       tusd: "TUSD (TrueUSD)",
     };
-
+// Save price snapshot to history
+    const snapshots = Object.entries(prices).map(([slug, price]) => ({
+      slug,
+      price,
+    }));
+    await supabase.from("price_history").insert(snapshots);
     const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
 
     if (depegged.length === 0) {
