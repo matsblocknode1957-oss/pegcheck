@@ -7,15 +7,16 @@ export default function AlertsPage() {
   const [email, setEmail] = useState("");
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [upgrading, setUpgrading] = useState(false);
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(() => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("pegcheck-dark") === "true";
+  }
+  return false;
+});
+
 
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const upgraded = searchParams?.get("upgraded") === "true";
-
-  useEffect(() => {
-    const saved = localStorage.getItem("pegcheck-dark");
-    if (saved === "true") setDark(true);
-  }, []);
 
   const toggleDark = () => {
     const next = !dark;

@@ -18,13 +18,14 @@ export default function Home() {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [lastUpdated, setLastUpdated] = useState<string>("Loading...");
   const [hoveredCoin, setHoveredCoin] = useState<string | null>(null);
-  const [dark, setDark] = useState(false);
-  const pathname = usePathname();
+  const [dark, setDark] = useState(() => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("pegcheck-dark") === "true";
+  }
+  return false;
+});
 
-  useEffect(() => {
-    const saved = localStorage.getItem("pegcheck-dark");
-    if (saved === "true") setDark(true);
-  }, []);
+  const pathname = usePathname();
 
   const toggleDark = () => {
     const next = !dark;
