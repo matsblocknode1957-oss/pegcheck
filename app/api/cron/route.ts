@@ -21,10 +21,6 @@ export async function GET() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    // ----------------------------
-    // Fetch Prices from Multiple Sources
-    // ----------------------------
-
     // CoinGecko
     const cgRes = await fetch(
       "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd&vs_currencies=usd"
@@ -64,19 +60,19 @@ export async function GET() {
     dlCoins.forEach((coin: { symbol: string; price: number }) => {
       dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;
     });
-// Etherscan — USDT Mint/Burn Activity
+
+    // Etherscan — USDT Mint/Burn Activity
     const usdtContract = "0xdac17f958d2ee523a2206206994597c13d831ec7";
     const ethRes = await fetch(
-      `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx&contractaddress=${usdtContract}&page=1&offset=10&sort=desc&apikey=${process.env.ETHERSCAN_API_KEY}`
+      `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx&contractaddress=${usdtContract}&page=1&offset=50&sort=desc&apikey=${process.env.ETHERSCAN_API_KEY}`
     );
     const ethData = await ethRes.json();
     const txList = ethData?.result ?? [];
     if (Array.isArray(txList)) {
-      const mintBurnTxs = txList.filter((tx: any) => 
-        tx.from === "0x0000000000000000000000000000000000000000" || 
+      const mintBurnTxs = txList.filter((tx: any) =>
+        tx.from === "0x0000000000000000000000000000000000000000" ||
         tx.to === "0x0000000000000000000000000000000000000000"
       );
-
       const mintBurnRows = mintBurnTxs.map((tx: any) => ({
         slug: "usdt",
         action: tx.from === "0x0000000000000000000000000000000000000000" ? "mint" : "burn",
@@ -84,15 +80,12 @@ export async function GET() {
         tx_hash: tx.hash,
         wallet: tx.from === "0x0000000000000000000000000000000000000000" ? tx.to : tx.from,
       }));
-
       if (mintBurnRows.length > 0) {
         await supabase.from("mint_burn_activity").insert(mintBurnRows);
       }
     }
 
-    // ----------------------------
     // Compute Median Prices
-    // ----------------------------
     const prices: Record<string, number> = {
       usdt: median([cgData["tether"]?.usd ?? 0, cbResults["USDT-USD"] ?? 0, bnResults["USDTUSDT"] ?? 0, kr["USDTUSD"]?.c?.[0] ? parseFloat(kr["USDTUSD"].c[0]) : 0, dlResults["usdt"] ?? 0]),
       usdc: median([cgData["usd-coin"]?.usd ?? 0, cbResults["USDC-USD"] ?? 0, bnResults["USDCUSDT"] ?? 0, kr["USDCUSD"]?.c?.[0] ? parseFloat(kr["USDCUSD"].c[0]) : 0, dlResults["usdc"] ?? 0]),
@@ -115,20 +108,11 @@ export async function GET() {
       tusd: "TUSD (TrueUSD)",
     };
 
-    // ----------------------------
-    // Save Price Snapshot to Supabase (historical data)
-    // ----------------------------
-    const snapshots = Object.entries(prices).map(([slug, price]) => ({
-      slug,
-      price,
-    }));
+    // Save Price Snapshot
+    const snapshots = Object.entries(prices).map(([slug, price]) => ({ slug, price }));
+    await supabase.from("price_history").insert(snapshots);
 
-    const { data: snapshotData, error: snapshotError } = await supabase.from("price_history").insert(snapshots);
-    if (snapshotError) console.warn("Supabase insert failed");
-
-    // ----------------------------
-    // Check for Depegs and Alert Paid Users
-    // ----------------------------
+    // Check for Depegs
     const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
     if (depegged.length === 0) {
       return NextResponse.json({ message: "All stable, no alerts needed" });
@@ -148,7 +132,7 @@ export async function GET() {
     const emailHtml = `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 500px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #1a56db, #0e3fa8); padding: 24px; border-radius: 12px 12px 0 0;">
-          <h2 style="color: white; margin: 0; font-size: 20px;">⚠️ PegCheck Depeg Alert</h2>
+          <h2 style="color: white; margin: 0; font-size: 20px;">PegCheck — Stablecoin Alert</h2>
         </div>
         <div style="background: #ffffff; padding: 24px; border: 1px solid #eaecf0; border-top: none; border-radius: 0 0 12px 12px;">
           <p style="color: #374151; margin-top: 0;">The following stablecoins have dropped below $0.975:</p>
@@ -156,7 +140,7 @@ export async function GET() {
             ${depegList}
           </ul>
           <a href="https://pegcheck.uk" style="display: inline-block; background: linear-gradient(135deg, #1a56db, #0e3fa8); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; margin-top: 8px;">View Live Data →</a>
-          <p style="color: #9ca3af; font-size: 12px; margin-top: 24px; margin-bottom: 0;">PegCheck premium alert. Not financial advice.</p>
+          <p style="color: #9ca3af; font-size: 12px; margin-top: 24px; margin-bottom: 0;">PegCheck premium alert. Not financial advice. <a href="https://pegcheck.uk" style="color: #9ca3af;">Manage subscription</a></p>
         </div>
       </div>
     `;
@@ -165,13 +149,13 @@ export async function GET() {
       await resend.emails.send({
         from: "PegCheck <alerts@pegcheck.uk>",
         to: subscriber.email,
-        subject: `⚠️ Depeg Alert — ${depegged.length} stablecoin${depegged.length > 1 ? "s" : ""} critical`,
+        subject: `PegCheck — Stablecoin price alert`,
         html: emailHtml,
       });
     }
 
     return NextResponse.json({ message: `Snapshots saved. Alerts sent to ${subscribers.length} premium subscribers.` });
-} catch (error) {
+
+  } catch (error) {
     return NextResponse.json({ error: "Cron job failed" }, { status: 500 });
   }
-}
