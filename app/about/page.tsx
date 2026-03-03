@@ -59,7 +59,7 @@ export default function AboutPage() {
       </div><div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Roadmap</div>
         {[
-          { label: "Multi-source price feeds", desc: "Coinbase, Binance and Kraken alongside CoinGecko for median pricing. No single point of failure." },
+          { label: "✅ Multi-source price feeds", desc: "Live — prices aggregated from CoinGecko, Coinbase, Binance, Kraken and DefiLlama. Median calculation protects against bad data." },
           { label: "Historical data & charts", desc: "7, 30 and 90 day price charts for every stablecoin we track." },
           { label: "Collateralisation ratios", desc: "See exactly what backs each stablecoin and how safe the reserves are." },
           { label: "Reserve transparency", desc: "Audit dates, reserve breakdowns and transparency scores for every coin." },
