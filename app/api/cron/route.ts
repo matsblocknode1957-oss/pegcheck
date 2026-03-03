@@ -71,7 +71,6 @@ export async function GET() {
     );
     const ethData = await ethRes.json();
     const txList = ethData?.result ?? [];
-console.error("Etherscan response:", JSON.stringify(ethData));
     if (Array.isArray(txList)) {
       const mintBurnTxs = txList.filter((tx: any) => 
         tx.from === "0x0000000000000000000000000000000000000000" || 
@@ -172,9 +171,6 @@ console.error("Etherscan response:", JSON.stringify(ethData));
     }
 
     return NextResponse.json({ message: `Snapshots saved. Alerts sent to ${subscribers.length} premium subscribers.` });
-
-  } catch (error) {
-    console.error("Cron error:", error);
-    return NextResponse.json({ error: "Cron job failed", details: String(error) }, { status: 500 });
+} catch (error) {
+    return NextResponse.json({ error: "Cron job failed" }, { status: 500 });
   }
-}
