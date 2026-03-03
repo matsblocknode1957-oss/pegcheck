@@ -124,7 +124,7 @@ export async function GET() {
     }));
 
     const { data: snapshotData, error: snapshotError } = await supabase.from("price_history").insert(snapshots);
-    if (snapshotError) console.error("Supabase insert failed:", snapshotError);
+    if (snapshotError) console.warn("Supabase insert failed");
 
     // ----------------------------
     // Check for Depegs and Alert Paid Users
@@ -174,3 +174,4 @@ export async function GET() {
 } catch (error) {
     return NextResponse.json({ error: "Cron job failed" }, { status: 500 });
   }
+}
