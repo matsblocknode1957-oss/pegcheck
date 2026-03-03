@@ -159,3 +159,4 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json({ error: "Cron job failed" }, { status: 500 });
   }
+}
