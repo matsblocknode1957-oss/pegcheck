@@ -26,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+       <link rel="icon" href="/favicon.svg" type="image/svg+xml" /> 
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-6K32B1GK8L"></script>
         <script dangerouslySetInnerHTML={{__html: `
           window.dataLayer = window.dataLayer || [];
