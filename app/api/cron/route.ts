@@ -61,28 +61,28 @@ export async function GET() {
       dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;
     });
 
-    // Etherscan — USDT Mint/Burn Activity
+    
+      // Etherscan — USDT Large Transactions & Mint/Burn
     const usdtContract = "0xdac17f958d2ee523a2206206994597c13d831ec7";
     const ethRes = await fetch(
-      `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx&contractaddress=${usdtContract}&page=1&offset=50&sort=desc&apikey=${process.env.ETHERSCAN_API_KEY}`
+      `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx&address=${usdtContract}&page=1&offset=50&sort=desc&apikey=${process.env.ETHERSCAN_API_KEY}`
     );
     const ethData = await ethRes.json();
-    console.log("Etherscan:", JSON.stringify(ethData).slice(0, 500));
     const txList = ethData?.result ?? [];
-    if (Array.isArray(txList)) {
-      const mintBurnTxs = txList.filter((tx: any) =>
-        tx.from === "0x0000000000000000000000000000000000000000" ||
-        tx.to === "0x0000000000000000000000000000000000000000"
-      );
-      const mintBurnRows = mintBurnTxs.map((tx: any) => ({
+    if (Array.isArray(txList) && txList.length > 0) {
+      const significant = txList.filter((tx: any) => {
+        const amount = parseFloat(tx.value) / 1e6;
+        return amount >= 1000000;
+      });
+      const rows = significant.map((tx: any) => ({
         slug: "usdt",
-        action: tx.from === "0x0000000000000000000000000000000000000000" ? "mint" : "burn",
+        action: tx.from === "0x0000000000000000000000000000000000000000" ? "mint" : tx.to === "0x0000000000000000000000000000000000000000" ? "burn" : "transfer",
         amount: parseFloat(tx.value) / 1e6,
         tx_hash: tx.hash,
-        wallet: tx.from === "0x0000000000000000000000000000000000000000" ? tx.to : tx.from,
+        wallet: tx.from,
       }));
-      if (mintBurnRows.length > 0) {
-        await supabase.from("mint_burn_activity").insert(mintBurnRows);
+      if (rows.length > 0) {
+        await supabase.from("mint_burn_activity").insert(rows);
       }
     }
 
