@@ -194,8 +194,10 @@ return (
         <span style={{ fontSize: "11px", color: textSecondary }}>Tap any coin for full reserve details →</span>
       </div>
 
-      <div style={{ padding: "12px 20px 4px", textAlign: "center" }}>
-        <span style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", fontFamily: "monospace" }}>PegCheck v1.0 — live data · Not financial advice</span>
+      <div style={{ padding: "12px 20px 4px", textAlign: "center", display: "flex", justifyContent: "center", gap: "16px", alignItems: "center" }}>
+        <a href="/terms" style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", textDecoration: "none" }}>Terms</a>
+        <span style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", fontFamily: "monospace" }}>PegCheck v1.5 — live data · Not financial advice</span>
+        <a href="/privacy" style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", textDecoration: "none" }}>Privacy</a>
       </div>
 
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: navBg, borderTop: `1px solid ${navBorder}`, display: "flex", padding: "8px 0", zIndex: 100, transition: "background 0.2s ease" }}>
