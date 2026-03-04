@@ -389,13 +389,12 @@ export default function CoinDetailPage() {
           </div>
         </div>
 
-        {/* Mint/Burn activity placeholder */}
-        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
-          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "12px" }}>Mint / Burn Activity</div>
-          <div style={{ fontSize: "13px", color: textSecondary, textAlign: "center", padding: "16px 0" }}>
-            🔄 Etherscan integration coming soon
-          </div>
-        </div>
+        {/* Large Transactions */}
+<div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
+  <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "12px" }}>Large Transactions</div>
+  <LargeTransactions slug={slug} dark={dark} cardBorder={cardBorder} textSecondary={textSecondary} textPrimary={textPrimary} />
+</div>
+
 
         {/* Contract address */}
         <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
