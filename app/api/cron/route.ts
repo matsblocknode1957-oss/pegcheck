@@ -72,7 +72,7 @@ export async function GET() {
     if (Array.isArray(txList) && txList.length > 0) {
       const significant = txList.filter((tx: any) => {
         const amount = parseFloat(tx.value) / 1e6;
-        return amount >= 1000;
+        return amount >= 100000;
       });
       const rows = significant.map((tx: any) => ({
         slug: "usdt",
