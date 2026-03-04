@@ -60,11 +60,11 @@ export default function AboutPage() {
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Roadmap</div>
         {[
           { label: "✅ Multi-source price feeds", desc: "Live — prices aggregated from CoinGecko, Coinbase, Binance, Kraken and DefiLlama. Median calculation protects against bad data." },
-          { label: "Historical data & charts", desc: "7, 30 and 90 day price charts for every stablecoin we track." },
-          { label: "Collateralisation ratios", desc: "See exactly what backs each stablecoin and how safe the reserves are." },
-          { label: "Reserve transparency", desc: "Audit dates, reserve breakdowns and transparency scores for every coin." },
-          { label: "Mint & burn activity", desc: "Unusual minting or burning is often an early warning sign. We'll flag it." },
-          { label: "Wallet integration", desc: "Connect your wallet and monitor only the stablecoins you actually hold." },
+{ label: "✅ Historical data & charts", desc: "Live — 7, 30 and 90 day price charts for every stablecoin we track." },
+{ label: "✅ Collateralisation ratios", desc: "Live — reserve breakdowns and collateral ratios for every coin." },
+{ label: "✅ Reserve transparency", desc: "Live — audit dates, auditors and transparency scores for every coin." },
+{ label: "✅ Large transaction tracking", desc: "Live — significant USDT movements flagged automatically." },
+{ label: "Wallet integration", desc: "Connect your wallet and monitor only the stablecoins you actually hold." },
         ].map((item) => (
           <div key={item.label} style={{ display: "flex", gap: "12px", marginBottom: "14px", alignItems: "flex-start" }}>
             <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: dark ? "#1e2a40" : "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: "1px" }}>
