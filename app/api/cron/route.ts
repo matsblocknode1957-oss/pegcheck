@@ -76,13 +76,13 @@ export async function GET() {
       });
       const rows = significant.map((tx: any) => ({
         slug: "usdt",
-        action: tx.from === "0x0000000000000000000000000000000000000000" ? "mint" : tx.to === "0x0000000000000000000000000000000000000000" ? "burn" : "transfer",
+        action: "large_transfer",
         amount: parseFloat(tx.value) / 1e6,
         tx_hash: tx.hash,
         wallet: tx.from,
       }));
       if (rows.length > 0) {
-        await supabase.from("mint_burn_activity").upsert(rows, { onConflict: "tx_hash", ignoreDuplicates: true });
+        await supabase.from("large_transactions").upsert(rows, { onConflict: "tx_hash", ignoreDuplicates: true });
       }
     }
 
