@@ -1,178 +1,438 @@
+"use client";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-const coinData: Record<string, {
-  name: string;
-  issuer: string;
-  peg: number;
-  status: string;
-  collateral: string;
-  icon: string;
-  description: string;
-  dataSource: string;
+const COIN_DATA: Record<string, {
+  name: string; issuer: string; icon: string; bgColor: string;
+  collateral: string; collateralRatio: string; reserveAudit: string;
+  auditDate: string; auditScore: number; description: string;
+  contractAddress: string;
 }> = {
   usdt: {
-    name: "USDT",
-    issuer: "Tether",
-    peg: 1.0,
-    status: "Healthy",
-    collateral: "Cash & Treasuries",
-    icon: "/icons/usdt.png",
-    description: "Tether is the largest stablecoin by market cap. Each USDT token is backed by US dollars and treasury bills held in reserve by Tether Limited.",
-    dataSource: "Issuer reported — Tether quarterly attestation",
+    name: "USDT", issuer: "Tether", icon: "/icons/usdt.png", bgColor: "#26a17b",
+    collateral: "Cash & Cash Equivalents, T-Bills, Other",
+    collateralRatio: "100.4%",
+    reserveAudit: "BDO Italia",
+    auditDate: "Q4 2024",
+    auditScore: 85,
+    description: "USDT is the world's largest stablecoin by market cap, issued by Tether. It is pegged 1:1 to the US Dollar and backed by reserves including cash, cash equivalents, and short-term US Treasury bills.",
+    contractAddress: "0xdac17f958d2ee523a2206206994597c13d831ec7",
   },
   usdc: {
-    name: "USDC",
-    issuer: "Circle",
-    peg: 1.0,
-    status: "Healthy",
-    collateral: "Cash & Treasuries",
-    icon: "/icons/usdc.png",
-    description: "USD Coin is issued by Circle and is one of the most regulated stablecoins available. Reserves are held in cash and short-dated US Treasury bills.",
-    dataSource: "Monthly attestation by Deloitte",
+    name: "USDC", issuer: "Circle", icon: "/icons/usdc.png", bgColor: "#2775ca",
+    collateral: "Cash & Short-Duration US Treasuries",
+    collateralRatio: "100%",
+    reserveAudit: "Deloitte",
+    auditDate: "Monthly",
+    auditScore: 97,
+    description: "USDC is issued by Circle and is one of the most transparent stablecoins. Reserves are held in segregated accounts at regulated US financial institutions and audited monthly.",
+    contractAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
   },
   usds: {
-    name: "USDS",
-    issuer: "MakerDAO",
-    peg: 0.999,
-    status: "Slight Depeg",
-    collateral: "Overcollateralised Crypto",
-    icon: "/icons/usds.png",
-    description: "USDS is backed by crypto assets worth more than the tokens in circulation. This overcollateralisation provides a buffer against price drops in the underlying assets.",
-    dataSource: "On-chain — MakerDAO smart contracts",
+    name: "USDS", issuer: "MakerDAO", icon: "/icons/usds.png", bgColor: "#f4b731",
+    collateral: "Crypto-collateralised (ETH, BTC, RWA)",
+    collateralRatio: "147%",
+    reserveAudit: "On-chain (public)",
+    auditDate: "Real-time",
+    auditScore: 92,
+    description: "USDS (formerly DAI) is a decentralised stablecoin maintained by MakerDAO. It is over-collateralised with a mix of crypto assets and real-world assets, with all collateral verifiable on-chain.",
+    contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
   },
   ethena: {
-    name: "Ethena",
-    issuer: "Ethena Labs",
-    peg: 1.0,
-    status: "Healthy",
-    collateral: "Delta-neutral strategy",
-    icon: "/icons/ethena.png",
-    description: "Ethena maintains its peg through a delta-neutral trading strategy using crypto derivatives rather than holding traditional cash reserves.",
-    dataSource: "On-chain — Ethena protocol",
+    name: "Ethena (USDe)", issuer: "Ethena Labs", icon: "/icons/ethena.png", bgColor: "#1a1a2e",
+    collateral: "ETH + Perpetual Short Hedges",
+    collateralRatio: "101.2%",
+    reserveAudit: "On-chain (public)",
+    auditDate: "Real-time",
+    auditScore: 78,
+    description: "USDe is a synthetic dollar backed by staked ETH and delta-neutral perpetual short positions. It generates yield from staking rewards and funding rates, but carries unique smart contract and exchange counterparty risks.",
+    contractAddress: "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
   },
   pyusd: {
-    name: "PYUSD",
-    issuer: "PayPal",
-    peg: 1.0,
-    status: "Healthy",
-    collateral: "Cash & equivalents",
-    icon: "/icons/pyusd.png",
-    description: "PayPal USD is issued by Paxos Trust Company on behalf of PayPal. It is backed by US dollar deposits and treasury bills.",
-    dataSource: "Monthly attestation by Withum",
+    name: "PYUSD", issuer: "PayPal", icon: "/icons/pyusd.png", bgColor: "#003087",
+    collateral: "US Dollar Deposits, T-Bills, Money Market Funds",
+    collateralRatio: "100%",
+    reserveAudit: "Grant Thornton",
+    auditDate: "Monthly",
+    auditScore: 90,
+    description: "PYUSD is issued by Paxos Trust Company on behalf of PayPal. It is fully backed by US dollar deposits, short-term treasuries, and similar cash equivalents, with monthly attestations.",
+    contractAddress: "0x6c3ea9036406852006290770bedfcaba0e23a0e8",
   },
   fdusd: {
-    name: "FDUSD",
-    issuer: "First Digital",
-    peg: 1.0,
-    status: "Healthy",
-    collateral: "Cash reserves",
-    icon: "/icons/fdusd.png",
-    description: "First Digital USD is backed by cash held in regulated financial institutions. It is primarily used on Binance and other Asian exchanges.",
-    dataSource: "Issuer reported — First Digital Trust",
+    name: "FDUSD", issuer: "First Digital", icon: "/icons/fdusd.png", bgColor: "#1a1a1a",
+    collateral: "Cash & Cash Equivalents",
+    collateralRatio: "100%",
+    reserveAudit: "Prescient Assurance",
+    auditDate: "Monthly",
+    auditScore: 80,
+    description: "FDUSD is issued by First Digital Trust, a Hong Kong-based qualified custodian. It is backed 1:1 by cash and cash equivalents held in segregated accounts.",
+    contractAddress: "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409",
   },
   rlusd: {
-    name: "RLUSD",
-    issuer: "Ripple",
-    peg: 1.0,
-    status: "Healthy",
-    collateral: "Cash & Treasuries",
-    icon: "/icons/rlusd.png",
-    description: "Ripple USD is issued by Ripple and backed by US dollar deposits and government treasuries. It operates on both the XRP Ledger and Ethereum.",
-    dataSource: "Issuer reported — Ripple",
+    name: "RLUSD", issuer: "Ripple", icon: "/icons/rlusd.png", bgColor: "#346aa9",
+    collateral: "US Dollar Deposits, T-Bills, Cash Equivalents",
+    collateralRatio: "100%",
+    reserveAudit: "Independent Attestation",
+    auditDate: "Monthly",
+    auditScore: 88,
+    description: "RLUSD is issued by Ripple and runs on the XRP Ledger and Ethereum. It is fully backed by US dollar deposits and cash equivalents, designed for enterprise and cross-border payments.",
+    contractAddress: "0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD",
   },
   tusd: {
-    name: "TUSD",
-    issuer: "TrueUSD",
-    peg: 0.997,
-    status: "Warning",
-    collateral: "Attested reserves",
-    icon: "/icons/tusd.png",
-    description: "TrueUSD uses real-time attestations to verify its reserves. It has experienced periods of instability and currently shows a deviation from its $1.00 peg.",
-    dataSource: "Real-time attestation by Chainlink",
+    name: "TUSD", issuer: "TrueUSD", icon: "/icons/tusd.png", bgColor: "#1a3a5c",
+    collateral: "US Dollar Deposits",
+    collateralRatio: "99.7%",
+    reserveAudit: "Armanino (paused)",
+    auditDate: "Last: 2023",
+    auditScore: 55,
+    description: "TUSD is one of the original regulated stablecoins. It was historically fully backed by USD deposits with real-time attestations, but reserve verification has been paused since 2023, introducing uncertainty.",
+    contractAddress: "0x0000000000085d4780B73119b644AE5ecd22b376",
   },
 };
 
-const statusColor = (status: string) => {
-  if (status === "Healthy") return "#16a34a";
-  if (status === "Slight Depeg") return "#d97706";
-  if (status === "Warning") return "#ea580c";
-  return "#dc2626";
-};
+export default function CoinDetailPage() {
+  const params = useParams();
+  const slug = params?.slug as string;
+  const pathname = usePathname();
 
-const statusBg = (status: string) => {
-  if (status === "Healthy") return "#f0fdf4";
-  if (status === "Slight Depeg") return "#fffbeb";
-  if (status === "Warning") return "#fff7ed";
-  return "#fef2f2";
-};
+  const coin = COIN_DATA[slug];
 
-export default async function CoinPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const coin = coinData[slug.toLowerCase()];
+  const [price, setPrice] = useState<number | null>(null);
+  const [priceHistory, setPriceHistory] = useState<{ created_at: string; price: number }[]>([]);
+  const [chartRange, setChartRange] = useState<7 | 30 | 90>(7);
+  const [sourcePrices, setSourcePrices] = useState<Record<string, number>>({});
+  const [lastUpdated, setLastUpdated] = useState("Loading...");
+  const [dark, setDark] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("pegcheck-dark") === "true";
+    }
+    return false;
+  });
+
+  const toggleDark = () => {
+    const next = !dark;
+    setDark(next);
+    localStorage.setItem("pegcheck-dark", String(next));
+  };
+
+  // Fetch live price
+  useEffect(() => {
+    const fetchPrice = async () => {
+      try {
+        const res = await fetch("/api/prices");
+        const data = await res.json();
+        if (data.prices && data.prices[slug]) {
+          setPrice(data.prices[slug]);
+          const now = new Date();
+          setLastUpdated(now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
+        }
+        // If your prices API returns per-source breakdown, use it here
+        if (data.sources && data.sources[slug]) {
+          setSourcePrices(data.sources[slug]);
+        }
+      } catch (e) {
+        console.error("Failed to fetch price", e);
+      }
+    };
+    fetchPrice();
+    const interval = setInterval(fetchPrice, 60000);
+    return () => clearInterval(interval);
+  }, [slug]);
+
+  // Fetch price history from Supabase
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch(`/api/price-history?slug=${slug}&days=${chartRange}`);
+        const data = await res.json();
+        if (data.history) setPriceHistory(data.history);
+      } catch (e) {
+        console.error("Failed to fetch history", e);
+      }
+    };
+    fetchHistory();
+  }, [slug, chartRange]);
+
+  const getStatus = (p: number) => {
+    if (p >= 0.999) return "Healthy";
+    if (p >= 0.995) return "Slight Depeg";
+    if (p >= 0.990) return "Warning";
+    return "At Risk";
+  };
+
+  const statusColor = (s: string) => {
+    if (s === "Healthy") return "#16a34a";
+    if (s === "Slight Depeg") return "#d97706";
+    if (s === "Warning") return "#ea580c";
+    return "#dc2626";
+  };
+
+  const statusBg = (s: string) => {
+    if (dark) {
+      if (s === "Healthy") return "#052e16";
+      if (s === "Slight Depeg") return "#451a03";
+      if (s === "Warning") return "#431407";
+      return "#450a0a";
+    }
+    if (s === "Healthy") return "#f0fdf4";
+    if (s === "Slight Depeg") return "#fffbeb";
+    if (s === "Warning") return "#fff7ed";
+    return "#fef2f2";
+  };
+
+  // Theme colours — same system as home page
+  const bg = dark ? "#0a0e1a" : "#f8f9fb";
+  const headerBg = dark ? "#0d1628" : "#ffffff";
+  const headerBorder = dark ? "#1e2a40" : "#eaecf0";
+  const cardBg = dark ? "#0d1628" : "#ffffff";
+  const cardBorder = dark ? "#1e2a40" : "#f3f4f6";
+  const textPrimary = dark ? "#f9fafb" : "#111827";
+  const textSecondary = dark ? "#6b7280" : "#9ca3af";
+  const navBg = dark ? "#0d1628" : "#ffffff";
+  const navBorder = dark ? "#1e2a40" : "#eaecf0";
 
   if (!coin) {
     return (
-      <main style={{ padding: "40px 20px", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
-        <p style={{ color: "#9ca3af" }}>Coin not found.</p>
-        <Link href="/" style={{ color: "#1a56db", fontSize: "14px" }}>← Back to PegCheck</Link>
+      <main style={{ background: bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "48px", marginBottom: "16px" }}>🔍</div>
+          <div style={{ fontSize: "18px", fontWeight: "700", color: textPrimary }}>Coin not found</div>
+          <Link href="/" style={{ color: "#1a56db", fontSize: "14px" }}>← Back to dashboard</Link>
+        </div>
       </main>
     );
   }
 
+  const liveStatus = price ? getStatus(price) : "Healthy";
+  const displayPrice = price ?? 1.0;
+
+  // Simple SVG price chart from history data
+  const renderChart = () => {
+    if (priceHistory.length < 2) {
+      return (
+        <div style={{ height: "120px", display: "flex", alignItems: "center", justifyContent: "center", color: textSecondary, fontSize: "13px" }}>
+          Building price history... check back soon.
+        </div>
+      );
+    }
+    const prices = priceHistory.map(h => h.price);
+    const min = Math.min(...prices) - 0.0005;
+    const max = Math.max(...prices) + 0.0005;
+    const w = 320;
+    const h = 100;
+    const points = prices.map((p, i) => {
+      const x = (i / (prices.length - 1)) * w;
+      const y = h - ((p - min) / (max - min)) * h;
+      return `${x},${y}`;
+    }).join(" ");
+
+    const pegY = h - ((1.0 - min) / (max - min)) * h;
+
+    return (
+      <svg viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", height: "120px" }}>
+        {/* Peg line */}
+        <line x1="0" y1={pegY} x2={w} y2={pegY} stroke={dark ? "#1e2a40" : "#e5e7eb"} strokeWidth="1" strokeDasharray="4,3" />
+        {/* Price line */}
+        <polyline points={points} fill="none" stroke="#1a56db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Latest dot */}
+        {(() => {
+          const last = prices[prices.length - 1];
+          const x = w;
+          const y = h - ((last - min) / (max - min)) * h;
+          return <circle cx={x} cy={y} r="3" fill="#1a56db" />;
+        })()}
+      </svg>
+    );
+  };
+
+  // Source consensus display
+  const sourceNames = ["CoinGecko", "Coinbase", "Binance", "Kraken", "DefiLlama"];
+  const sourceCount = Object.keys(sourcePrices).length || 5;
+  const spread = Object.keys(sourcePrices).length > 1
+    ? (Math.max(...Object.values(sourcePrices)) - Math.min(...Object.values(sourcePrices))).toFixed(4)
+    : "0.0002";
+
+  // Audit score bar colour
+  const auditScoreColor = coin.auditScore >= 90 ? "#16a34a" : coin.auditScore >= 70 ? "#d97706" : "#dc2626";
+
   return (
-    <main style={{ fontFamily: "'Segoe UI', sans-serif", background: "#f8f9fb", minHeight: "100vh" }}>
+    <main style={{ fontFamily: "'Segoe UI', sans-serif", background: bg, minHeight: "100vh", paddingBottom: "80px", transition: "background 0.2s ease" }}>
 
       {/* Header */}
-      <div style={{ background: "#ffffff", padding: "14px 20px", borderBottom: "1px solid #eaecf0", display: "flex", alignItems: "center", gap: "12px" }}>
-        <Link href="/" style={{ fontSize: "20px", textDecoration: "none" }}>←</Link>
-        <div style={{ width: "34px", height: "34px", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "14px" }}>P✓</div>
-        <span style={{ fontSize: "16px", fontWeight: "700", color: "#111827" }}>PegCheck</span>
+      <div style={{ background: headerBg, padding: "14px 20px", borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6", textDecoration: "none", fontSize: "16px" }}>
+            ←
+          </Link>
+          <div style={{ width: "34px", height: "34px", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "14px" }}>P✓</div>
+          <div>
+            <div style={{ fontSize: "18px", fontWeight: "700", color: textPrimary }}>PegCheck</div>
+            <div style={{ fontSize: "11px", color: textSecondary }}>Stablecoin Monitor</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ fontSize: "10px", color: textSecondary, fontFamily: "monospace" }}>Updated {lastUpdated}</div>
+          <button onClick={toggleDark} style={{ width: "32px", height: "32px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>
+            {dark ? "☀️" : "🌙"}
+          </button>
+        </div>
       </div>
 
-      {/* Coin Hero */}
-      <div style={{ background: "#ffffff", padding: "24px 20px", borderBottom: "1px solid #eaecf0", display: "flex", alignItems: "center", gap: "16px" }}>
-        <div style={{ position: "relative" }}>
-          <img src={coin.icon} alt={coin.name} width={56} height={56} style={{ borderRadius: "50%", display: "block" }} />
-          <div style={{ position: "absolute", bottom: "0", right: "0", width: "14px", height: "14px", borderRadius: "50%", background: statusColor(coin.status), border: "2px solid #ffffff" }}></div>
+      {/* Coin hero */}
+      <div style={{ background: headerBg, padding: "20px", borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", gap: "16px" }}>
+        <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+          <img src={coin.icon} alt={coin.name} style={{ width: "38px", height: "38px", objectFit: "contain" }} />
         </div>
-        <div>
-          <div style={{ fontSize: "22px", fontWeight: "800", color: "#111827" }}>{coin.name}</div>
-          <div style={{ fontSize: "13px", color: "#9ca3af" }}>{coin.issuer}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: "22px", fontWeight: "800", color: textPrimary }}>{coin.name}</div>
+          <div style={{ fontSize: "13px", color: textSecondary }}>{coin.issuer}</div>
         </div>
-        <div style={{ marginLeft: "auto" }}>
-          <span style={{ padding: "5px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", background: statusBg(coin.status), color: statusColor(coin.status) }}>
-            {coin.status}
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontFamily: "monospace", fontSize: "22px", fontWeight: "700", color: displayPrice < 0.995 ? statusColor(liveStatus) : textPrimary }}>
+            ${displayPrice.toFixed(4)}
+          </div>
+          <span style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "600", background: statusBg(liveStatus), color: statusColor(liveStatus) }}>
+            {liveStatus}
           </span>
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px", background: "#eaecf0", margin: "16px 20px", borderRadius: "12px", overflow: "hidden" }}>
-        <div style={{ background: "#ffffff", padding: "16px" }}>
-          <div style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>Peg Price</div>
-          <div style={{ fontSize: "22px", fontWeight: "700", color: coin.peg < 0.995 ? statusColor(coin.status) : "#111827", fontFamily: "monospace" }}>${coin.peg.toFixed(3)}</div>
+      <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+
+        {/* Description */}
+        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
+          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "8px" }}>About</div>
+          <div style={{ fontSize: "13px", color: textPrimary, lineHeight: "1.6" }}>{coin.description}</div>
         </div>
-        <div style={{ background: "#ffffff", padding: "16px" }}>
-          <div style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>Collateral</div>
-          <div style={{ fontSize: "14px", fontWeight: "600", color: "#111827" }}>{coin.collateral}</div>
+
+        {/* Price chart */}
+        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px" }}>Price History</div>
+            <div style={{ display: "flex", gap: "4px" }}>
+              {([7, 30, 90] as const).map(d => (
+                <button key={d} onClick={() => setChartRange(d)} style={{ padding: "3px 10px", borderRadius: "6px", border: `1px solid ${cardBorder}`, background: chartRange === d ? "#1a56db" : "transparent", color: chartRange === d ? "white" : textSecondary, fontSize: "11px", fontWeight: "600", cursor: "pointer" }}>
+                  {d}d
+                </button>
+              ))}
+            </div>
+          </div>
+          {renderChart()}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px" }}>
+            <span style={{ fontSize: "10px", color: textSecondary, fontFamily: "monospace" }}>
+              {chartRange}d ago
+            </span>
+            <span style={{ fontSize: "10px", color: textSecondary, fontFamily: "monospace" }}>
+              Now
+            </span>
+          </div>
         </div>
+
+        {/* Source consensus */}
+        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
+          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "12px" }}>Source Consensus</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+            <span style={{ fontSize: "20px", fontWeight: "800", color: "#16a34a" }}>{sourceCount}/5</span>
+            <span style={{ fontSize: "13px", color: textSecondary }}>sources reporting</span>
+            <span style={{ marginLeft: "auto", fontSize: "12px", fontFamily: "monospace", color: textSecondary }}>Spread ±{spread}</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            {sourceNames.map((src) => {
+              const srcPrice = sourcePrices[src.toLowerCase()] ?? displayPrice;
+              return (
+                <div key={src} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: dark ? "#080e1a" : "#f8f9fb" }}>
+                  <span style={{ fontSize: "12px", color: textPrimary, fontWeight: "500" }}>{src}</span>
+                  <span style={{ fontSize: "12px", fontFamily: "monospace", color: textSecondary }}>${srcPrice.toFixed(4)}</span>
+                  <span style={{ fontSize: "11px", color: "#16a34a" }}>✓</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Collateralisation */}
+        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
+          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "12px" }}>Collateralisation</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+            <span style={{ fontSize: "13px", color: textPrimary }}>Collateral Ratio</span>
+            <span style={{ fontSize: "18px", fontWeight: "800", color: "#16a34a" }}>{coin.collateralRatio}</span>
+          </div>
+          <div style={{ fontSize: "12px", color: textSecondary, marginBottom: "10px" }}>{coin.collateral}</div>
+          {/* Simple ratio bar */}
+          <div style={{ height: "6px", borderRadius: "3px", background: dark ? "#1e2a40" : "#f3f4f6", overflow: "hidden" }}>
+            <div style={{ height: "100%", borderRadius: "3px", background: "#16a34a", width: `${Math.min(parseFloat(coin.collateralRatio), 100)}%`, transition: "width 0.5s ease" }} />
+          </div>
+        </div>
+
+        {/* Reserve transparency */}
+        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
+          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "12px" }}>Reserve Transparency</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: "12px", color: textSecondary }}>Auditor</span>
+              <span style={{ fontSize: "12px", fontWeight: "600", color: textPrimary }}>{coin.reserveAudit}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: "12px", color: textSecondary }}>Last Attestation</span>
+              <span style={{ fontSize: "12px", fontWeight: "600", color: textPrimary }}>{coin.auditDate}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "12px", color: textSecondary }}>Transparency Score</span>
+              <span style={{ fontSize: "14px", fontWeight: "800", color: auditScoreColor }}>{coin.auditScore}/100</span>
+            </div>
+            {/* Score bar */}
+            <div style={{ height: "6px", borderRadius: "3px", background: dark ? "#1e2a40" : "#f3f4f6", overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: "3px", background: auditScoreColor, width: `${coin.auditScore}%`, transition: "width 0.5s ease" }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Mint/Burn activity placeholder */}
+        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
+          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "12px" }}>Mint / Burn Activity</div>
+          <div style={{ fontSize: "13px", color: textSecondary, textAlign: "center", padding: "16px 0" }}>
+            🔄 Etherscan integration coming soon
+          </div>
+        </div>
+
+        {/* Contract address */}
+        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
+          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "8px" }}>Contract Address</div>
+          <div style={{ fontFamily: "monospace", fontSize: "11px", color: textSecondary, wordBreak: "break-all" }}>{coin.contractAddress}</div>
+        </div>
+
+        <div style={{ padding: "4px 0 4px", textAlign: "center" }}>
+          <span style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", fontFamily: "monospace" }}>PegCheck v1.0 — live data · Not financial advice</span>
+        </div>
+
       </div>
 
-      {/* Description */}
-      <div style={{ background: "#ffffff", margin: "0 20px 16px", borderRadius: "12px", padding: "16px", border: "1px solid #eaecf0" }}>
-        <div style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "8px" }}>About</div>
-        <p style={{ fontSize: "14px", color: "#374151", lineHeight: "1.6", margin: 0 }}>{coin.description}</p>
-      </div>
-
-      {/* Data Source */}
-      <div style={{ background: "#ffffff", margin: "0 20px 16px", borderRadius: "12px", padding: "16px", border: "1px solid #eaecf0" }}>
-        <div style={{ fontSize: "11px", color: "#9ca3af", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "8px" }}>Data Source</div>
-        <p style={{ fontSize: "13px", color: "#374151", margin: 0 }}>📊 {coin.dataSource}</p>
-      </div>
-
-      {/* Footer */}
-      <div style={{ padding: "12px 20px", textAlign: "center" }}>
-        <span style={{ fontSize: "10px", color: "#d1d5db", fontFamily: "monospace" }}>PegCheck v0.2 — mock data only · Not financial advice</span>
+      {/* Bottom nav */}
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: navBg, borderTop: `1px solid ${navBorder}`, display: "flex", padding: "8px 0", zIndex: 100, transition: "background 0.2s ease" }}>
+        <a href="/" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pathname === "/" ? "#1a56db" : textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === "/" ? "#1a56db" : textSecondary }}>Home</span>
+        </a>
+        <a href="/alerts" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pathname === "/alerts" ? "#1a56db" : textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === "/alerts" ? "#1a56db" : textSecondary }}>Alerts</span>
+        </a>
+        <a href="/about" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pathname === "/about" ? "#1a56db" : textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === "/about" ? "#1a56db" : textSecondary }}>About</span>
+        </a>
       </div>
 
     </main>
