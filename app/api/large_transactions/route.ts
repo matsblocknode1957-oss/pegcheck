@@ -1,8 +1,3 @@
-
-Yo B <matsblocknode1957@gmail.com>
-7:07 PM (0 minutes ago)
-to me
-
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
