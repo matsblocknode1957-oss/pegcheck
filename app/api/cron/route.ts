@@ -82,7 +82,7 @@ export async function GET() {
         wallet: tx.from,
       }));
       if (rows.length > 0) {
-        await supabase.from("mint_burn_activity").insert(rows);
+        await supabase.from("mint_burn_activity").upsert(rows, { onConflict: "tx_hash", ignoreDuplicates: true });
       }
     }
 
