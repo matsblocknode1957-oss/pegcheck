@@ -67,6 +67,7 @@ export async function GET() {
       `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx&contractaddress=${usdtContract}&page=1&offset=50&sort=desc&apikey=${process.env.ETHERSCAN_API_KEY}`
     );
     const ethData = await ethRes.json();
+    console.log("Etherscan:", JSON.stringify(ethData).slice(0, 500));
     const txList = ethData?.result ?? [];
     if (Array.isArray(txList)) {
       const mintBurnTxs = txList.filter((tx: any) =>
