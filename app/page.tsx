@@ -194,10 +194,12 @@ return (
         <span style={{ fontSize: "11px", color: textSecondary }}>Tap any coin for full reserve details →</span>
       </div>
 
-      <div style={{ padding: "12px 20px 4px", textAlign: "center", display: "flex", justifyContent: "center", gap: "16px", alignItems: "center" }}>
-        <a href="/terms" style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", textDecoration: "none" }}>Terms</a>
-        <span style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", fontFamily: "monospace" }}>PegCheck v1.5 — live data · Not financial advice</span>
-        <a href="/privacy" style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", textDecoration: "none" }}>Privacy</a>
+      <div style={{ padding: "12px 20px 4px", textAlign: "center" }}>
+        <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af", fontFamily: "monospace", marginBottom: "8px" }}>Not financial advice</div>
+        <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
+          <a href="/terms" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Terms of Service</a>
+          <a href="/privacy" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Privacy Policy</a>
+        </div>
       </div>
 
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: navBg, borderTop: `1px solid ${navBorder}`, display: "flex", padding: "8px 0", zIndex: 100, transition: "background 0.2s ease" }}>
