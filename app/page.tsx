@@ -18,12 +18,14 @@ export default function Home() {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [lastUpdated, setLastUpdated] = useState<string>("Loading...");
   const [hoveredCoin, setHoveredCoin] = useState<string | null>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [dark, setDark] = useState(() => {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("pegcheck-dark") === "true";
-  }
-  return false;
-});
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("pegcheck-dark") === "true";
+    }
+    return false;
+  });
 
   const pathname = usePathname();
 
@@ -51,6 +53,27 @@ export default function Home() {
     const interval = setInterval(fetchPrices, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const installApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") setShowInstallBanner(false);
+      setDeferredPrompt(null);
+    } else {
+      alert("To add to home screen: tap the Share button then 'Add to Home Screen'");
+    }
+  };
 
   const getLivePrice = (slug: string, fallback: number) => prices[slug] ?? fallback;
 
@@ -97,7 +120,8 @@ export default function Home() {
   const navBg = dark ? "#0d1628" : "#ffffff";
   const navBorder = dark ? "#1e2a40" : "#eaecf0";
   const dotBorder = dark ? "#0d1628" : "#ffffff";
-return (
+
+  return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: bg, minHeight: "100vh", paddingBottom: "70px", transition: "background 0.2s ease" }}>
 
       <div style={{ background: headerBg, padding: "14px 20px", borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.2s ease" }}>
@@ -195,12 +219,28 @@ return (
       </div>
 
       <div style={{ padding: "12px 20px 4px", textAlign: "center" }}>
-        <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af", fontFamily: "monospace", marginBottom: "8px" }}>Not financial advice</div>
+        <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af", marginBottom: "8px" }}>Not financial advice</div>
         <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
           <a href="/terms" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Terms of Service</a>
           <a href="/privacy" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Privacy Policy</a>
         </div>
       </div>
+
+      {showInstallBanner && (
+        <div style={{ position: "fixed", bottom: "70px", left: "16px", right: "16px", background: dark ? "#0d1628" : "#ffffff", border: `1px solid ${headerBorder}`, borderRadius: "12px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 99, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: "36px", height: "36px", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "13px", flexShrink: 0 }}>P✓</div>
+            <div>
+              <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>Add to home screen</div>
+              <div style={{ fontSize: "11px", color: textSecondary }}>Get instant depeg alerts</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button onClick={installApp} style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", color: "white", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}>Add</button>
+            <button onClick={() => setShowInstallBanner(false)} style={{ padding: "6px 10px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: "transparent", color: textSecondary, fontSize: "12px", cursor: "pointer" }}>✕</button>
+          </div>
+        </div>
+      )}
 
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: navBg, borderTop: `1px solid ${navBorder}`, display: "flex", padding: "8px 0", zIndex: 100, transition: "background 0.2s ease" }}>
         <a href="/" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
@@ -228,5 +268,4 @@ return (
       </div>
 
     </main>
-);
-}
+  );
