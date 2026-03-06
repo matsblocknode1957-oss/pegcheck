@@ -63,26 +63,43 @@ export async function GET() {
 
     
       // Etherscan — USDT Large Transactions & Mint/Burn
-    const usdtContract = "0xdac17f958d2ee523a2206206994597c13d831ec7";
-    const ethRes = await fetch(
-      `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx&address=${usdtContract}&page=1&offset=50&sort=desc&apikey=${process.env.ETHERSCAN_API_KEY}`
-    );
-    const ethData = await ethRes.json();
-    const txList = ethData?.result ?? [];
-    if (Array.isArray(txList) && txList.length > 0) {
-      const significant = txList.filter((tx: any) => {
-        const amount = parseFloat(tx.value) / 1e6;
-        return amount >= 100000 && amount <= 10000000000;
-      });
-      const rows = significant.map((tx: any) => ({
-        slug: "usdt",
-        action: "large_transfer",
-        amount: parseFloat(tx.value) / 1e6,
-        tx_hash: tx.hash,
-        wallet: tx.from,
-      }));
-      if (rows.length > 0) {
-        await supabase.from("large_transactions").upsert(rows, { onConflict: "tx_hash", ignoreDuplicates: true });
+// Etherscan — Large Transactions for all coins
+    const contracts: { slug: string; address: string; decimals: number }[] = [
+      { slug: "usdt", address: "0xdac17f958d2ee523a2206206994597c13d831ec7", decimals: 6 },
+      { slug: "usdc", address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals: 6 },
+      { slug: "usds", address: "0x6b175474e89094c44da98b954eedeac495271d0f", decimals: 18 },
+      { slug: "ethena", address: "0x4c9edd5852cd905f086c759e8383e09bff1e68b3", decimals: 18 },
+      { slug: "pyusd", address: "0x6c3ea9036406852006290770bedfcaba0e23a0e8", decimals: 6 },
+      { slug: "fdusd", address: "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409", decimals: 18 },
+      { slug: "rlusd", address: "0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD", decimals: 18 },
+      { slug: "tusd", address: "0x0000000000085d4780B73119b644AE5ecd22b376", decimals: 18 },
+    ];
+
+    for (const coin of contracts) {
+      try {
+        const ethRes = await fetch(
+          `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx&address=${coin.address}&page=1&offset=50&sort=desc&apikey=${process.env.ETHERSCAN_API_KEY}`
+        );
+        const ethData = await ethRes.json();
+        const txList = ethData?.result ?? [];
+        if (Array.isArray(txList) && txList.length > 0) {
+          const significant = txList.filter((tx: any) => {
+            const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
+            return amount >= 100000 && amount <= 10000000000;
+          });
+          const rows = significant.map((tx: any) => ({
+            slug: coin.slug,
+            action: "large_transfer",
+            amount: parseFloat(tx.value) / Math.pow(10, coin.decimals),
+            tx_hash: tx.hash,
+            wallet: tx.from,
+          }));
+          if (rows.length > 0) {
+            await supabase.from("large_transactions").upsert(rows, { onConflict: "tx_hash", ignoreDuplicates: true });
+          }
+        }
+      } catch (e) {
+        console.error(`Failed to fetch transactions for ${coin.slug}`, e);
       }
     }
 
