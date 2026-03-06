@@ -83,17 +83,27 @@ export async function GET() {
         const ethData = await ethRes.json();
         const txList = ethData?.result ?? [];
         if (Array.isArray(txList) && txList.length > 0) {
+          const zeroAddress = "0x0000000000000000000000000000000000000000";
           const significant = txList.filter((tx: any) => {
             const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
-            return amount >= 100000 && amount <= 500000000;
+            const isMintBurn = tx.from === zeroAddress || tx.to === zeroAddress;
+            const isLarge = amount >= 100000 && amount <= 500000000;
+            return isMintBurn || isLarge;
           });
-          const rows = significant.map((tx: any) => ({
-            slug: coin.slug,
-            action: "large_transfer",
-            amount: parseFloat(tx.value) / Math.pow(10, coin.decimals),
-            tx_hash: tx.hash,
-            wallet: tx.from,
-          }));
+          const rows = significant.map((tx: any) => {
+            const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
+            let action = "large_transfer";
+            if (tx.from === zeroAddress) action = "mint";
+            if (tx.to === zeroAddress) action = "burn";
+            return {
+              slug: coin.slug,
+              action,
+              amount,
+              tx_hash: tx.hash,
+              wallet: tx.from,
+            };
+          });
+
           if (rows.length > 0) {
             await supabase.from("large_transactions").upsert(rows, { onConflict: "tx_hash", ignoreDuplicates: true });
           }
