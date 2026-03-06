@@ -8,12 +8,11 @@ export default function AlertsPage() {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [upgrading, setUpgrading] = useState(false);
   const [dark, setDark] = useState(() => {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("pegcheck-dark") === "true";
-  }
-  return false;
-});
-
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("pegcheck-dark") === "true";
+    }
+    return false;
+  });
 
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const upgraded = searchParams?.get("upgraded") === "true";
@@ -104,7 +103,8 @@ export default function AlertsPage() {
   const inputBorder = dark ? "#1e2a40" : "#e5e7eb";
   const navBg = dark ? "#0d1628" : "#ffffff";
   const navBorder = dark ? "#1e2a40" : "#eaecf0";
-return (
+
+  return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: bg, minHeight: "100vh", paddingBottom: "70px", transition: "background 0.2s ease" }}>
 
       <div style={{ background: headerBg, padding: "14px 20px", borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.2s ease" }}>
@@ -173,7 +173,9 @@ return (
         >
           {upgrading ? "Redirecting to checkout..." : "Upgrade to Premium — £4.99/month ⚡"}
         </button>
-      </div><div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
+      </div>
+
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "13px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Premium Features ⚡</div>
         {["Instant alerts when any coin drops below $0.975", "Email notification within seconds of detection", "Be first to know before the market reacts", "Cancel anytime"].map((feature) => (
           <div key={feature} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
@@ -187,7 +189,7 @@ return (
         ))}
       </div>
 
-      div style={{ padding: "12px 20px 4px", textAlign: "center" }}>
+      <div style={{ padding: "16px 20px", textAlign: "center" }}>
         <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af", marginBottom: "8px" }}>Not financial advice</div>
         <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
           <a href="/terms" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Terms of Service</a>
@@ -195,15 +197,13 @@ return (
         </div>
       </div>
 
-      </div>
-
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: navBg, borderTop: `1px solid ${navBorder}`, display: "flex", padding: "8px 0", zIndex: 100, transition: "background 0.2s ease" }}>
         <a href="/" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={dark ? "#6b7280" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9 22 9 12 15 12 15 22"/>
           </svg>
-          <span style={{ fontSize: "10px", fontWeight: "600", color: textSecondary }}>Home</span>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: dark ? "#6b7280" : "#9ca3af" }}>Home</span>
         </a>
         <a href="/alerts" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a56db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -213,12 +213,12 @@ return (
           <span style={{ fontSize: "10px", fontWeight: "600", color: "#1a56db" }}>Alerts</span>
         </a>
         <a href="/about" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={dark ? "#6b7280" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="8" x2="12" y2="12"/>
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          <span style={{ fontSize: "10px", fontWeight: "600", color: textSecondary }}>About</span>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: dark ? "#6b7280" : "#9ca3af" }}>About</span>
         </a>
       </div>
 

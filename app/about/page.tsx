@@ -56,15 +56,17 @@ export default function AboutPage() {
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>How it works</div>
         <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck pulls live price data every 60 seconds from 5 independent sources — CoinGecko, Coinbase, Binance, Kraken and DefiLlama — and calculates a median price to eliminate bad data. Green means healthy. Amber means watch closely. Red means act now.</p>
-      </div><div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
+      </div>
+
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Roadmap</div>
         {[
           { label: "✅ Multi-source price feeds", desc: "Live — prices aggregated from CoinGecko, Coinbase, Binance, Kraken and DefiLlama. Median calculation protects against bad data." },
-{ label: "✅ Historical data & charts", desc: "Live — 7, 30 and 90 day price charts for every stablecoin we track." },
-{ label: "✅ Collateralisation ratios", desc: "Live — reserve breakdowns and collateral ratios for every coin." },
-{ label: "✅ Reserve transparency", desc: "Live — audit dates, auditors and transparency scores for every coin." },
-{ label: "✅ Large transaction tracking", desc: "Live — significant USDT movements flagged automatically." },
-{ label: "Wallet integration", desc: "Connect your wallet and monitor only the stablecoins you actually hold." },
+          { label: "✅ Historical data & charts", desc: "Live — 7, 30 and 90 day price charts for every stablecoin we track." },
+          { label: "✅ Collateralisation ratios", desc: "Live — reserve breakdowns and collateral ratios for every coin." },
+          { label: "✅ Reserve transparency", desc: "Live — audit dates, auditors and transparency scores for every coin." },
+          { label: "✅ Large transaction tracking", desc: "Live — significant on-chain movements flagged automatically." },
+          { label: "Wallet integration", desc: "Connect your wallet and monitor only the stablecoins you actually hold." },
         ].map((item) => (
           <div key={item.label} style={{ display: "flex", gap: "12px", marginBottom: "14px", alignItems: "flex-start" }}>
             <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: dark ? "#1e2a40" : "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: "1px" }}>
@@ -85,19 +87,12 @@ export default function AboutPage() {
         <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck displays information only. Nothing on this site is financial advice. Always do your own research before making any financial decisions.</p>
       </div>
 
-      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "16px 20px", border: `1px solid ${cardBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: "13px", color: textSecondary }}>Built by FintechCheck</span>
-        <a href="https://pegcheck.uk" style={{ fontSize: "13px", color: "#1a56db", fontWeight: "600", textDecoration: "none" }}>pegcheck.uk</a>
-      </div>
-
-     div style={{ padding: "12px 20px 4px", textAlign: "center" }}>
+      <div style={{ padding: "16px 20px", textAlign: "center" }}>
         <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af", marginBottom: "8px" }}>Not financial advice</div>
         <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
           <a href="/terms" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Terms of Service</a>
           <a href="/privacy" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Privacy Policy</a>
         </div>
-      </div>
-
       </div>
 
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: navBg, borderTop: `1px solid ${navBorder}`, display: "flex", padding: "8px 0", zIndex: 100, transition: "background 0.2s ease" }}>
