@@ -187,16 +187,13 @@ return (
         ))}
       </div>
 
-      <div style={{ padding: "20px", textAlign: "center" }}>
-        <div style={{ display: "flex", justifyContent: "center", gap: "16px", alignItems: "center" }}>
-  <a href="/terms" style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", textDecoration: "none" }}>Terms</a>
-  <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af", fontFamily: "monospace", marginBottom: "8px" }}>Not financial advice</div>
-<div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
-  <a href="/terms" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Terms of Service</a>
-  <a href="/privacy" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Privacy Policy</a>
-</div>
-  <a href="/privacy" style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", textDecoration: "none" }}>Privacy</a>
-</div>
+      div style={{ padding: "12px 20px 4px", textAlign: "center" }}>
+        <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af", marginBottom: "8px" }}>Not financial advice</div>
+        <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
+          <a href="/terms" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Terms of Service</a>
+          <a href="/privacy" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Privacy Policy</a>
+        </div>
+      </div>
 
       </div>
 
