@@ -91,6 +91,7 @@ const COIN_DATA: Record<string, {
     contractAddress: "0x0000000000085d4780B73119b644AE5ecd22b376",
   },
 };
+
 function LargeTransactions({ slug, dark, cardBorder, textSecondary, textPrimary }: {
   slug: string; dark: boolean; cardBorder: string; textSecondary: string; textPrimary: string;
 }) {
@@ -139,25 +140,6 @@ function LargeTransactions({ slug, dark, cardBorder, textSecondary, textPrimary 
               <span style={{ fontSize: "10px", fontWeight: "700", padding: "1px 6px", borderRadius: "4px", background: tx.action === "mint" ? "#052e16" : tx.action === "burn" ? "#450a0a" : "#1e2a40", color: tx.action === "mint" ? "#10b981" : tx.action === "burn" ? "#ef4444" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px" }}>{tx.action === "large_transfer" ? "Transfer" : tx.action}</span>
               <div style={{ fontSize: "11px", color: textSecondary }}>{new Date(tx.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
             </div>
-          </div>
-          <a href={`https://etherscan.io/tx/${tx.tx_hash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#1a56db" }}>View →</a>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-
-  return (
-    <div>
-      {txs.map((tx) => (
-        <div key={tx.tx_hash} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${cardBorder}` }}>
-          <div>
-            <div style={{ fontSize: "13px", fontWeight: "600", color: textPrimary }}>${tx.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-<div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "2px" }}>
-  <span style={{ fontSize: "10px", fontWeight: "700", padding: "1px 6px", borderRadius: "4px", background: tx.action === "mint" ? "#052e16" : tx.action === "burn" ? "#450a0a" : "#1e2a40", color: tx.action === "mint" ? "#10b981" : tx.action === "burn" ? "#ef4444" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px" }}>{tx.action === "large_transfer" ? "Transfer" : tx.action}</span>
-  <div style={{ fontSize: "11px", color: textSecondary }}>{new Date(tx.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
-</div>
           </div>
           <a href={`https://etherscan.io/tx/${tx.tx_hash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#1a56db" }}>View →</a>
         </div>
@@ -264,71 +246,36 @@ export default function CoinDetailPage() {
     return (
       <main style={{ background: bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI', sans-serif" }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>🔍</div>
-          <div style={{ fontSize: "18px", fontWeight: "700", color: textPrimary }}>Coin not found</div>
-          <Link href="/" style={{ color: "#1a56db", fontSize: "14px" }}>← Back to dashboard</Link>
+          <div style={{ fontSize: "16px", color: textPrimary }}>Coin not found</div>
+          <Link href="/" style={{ fontSize: "13px", color: "#1a56db", marginTop: "8px", display: "block" }}>← Back to home</Link>
         </div>
       </main>
     );
   }
 
-  const liveStatus = price ? getStatus(price) : "Healthy";
-  const displayPrice = price ?? 1.0;
+  const livePrice = price ?? coin.collateralRatio as unknown as number ?? 1.0;
+  const currentPrice = price ?? 1.0;
+  const status = getStatus(currentPrice);
 
-  const renderChart = () => {
-    if (priceHistory.length < 2) {
-      return (
-        <div style={{ height: "120px", display: "flex", alignItems: "center", justifyContent: "center", color: textSecondary, fontSize: "13px" }}>
-          Building price history... check back soon.
-        </div>
-      );
-    }
-    const prices = priceHistory.map(h => h.price);
-    const min = Math.min(...prices) - 0.0005;
-    const max = Math.max(...prices) + 0.0005;
-    const w = 320;
-    const h = 100;
-    const points = prices.map((p, i) => {
-      const x = (i / (prices.length - 1)) * w;
-      const y = h - ((p - min) / (max - min)) * h;
-      return `${x},${y}`;
-    }).join(" ");
-    const pegY = h - ((1.0 - min) / (max - min)) * h;
-    return (
-      <svg viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", height: "120px" }}>
-        <line x1="0" y1={pegY} x2={w} y2={pegY} stroke={dark ? "#1e2a40" : "#e5e7eb"} strokeWidth="1" strokeDasharray="4,3" />
-        <polyline points={points} fill="none" stroke="#1a56db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        {(() => {
-          const last = prices[prices.length - 1];
-          const x = w;
-          const y = h - ((last - min) / (max - min)) * h;
-          return <circle cx={x} cy={y} r="3" fill="#1a56db" />;
-        })()}
-      </svg>
-    );
-  };
-
-  const sourceNames = ["CoinGecko", "Coinbase", "Binance", "Kraken", "DefiLlama"];
-  const sourceCount = Object.keys(sourcePrices).length || 5;
-  const spread = Object.keys(sourcePrices).length > 1
-    ? (Math.max(...Object.values(sourcePrices)) - Math.min(...Object.values(sourcePrices))).toFixed(4)
-    : "0.0002";
-
-  const auditScoreColor = coin.auditScore >= 90 ? "#16a34a" : coin.auditScore >= 70 ? "#d97706" : "#dc2626";
+  const minPrice = Math.min(...priceHistory.map(h => h.price), currentPrice);
+  const maxPrice = Math.max(...priceHistory.map(h => h.price), currentPrice);
+  const priceRange = maxPrice - minPrice || 0.001;
 
   return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: bg, minHeight: "100vh", paddingBottom: "80px", transition: "background 0.2s ease" }}>
 
       <div style={{ background: headerBg, padding: "14px 20px", borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6", textDecoration: "none", fontSize: "16px" }}>←</Link>
-          <div style={{ width: "34px", height: "34px", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "14px" }}>P✓</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6", textDecoration: "none", color: textPrimary, fontSize: "16px" }}>←</Link>
+          <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            <img src={coin.icon} alt={coin.name} style={{ width: "22px", height: "22px", objectFit: "contain" }} />
+          </div>
           <div>
-            <div style={{ fontSize: "18px", fontWeight: "700", color: textPrimary }}>PegCheck</div>
-            <div style={{ fontSize: "11px", color: textSecondary }}>Stablecoin Monitor</div>
+            <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary }}>{coin.name}</div>
+            <div style={{ fontSize: "11px", color: textSecondary }}>{coin.issuer}</div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <div style={{ fontSize: "10px", color: textSecondary, fontFamily: "monospace" }}>Updated {lastUpdated}</div>
           <button onClick={toggleDark} style={{ width: "32px", height: "32px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>
             {dark ? "☀️" : "🌙"}
@@ -336,132 +283,134 @@ export default function CoinDetailPage() {
         </div>
       </div>
 
-      <div style={{ background: headerBg, padding: "20px", borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", gap: "16px" }}>
-        <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-          <img src={coin.icon} alt={coin.name} style={{ width: "38px", height: "38px", objectFit: "contain" }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: "22px", fontWeight: "800", color: textPrimary }}>{coin.name}</div>
-          <div style={{ fontSize: "13px", color: textSecondary }}>{coin.issuer}</div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontFamily: "monospace", fontSize: "22px", fontWeight: "700", color: displayPrice < 0.995 ? statusColor(liveStatus) : textPrimary }}>${displayPrice.toFixed(4)}</div>
-          <span style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "600", background: statusBg(liveStatus), color: statusColor(liveStatus) }}>{liveStatus}</span>
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontSize: "32px", fontWeight: "800", fontFamily: "monospace", color: textPrimary }}>${currentPrice.toFixed(4)}</div>
+            <div style={{ fontSize: "11px", color: textSecondary, marginTop: "2px" }}>Target: $1.0000</div>
+          </div>
+          <span style={{ padding: "6px 14px", borderRadius: "20px", fontSize: "13px", fontWeight: "700", background: statusBg(status), color: statusColor(status) }}>{status}</span>
         </div>
       </div>
 
-      <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: "12px" }}>
-
-        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-            <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px" }}>Price History</div>
-            <div style={{ display: "flex", gap: "6px" }}>
-              {([7, 30, 90] as const).map(d => (
-                <button key={d} onClick={() => setChartRange(d)} style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "600", border: "none", cursor: "pointer", background: chartRange === d ? "#1a56db" : (dark ? "#1e2a40" : "#f3f4f6"), color: chartRange === d ? "white" : textSecondary }}>{d}d</button>
-              ))}
-            </div>
-          </div>
-          {renderChart()}
-        </div>
-
-        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
-          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "12px" }}>Collateral</div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-            <span style={{ fontSize: "13px", color: textSecondary }}>Ratio</span>
-            <span style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{coin.collateralRatio}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
-            <span style={{ fontSize: "13px", color: textSecondary }}>Backing</span>
-            <span style={{ fontSize: "13px", fontWeight: "600", color: textPrimary, textAlign: "right", maxWidth: "60%" }}>{coin.collateral}</span>
-          </div>
-          <div style={{ height: "6px", borderRadius: "3px", background: dark ? "#1e2a40" : "#f3f4f6", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${Math.min(parseFloat(coin.collateralRatio), 100)}%`, background: "linear-gradient(90deg, #1a56db, #10b981)", borderRadius: "3px" }} />
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+          <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>Price History</div>
+          <div style={{ display: "flex", gap: "4px" }}>
+            {([7, 30, 90] as const).map((d) => (
+              <button key={d} onClick={() => setChartRange(d)} style={{ padding: "4px 10px", borderRadius: "6px", border: `1px solid ${headerBorder}`, background: chartRange === d ? "#1a56db" : "transparent", color: chartRange === d ? "#ffffff" : textSecondary, fontSize: "11px", fontWeight: "600", cursor: "pointer" }}>{d}d</button>
+            ))}
           </div>
         </div>
+        {priceHistory.length > 1 ? (
+          <svg width="100%" height="80" viewBox={`0 0 ${priceHistory.length} 80`} preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#1a56db" stopOpacity="0.3"/>
+                <stop offset="100%" stopColor="#1a56db" stopOpacity="0"/>
+              </linearGradient>
+            </defs>
+            <path
+              d={`M ${priceHistory.map((h, i) => `${i},${80 - ((h.price - minPrice) / priceRange) * 70}`).join(" L ")} L ${priceHistory.length - 1},80 L 0,80 Z`}
+              fill="url(#chartGrad)"
+            />
+            <path
+              d={`M ${priceHistory.map((h, i) => `${i},${80 - ((h.price - minPrice) / priceRange) * 70}`).join(" L ")}`}
+              fill="none" stroke="#1a56db" strokeWidth="1.5"
+            />
+          </svg>
+        ) : (
+          <div style={{ fontSize: "12px", color: textSecondary, textAlign: "center", padding: "20px 0" }}>Collecting price history...</div>
+        )}
+      </div>
 
-        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
-          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "12px" }}>Reserve Audit</div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-            <span style={{ fontSize: "13px", color: textSecondary }}>Auditor</span>
-            <span style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{coin.reserveAudit}</span>
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
+        <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Source Consensus</div>
+        {Object.entries(sourcePrices).length > 0 ? Object.entries(sourcePrices).map(([source, p]) => (
+          <div key={source} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <span style={{ fontSize: "12px", color: textSecondary, textTransform: "capitalize" }}>{source}</span>
+            <span style={{ fontFamily: "monospace", fontSize: "12px", color: textPrimary }}>${(p as number).toFixed(4)}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
-            <span style={{ fontSize: "13px", color: textSecondary }}>Last audit</span>
-            <span style={{ fontSize: "13px", fontWeight: "600", color: textPrimary }}>{coin.auditDate}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-            <span style={{ fontSize: "13px", color: textSecondary }}>Transparency score</span>
-            <span style={{ fontSize: "13px", fontWeight: "700", color: auditScoreColor }}>{coin.auditScore}/100</span>
-          </div>
-          <div style={{ height: "6px", borderRadius: "3px", background: dark ? "#1e2a40" : "#f3f4f6", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${coin.auditScore}%`, background: auditScoreColor, borderRadius: "3px" }} />
-          </div>
+        )) : (
+          <div style={{ fontSize: "12px", color: textSecondary }}>Loading sources...</div>
+        )}
+      </div>
+
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
+        <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Collateralisation</div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+          <span style={{ fontSize: "12px", color: textSecondary }}>Collateral Ratio</span>
+          <span style={{ fontSize: "12px", fontWeight: "700", color: textPrimary }}>{coin.collateralRatio}</span>
         </div>
-
-        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
-          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "12px" }}>Source Consensus</div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-            <span style={{ fontSize: "13px", color: textSecondary }}>Sources agreeing</span>
-            <span style={{ fontSize: "13px", fontWeight: "700", color: "#16a34a" }}>{sourceCount}/5 ✓</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
-            <span style={{ fontSize: "13px", color: textSecondary }}>Price spread</span>
-            <span style={{ fontSize: "13px", fontWeight: "600", color: textPrimary }}>±{spread}</span>
-          </div>
-          {sourceNames.map(source => (
-            <div key={source} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-              <span style={{ fontSize: "12px", color: textSecondary }}>{source}</span>
-              <span style={{ fontSize: "12px", color: "#16a34a", fontWeight: "600" }}>✓ Active</span>
-            </div>
-          ))}
+        <div style={{ height: "8px", background: dark ? "#1e2a40" : "#f3f4f6", borderRadius: "4px", overflow: "hidden", marginBottom: "12px" }}>
+          <div style={{ height: "100%", width: `${Math.min(parseFloat(coin.collateralRatio) || 0, 150) / 150 * 100}%`, background: "linear-gradient(90deg, #1a56db, #10b981)", borderRadius: "4px" }}></div>
         </div>
+        <div style={{ fontSize: "12px", color: textSecondary }}>{coin.collateral}</div>
+      </div>
 
-        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
-          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "8px" }}>About</div>
-          <p style={{ fontSize: "13px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>{coin.description}</p>
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
+        <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Reserve Transparency</div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+          <span style={{ fontSize: "12px", color: textSecondary }}>Audit Score</span>
+          <span style={{ fontSize: "12px", fontWeight: "700", color: textPrimary }}>{coin.auditScore}/100</span>
         </div>
-
-        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
-          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "12px" }}>Large Transactions</div>
-          <LargeTransactions slug={slug} dark={dark} cardBorder={cardBorder} textSecondary={textSecondary} textPrimary={textPrimary} />
+        <div style={{ height: "8px", background: dark ? "#1e2a40" : "#f3f4f6", borderRadius: "4px", overflow: "hidden", marginBottom: "12px" }}>
+          <div style={{ height: "100%", width: `${coin.auditScore}%`, background: coin.auditScore >= 80 ? "linear-gradient(90deg, #1a56db, #10b981)" : coin.auditScore >= 60 ? "linear-gradient(90deg, #f59e0b, #d97706)" : "linear-gradient(90deg, #ef4444, #dc2626)", borderRadius: "4px" }}></div>
         </div>
-
-        <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: "12px", color: textSecondary }}>© 2026 FintechCheck</span>
-          <div style={{ display: "flex", gap: "12px" }}>
-            <Link href="/terms" style={{ fontSize: "12px", color: textSecondary, textDecoration: "none" }}>Terms</Link>
-            <Link href="/privacy" style={{ fontSize: "12px", color: textSecondary, textDecoration: "none" }}>Privacy</Link>
-          </div>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <span style={{ fontSize: "12px", color: textSecondary }}>Auditor</span>
+          <span style={{ fontSize: "12px", color: textPrimary }}>{coin.reserveAudit}</span>
         </div>
-
-        <div style={{ textAlign: "center" }}>
-          <span style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", fontFamily: "monospace" }}>PegCheck v1.5 — Not financial advice</span>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px" }}>
+          <span style={{ fontSize: "12px", color: textSecondary }}>Last Audit</span>
+          <span style={{ fontSize: "12px", color: textPrimary }}>{coin.auditDate}</span>
         </div>
+      </div>
 
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
+        <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>About {coin.name}</div>
+        <p style={{ fontSize: "13px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>{coin.description}</p>
+        <div style={{ marginTop: "12px", padding: "10px 12px", background: dark ? "#080e1a" : "#f8f9fb", borderRadius: "8px", border: `1px solid ${headerBorder}` }}>
+          <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Contract Address</div>
+          <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>{coin.contractAddress}</div>
+        </div>
+      </div>
+
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
+        <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Large Transactions</div>
+        <LargeTransactions slug={slug} dark={dark} cardBorder={cardBorder} textSecondary={textSecondary} textPrimary={textPrimary} />
+      </div>
+
+      <div style={{ padding: "16px 20px", textAlign: "center" }}>
+        <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af", marginBottom: "8px" }}>Not financial advice</div>
+        <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
+          <a href="/terms" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Terms of Service</a>
+          <a href="/privacy" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Privacy Policy</a>
+        </div>
       </div>
 
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: navBg, borderTop: `1px solid ${navBorder}`, display: "flex", padding: "8px 0", zIndex: 100 }}>
         <a href="/" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pathname === "/" ? "#1a56db" : textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={dark ? "#6b7280" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9 22 9 12 15 12 15 22"/>
           </svg>
-          <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === "/" ? "#1a56db" : textSecondary }}>Home</span>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: dark ? "#6b7280" : "#9ca3af" }}>Home</span>
         </a>
         <a href="/alerts" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pathname === "/alerts" ? "#1a56db" : textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={dark ? "#6b7280" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
-          <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === "/alerts" ? "#1a56db" : textSecondary }}>Alerts</span>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: dark ? "#6b7280" : "#9ca3af" }}>Alerts</span>
         </a>
         <a href="/about" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pathname === "/about" ? "#1a56db" : textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={dark ? "#6b7280" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="8" x2="12" y2="12"/>
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === "/about" ? "#1a56db" : textSecondary }}>About</span>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: dark ? "#6b7280" : "#9ca3af" }}>About</span>
         </a>
       </div>
 
