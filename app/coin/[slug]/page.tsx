@@ -122,7 +122,10 @@ function LargeTransactions({ slug, dark, cardBorder, textSecondary, textPrimary 
         <div key={tx.tx_hash} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${cardBorder}` }}>
           <div>
             <div style={{ fontSize: "13px", fontWeight: "600", color: textPrimary }}>${tx.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-            <div style={{ fontSize: "11px", color: textSecondary }}>{new Date(tx.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
+<div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "2px" }}>
+  <span style={{ fontSize: "10px", fontWeight: "700", padding: "1px 6px", borderRadius: "4px", background: tx.action === "mint" ? "#052e16" : tx.action === "burn" ? "#450a0a" : "#1e2a40", color: tx.action === "mint" ? "#10b981" : tx.action === "burn" ? "#ef4444" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px" }}>{tx.action === "large_transfer" ? "Transfer" : tx.action}</span>
+  <div style={{ fontSize: "11px", color: textSecondary }}>{new Date(tx.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
+</div>
           </div>
           <a href={`https://etherscan.io/tx/${tx.tx_hash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#1a56db" }}>View →</a>
         </div>
