@@ -85,7 +85,7 @@ export async function GET() {
         if (Array.isArray(txList) && txList.length > 0) {
           const significant = txList.filter((tx: any) => {
             const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
-            return amount >= 100000 && amount <= 10000000000;
+            return amount >= 100000 && amount <= 500000000;
           });
           const rows = significant.map((tx: any) => ({
             slug: coin.slug,
