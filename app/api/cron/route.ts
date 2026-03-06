@@ -86,9 +86,9 @@ export async function GET() {
           const zeroAddress = "0x0000000000000000000000000000000000000000";
           const significant = txList.filter((tx: any) => {
             const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
-            const isMintBurn = tx.from === zeroAddress || tx.to === zeroAddress;
-            const isLarge = amount >= 100000 && amount <= 500000000;
-            return isMintBurn || isLarge;
+           const isMintBurn = (tx.from === zeroAddress || tx.to === zeroAddress) && amount >= 1000 && amount <= 500000000;
+const isLarge = amount >= 100000 && amount <= 500000000;
+return isMintBurn || isLarge;
           });
           const rows = significant.map((tx: any) => {
             const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
