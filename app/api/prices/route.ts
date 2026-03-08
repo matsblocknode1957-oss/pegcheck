@@ -103,7 +103,19 @@ const prices = {
       ]),
     };
 
-    return NextResponse.json({ prices });
+  
+const sources = {
+  usdt: { coingecko: cgData["tether"]?.usd ?? 0, coinbase: cbResults["USDT-USD"] ?? 0, binance: bnResults["USDTUSDT"] ?? 0, kraken: kr["USDTUSD"]?.c?.[0] ? parseFloat(kr["USDTUSD"].c[0]) : 0, defillama: dlResults["usdt"] ?? 0 },
+  usdc: { coingecko: cgData["usd-coin"]?.usd ?? 0, coinbase: cbResults["USDC-USD"] ?? 0, binance: bnResults["USDCUSDT"] ?? 0, kraken: kr["USDCUSD"]?.c?.[0] ? parseFloat(kr["USDCUSD"].c[0]) : 0, defillama: dlResults["usdc"] ?? 0 },
+  usds: { coingecko: cgData["dai"]?.usd ?? 0, coinbase: cbResults["DAI-USD"] ?? 0, binance: bnResults["DAIUSDT"] ?? 0, kraken: kr["DAIUSD"]?.c?.[0] ? parseFloat(kr["DAIUSD"].c[0]) : 0, defillama: dlResults["dai"] ?? 0 },
+  ethena: { coingecko: cgData["ethena-usde"]?.usd ?? 0, defillama: dlResults["usde"] ?? 0 },
+  pyusd: { coingecko: cgData["paypal-usd"]?.usd ?? 0, coinbase: cbResults["PYUSD-USD"] ?? 0, binance: bnResults["PYUSDUSDT"] ?? 0, kraken: kr["PYUSDUSD"]?.c?.[0] ? parseFloat(kr["PYUSDUSD"].c[0]) : 0, defillama: dlResults["pyusd"] ?? 0 },
+  fdusd: { coingecko: cgData["first-digital-usd"]?.usd ?? 0, defillama: dlResults["fdusd"] ?? 0 },
+  rlusd: { coingecko: cgData["ripple-usd"]?.usd ?? 0, defillama: dlResults["rlusd"] ?? 0 },
+  tusd: { coingecko: cgData["true-usd"]?.usd ?? 0, coinbase: cbResults["TUSD-USD"] ?? 0, binance: bnResults["TUSDUSDT"] ?? 0, kraken: kr["TUSDUSD"]?.c?.[0] ? parseFloat(kr["TUSDUSD"].c[0]) : 0, defillama: dlResults["tusd"] ?? 0 },
+};
+
+return NextResponse.json({ prices, sources });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch prices" }, { status: 500 });
   }
