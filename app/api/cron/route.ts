@@ -82,6 +82,7 @@ export async function GET() {
         );
         const ethData = await ethRes.json();
         const txList = ethData?.result ?? [];
+        console.log(`Etherscan ${coin.slug}:`, typeof txList === 'string' ? txList : `${txList.length} txs`);
         if (Array.isArray(txList) && txList.length > 0) {
           const zeroAddress = "0x0000000000000000000000000000000000000000";
           const significant = txList.filter((tx: any) => {
