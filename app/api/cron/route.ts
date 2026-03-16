@@ -105,7 +105,9 @@ return isMintBurn || isLarge;
           });
 
           if (rows.length > 0) {
-            await supabase.from("large_transactions").upsert(rows, { onConflict: "tx_hash", ignoreDuplicates: true });
+            const { error: txError } = await supabase.from("large_transactions").upsert(rows, { onConflict: "tx_hash", ignoreDuplicates: true });
+if (txError) console.error("Large tx insert error:", txError);
+else console.log("Large tx saved for", coin.slug, rows.length, "rows");
           }
         }
       } catch (e) {
