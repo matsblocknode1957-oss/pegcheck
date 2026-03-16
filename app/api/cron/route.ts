@@ -17,9 +17,9 @@ export async function GET() {
 
     const resend = new Resend(process.env.RESEND_API_KEY);
     const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // CoinGecko
     const cgRes = await fetch(
@@ -61,9 +61,7 @@ export async function GET() {
       dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;
     });
 
-    
-      // Etherscan — USDT Large Transactions & Mint/Burn
-// Etherscan — Large Transactions for all coins
+    // Etherscan — Large Transactions for all coins
     const contracts: { slug: string; address: string; decimals: number }[] = [
       { slug: "usdt", address: "0xdac17f958d2ee523a2206206994597c13d831ec7", decimals: 6 },
       { slug: "usdc", address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals: 6 },
@@ -87,9 +85,9 @@ export async function GET() {
           const zeroAddress = "0x0000000000000000000000000000000000000000";
           const significant = txList.filter((tx: any) => {
             const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
-           const isMintBurn = (tx.from === zeroAddress || tx.to === zeroAddress) && amount >= 1000 && amount <= 500000000;
-const isLarge = amount >= 100000 && amount <= 500000000;
-return isMintBurn || isLarge;
+            const isMintBurn = (tx.from === zeroAddress || tx.to === zeroAddress) && amount >= 1000 && amount <= 500000000;
+            const isLarge = amount >= 100000 && amount <= 500000000;
+            return isMintBurn || isLarge;
           });
           const rows = significant.map((tx: any) => {
             const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
@@ -107,13 +105,15 @@ return isMintBurn || isLarge;
 
           if (rows.length > 0) {
             const { error: txError } = await supabase.from("large_transactions").upsert(rows, { onConflict: "tx_hash", ignoreDuplicates: true });
-if (txError) console.error("Large tx insert error:", txError);
-else console.log("Large tx saved for", coin.slug, rows.length, "rows");
+            if (txError) console.error("Large tx insert error:", txError);
+            else console.log("Large tx saved for", coin.slug, rows.length, "rows");
           }
         }
       } catch (e) {
         console.error(`Failed to fetch transactions for ${coin.slug}`, e);
       }
+      // Delay between each coin to avoid Etherscan rate limit
+      await new Promise(r => setTimeout(r, 400));
     }
 
     // Compute Median Prices
@@ -142,8 +142,8 @@ else console.log("Large tx saved for", coin.slug, rows.length, "rows");
     // Save Price Snapshot
     const snapshots = Object.entries(prices).map(([slug, price]) => ({ slug, price }));
     const { error: priceError } = await supabase.from("price_history").insert(snapshots);
-if (priceError) console.error("Price history insert error:", priceError);
-else console.log("Price history saved:", snapshots.length, "rows");
+    if (priceError) console.error("Price history insert error:", priceError);
+    else console.log("Price history saved:", snapshots.length, "rows");
 
     // Check for Depegs
     const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
