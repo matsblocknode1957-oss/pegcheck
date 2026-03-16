@@ -138,7 +138,9 @@ return isMintBurn || isLarge;
 
     // Save Price Snapshot
     const snapshots = Object.entries(prices).map(([slug, price]) => ({ slug, price }));
-    await supabase.from("price_history").insert(snapshots);
+    const { error: priceError } = await supabase.from("price_history").insert(snapshots);
+if (priceError) console.error("Price history insert error:", priceError);
+else console.log("Price history saved:", snapshots.length, "rows");
 
     // Check for Depegs
     const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
