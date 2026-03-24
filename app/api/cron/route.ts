@@ -180,7 +180,7 @@ export async function GET() {
 
     for (const subscriber of subscribers) {
       await resend.emails.send({
-        from: "PegCheck <alerts@pegcheck.uk>",
+        from: "PegCheck <alerts@fintechcheck.uk>",
         to: subscriber.email,
         subject: `PegCheck — Stablecoin price alert`,
         html: emailHtml,
