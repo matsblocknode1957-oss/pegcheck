@@ -63,16 +63,24 @@ export async function GET() {
     // Source 3 — Binance (individual requests; USDT has no valid self-pair on Binance)
     const bnPairs: [string, string][] = [
       ["usdc",  "USDCUSDT"],
-      ["usds",  "DAIUSDT"],
+      ["usds",  "USDSUSDT"],
       ["pyusd", "PYUSDUSDT"],
       ["tusd",  "TUSDUSDT"],
     ];
     const bnResults: Record<string, number> = {};
     await Promise.allSettled(
       bnPairs.map(async ([slug, symbol]) => {
-        const r = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
-        const d = await r.json();
-        if (d?.price) bnResults[slug] = parseFloat(d.price);
+        try {
+          const r = await fetch(
+            `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`,
+            { cache: "no-store" }
+          );
+          if (!r.ok) return;
+          const d = await r.json();
+          if (typeof d?.price === "string") bnResults[slug] = parseFloat(d.price);
+        } catch {
+          // individual coin failure — continue with other sources
+        }
       })
     );
 
