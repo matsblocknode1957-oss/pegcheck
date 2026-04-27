@@ -55,7 +55,7 @@ export default function AboutPage() {
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>How it works</div>
-        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck pulls live price data every 60 seconds from 6 independent sources — CoinGecko, Coinbase, Binance, Kraken, DefiLlama and Chainlink — and calculates a median price to eliminate bad data. Green means healthy. Amber means watch closely. Red means act now.</p>
+        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck pulls live price data every 60 seconds from 6 independent sources — CoinGecko, Coinbase, Binance, Kraken, DefiLlama and Chainlink — and calculates a median price to eliminate bad data. Green means healthy. Amber means caution. Red means depeg detected.</p>
       </div>
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
