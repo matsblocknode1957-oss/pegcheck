@@ -98,7 +98,17 @@ export default function DevelopersPage() {
 
       {/* Header */}
       <div className="mb-10">
-        <h1 className="text-3xl font-bold mb-2">PegCheck API</h1>
+        <h1 className="text-3xl font-bold mb-3">PegCheck API</h1>
+        <a
+          href="https://chain.link"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 mb-4 px-3 py-1.5 rounded-full text-xs font-semibold text-white no-underline"
+          style={{ background: "#375BD2" }}
+        >
+          <span style={{ fontSize: "11px" }}>⬡</span>
+          Powered by Chainlink
+        </a>
         <p className="text-gray-400 text-base leading-relaxed">
           The most reliable stablecoin depeg monitoring API available.
           Median-of-medians pricing across 1,500+ data points.
