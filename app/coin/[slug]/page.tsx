@@ -159,6 +159,7 @@ export default function CoinDetailPage() {
   const [chartRange, setChartRange] = useState<7 | 30 | 90>(7);
   const [sourcePrices, setSourcePrices] = useState<Record<string, number>>({});
   const [lastUpdated, setLastUpdated] = useState("Loading...");
+  const [chainlinkPor, setChainlinkPor] = useState<{ reserves: number; updated_at: string } | null>(null);
   const [dark, setDark] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("pegcheck-dark") === "true";
@@ -192,6 +193,17 @@ export default function CoinDetailPage() {
     fetchPrice();
     const interval = setInterval(fetchPrice, 60000);
     return () => clearInterval(interval);
+  }, [slug]);
+
+  useEffect(() => {
+    const fetchPoR = async () => {
+      try {
+        const res = await fetch(`/api/chainlink-por?slug=${slug}`);
+        const data = await res.json();
+        if (data.chainlink_por) setChainlinkPor(data.chainlink_por);
+      } catch (e) {}
+    };
+    fetchPoR();
   }, [slug]);
 
   useEffect(() => {
@@ -362,6 +374,32 @@ export default function CoinDetailPage() {
           <span style={{ fontSize: "12px", color: textPrimary }}>{coin.auditDate}</span>
         </div>
       </div>
+
+      {chainlinkPor && (
+        <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>Chainlink Verified Reserves</div>
+            <a href="https://chain.link" target="_blank" rel="noopener noreferrer"
+              style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "3px 10px", borderRadius: "20px", background: "#375BD2", color: "#ffffff", fontSize: "11px", fontWeight: "700", textDecoration: "none" }}>
+              <span style={{ fontSize: "11px" }}>⬡</span> Chainlink
+            </a>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <span style={{ fontSize: "12px", color: textSecondary }}>On-chain Reserves</span>
+            <span style={{ fontSize: "14px", fontWeight: "700", color: "#10b981" }}>
+              ${chainlinkPor.reserves.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+            <span style={{ fontSize: "12px", color: textSecondary }}>Last Updated</span>
+            <span style={{ fontSize: "12px", color: textPrimary }}>{new Date(chainlinkPor.updated_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</span>
+          </div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 12px", borderRadius: "8px", background: dark ? "#052e16" : "#f0fdf4", border: `1px solid ${dark ? "#166534" : "#bbf7d0"}` }}>
+            <span style={{ fontSize: "14px" }}>✅</span>
+            <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>Chainlink Verified</span>
+          </div>
+        </div>
+      )}
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
         <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>About {coin.name}</div>
