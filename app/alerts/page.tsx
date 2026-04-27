@@ -43,28 +43,24 @@ export default function AlertsPage() {
 
   const getStatus = (price: number) => {
     if (price >= 0.999) return "Healthy";
-    if (price >= 0.995) return "Slight Depeg";
-    if (price >= 0.990) return "Warning";
-    return "At Risk";
+    if (price >= 0.995) return "Caution";
+    return "Depeg";
   };
 
   const statusColor = (status: string) => {
     if (status === "Healthy") return "#16a34a";
-    if (status === "Slight Depeg") return "#d97706";
-    if (status === "Warning") return "#ea580c";
+    if (status === "Caution") return "#d97706";
     return "#dc2626";
   };
 
   const statusBg = (status: string) => {
     if (dark) {
       if (status === "Healthy") return "#052e16";
-      if (status === "Slight Depeg") return "#451a03";
-      if (status === "Warning") return "#431407";
+      if (status === "Caution") return "#451a03";
       return "#450a0a";
     }
     if (status === "Healthy") return "#f0fdf4";
-    if (status === "Slight Depeg") return "#fffbeb";
-    if (status === "Warning") return "#fff7ed";
+    if (status === "Caution") return "#fffbeb";
     return "#fef2f2";
   };
 

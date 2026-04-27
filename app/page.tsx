@@ -79,34 +79,30 @@ export default function Home() {
 
   const getStatus = (price: number) => {
     if (price >= 0.999) return "Healthy";
-    if (price >= 0.995) return "Slight Depeg";
-    if (price >= 0.990) return "Warning";
-    return "At Risk";
+    if (price >= 0.995) return "Caution";
+    return "Depeg";
   };
 
   const statusColor = (status: string) => {
     if (status === "Healthy") return "#16a34a";
-    if (status === "Slight Depeg") return "#d97706";
-    if (status === "Warning") return "#ea580c";
+    if (status === "Caution") return "#d97706";
     return "#dc2626";
   };
 
   const statusBg = (status: string) => {
     if (dark) {
       if (status === "Healthy") return "#052e16";
-      if (status === "Slight Depeg") return "#451a03";
-      if (status === "Warning") return "#431407";
+      if (status === "Caution") return "#451a03";
       return "#450a0a";
     }
     if (status === "Healthy") return "#f0fdf4";
-    if (status === "Slight Depeg") return "#fffbeb";
-    if (status === "Warning") return "#fff7ed";
+    if (status === "Caution") return "#fffbeb";
     return "#fef2f2";
   };
 
   const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg)) === "Healthy").length;
-  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg)) === "Slight Depeg").length;
-  const warningCount = stablecoins.filter((c) => ["Warning", "At Risk"].includes(getStatus(getLivePrice(c.slug, c.peg)))).length;
+  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg)) === "Caution").length;
+  const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg)) === "Depeg").length;
 
   const bg = dark ? "#0a0e1a" : "#f8f9fb";
   const headerBg = dark ? "#0d1628" : "#ffffff";
@@ -156,7 +152,7 @@ export default function Home() {
         {warningCount > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px", borderRadius: "20px", background: dark ? "#450a0a" : "#fef2f2" }}>
             <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#dc2626" }}></div>
-            <span style={{ fontSize: "11px", fontWeight: "600", color: "#dc2626" }}>{warningCount} Warning</span>
+            <span style={{ fontSize: "11px", fontWeight: "600", color: "#dc2626" }}>{warningCount} Depeg</span>
           </div>
         )}
       </div>

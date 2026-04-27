@@ -207,28 +207,24 @@ export default function CoinDetailPage() {
 
   const getStatus = (p: number) => {
     if (p >= 0.999) return "Healthy";
-    if (p >= 0.995) return "Slight Depeg";
-    if (p >= 0.990) return "Warning";
-    return "At Risk";
+    if (p >= 0.995) return "Caution";
+    return "Depeg";
   };
 
   const statusColor = (s: string) => {
     if (s === "Healthy") return "#16a34a";
-    if (s === "Slight Depeg") return "#d97706";
-    if (s === "Warning") return "#ea580c";
+    if (s === "Caution") return "#d97706";
     return "#dc2626";
   };
 
   const statusBg = (s: string) => {
     if (dark) {
       if (s === "Healthy") return "#052e16";
-      if (s === "Slight Depeg") return "#451a03";
-      if (s === "Warning") return "#431407";
+      if (s === "Caution") return "#451a03";
       return "#450a0a";
     }
     if (s === "Healthy") return "#f0fdf4";
-    if (s === "Slight Depeg") return "#fffbeb";
-    if (s === "Warning") return "#fff7ed";
+    if (s === "Caution") return "#fffbeb";
     return "#fef2f2";
   };
 
