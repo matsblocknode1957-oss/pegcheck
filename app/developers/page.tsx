@@ -101,7 +101,7 @@ export default function DevelopersPage() {
         <h1 className="text-3xl font-bold mb-2">PegCheck API</h1>
         <p className="text-gray-400 text-base leading-relaxed">
           The most reliable stablecoin depeg monitoring API available.
-          Median-of-medians pricing across 1,000+ data points.
+          Median-of-medians pricing across 1,500+ data points.
           Built for wallets, exchanges, and DeFi applications.
         </p>
       </div>
@@ -116,7 +116,7 @@ export default function DevelopersPage() {
           </li>
           <li className="flex items-start gap-3">
             <span className="text-green-400 mt-0.5">✓</span>
-            Median-of-medians pricing — 1,000+ data points, one reliable number
+            Median-of-medians pricing — 1,500+ data points, one reliable number
           </li>
           <li className="flex items-start gap-3">
             <span className="text-green-400 mt-0.5">✓</span>

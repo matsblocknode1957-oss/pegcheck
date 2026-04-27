@@ -88,7 +88,7 @@ export default function AboutPage() {
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>🛠️ For Developers</div>
         <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: "0 0 12px 0" }}>
-          Building a wallet, exchange, or DeFi app? PegCheck offers a REST API with real-time stablecoin prices, depeg alerts, and webhook notifications — powered by 1,000+ data points.
+          Building a wallet, exchange, or DeFi app? PegCheck offers a REST API with real-time stablecoin prices, depeg alerts, and webhook notifications — powered by 1,500+ data points.
         </p>
         <a href="/developers" style={{ display: "inline-block", background: "#1a56db", color: "#fff", fontSize: "13px", fontWeight: "700", padding: "10px 20px", borderRadius: "8px", textDecoration: "none" }}>
           View API & Pricing →
