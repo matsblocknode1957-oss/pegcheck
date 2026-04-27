@@ -387,7 +387,7 @@ export default function CoinDetailPage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
             <span style={{ fontSize: "12px", color: textSecondary }}>On-chain Reserves</span>
             <span style={{ fontSize: "14px", fontWeight: "700", color: "#10b981" }}>
-              ${chainlinkPor.reserves.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${(chainlinkPor.reserves / 1e8).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
