@@ -77,7 +77,7 @@ export async function GET() {
     const bnResults: Record<string, number> = {};
     await Promise.allSettled(
       bnPairs.map(async ([slug, symbol]) => {
-        const r = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+        const r = await fetch(`https://api.binance.us/api/v3/ticker/price?symbol=${symbol}`);
         const d = await r.json();
         if (d?.price) bnResults[slug] = parseFloat(d.price);
       })

@@ -72,7 +72,7 @@ export async function GET() {
       bnPairs.map(async ([slug, symbol]) => {
         try {
           const r = await fetch(
-            `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`,
+            `https://api.binance.us/api/v3/ticker/price?symbol=${symbol}`,
             { cache: "no-store" }
           );
           if (!r.ok) return;
