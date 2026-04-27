@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.chain.link)",
+      "WebSearch",
+      "WebFetch(domain:data.chain.link)"
+    ]
+  }
+}

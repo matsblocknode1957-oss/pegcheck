@@ -20,7 +20,7 @@ const CHAINLINK_FEEDS: Record<string, string> = {
 
 // Chainlink Proof of Reserve feed contracts (Ethereum Mainnet, 8 decimals)
 const POR_FEEDS: Record<string, string> = {
-  tusd: "0x478f4c42b877c697C4b19E396865D4D533EcB6ea",
+  tusd: "0xBE456fd14720C3aCCc30A2013Bffd782c9Cb75D5",
 };
 
 async function callLatestRoundData(contract: string, rpcUrl: string): Promise<string | null> {
