@@ -69,10 +69,8 @@ export async function GET() {
 
     // Binance (individual requests; USDT has no valid self-pair on Binance)
     const bnPairs: [string, string][] = [
-      ["usdc",  "USDCUSDT"],
-      ["usds",  "USDSUSDT"],
-      ["pyusd", "PYUSDUSDT"],
-      ["tusd",  "TUSDUSDT"],
+      ["usdc", "USDCUSDT"],
+      ["tusd", "TUSDUSDT"],
     ];
     const bnResults: Record<string, number> = {};
     await Promise.allSettled(
