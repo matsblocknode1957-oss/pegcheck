@@ -254,6 +254,17 @@ export default function DevelopersPage() {
         </p>
       </div>
 
+      {/* Dashboard link */}
+      <div className="bg-[#161b22] rounded-2xl p-5 mb-6 flex items-center justify-between">
+        <div>
+          <p className="text-white text-sm font-semibold">Already have an API key?</p>
+          <p className="text-gray-400 text-xs mt-0.5">View usage stats and copy your key.</p>
+        </div>
+        <a href="/dashboard" className="shrink-0 bg-[#0d1117] border border-gray-700 hover:border-blue-500 text-blue-400 text-sm font-semibold px-4 py-2 rounded-xl transition whitespace-nowrap">
+          View dashboard →
+        </a>
+      </div>
+
       {/* Docs link */}
       <div className="text-center">
         <p className="text-gray-400 text-sm mb-2">Want to see the full API documentation?</p>
