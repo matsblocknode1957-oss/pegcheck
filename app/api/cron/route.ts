@@ -10,7 +10,7 @@ function median(values: number[]): number {
     : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-// Chainlink feed contracts (Ethereum Mainnet, 8 decimals)
+// Chainlink price feed contracts (Ethereum Mainnet, 8 decimals)
 const CHAINLINK_FEEDS: Record<string, string> = {
   usdt: "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D",
   usdc: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
@@ -18,24 +18,51 @@ const CHAINLINK_FEEDS: Record<string, string> = {
   tusd: "0xec746eCF986E2927Abd291a2A1716c940100f8Ba",
 };
 
-async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<number> {
+// Chainlink Proof of Reserve feed contracts (Ethereum Mainnet, 8 decimals)
+const POR_FEEDS: Record<string, string> = {
+  tusd: "0x478f4c42b877c697C4b19E396865D4D533EcB6ea",
+};
+
+async function callLatestRoundData(contract: string, rpcUrl: string): Promise<string | null> {
   const res = await fetch(rpcUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "eth_call",
-      // latestRoundData() selector: 0xfeaf968c
       params: [{ to: contract, data: "0xfeaf968c" }, "latest"],
       id: 1,
     }),
   });
   const json = await res.json();
-  if (!json.result || json.result === "0x") return 0;
-  // ABI decode: (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
-  // answer is the 2nd 32-byte slot (chars 66–130 of the 0x-prefixed hex string)
-  const answerHex = json.result.slice(2 + 64, 2 + 128);
+  if (!json.result || json.result === "0x") return null;
+  return json.result;
+}
+
+async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<number> {
+  const result = await callLatestRoundData(contract, rpcUrl);
+  if (!result) return 0;
+  // ABI slot 1 — int256 answer
+  const answerHex = result.slice(2 + 64, 2 + 128);
   return Number(BigInt("0x" + answerHex)) / 1e8;
+}
+
+async function fetchChainlinkPoR(
+  contract: string,
+  rpcUrl: string
+): Promise<{ reserves: number; updated_at: string } | null> {
+  try {
+    const result = await callLatestRoundData(contract, rpcUrl);
+    if (!result) return null;
+    const hex = result.slice(2);
+    // ABI slot 1 — int256 answer (reserves, 8 decimals)
+    const reserves = Number(BigInt("0x" + hex.slice(64, 128))) / 1e8;
+    // ABI slot 3 — uint256 updatedAt
+    const updatedAt = Number(BigInt("0x" + hex.slice(192, 256)));
+    return { reserves, updated_at: new Date(updatedAt * 1000).toISOString() };
+  } catch {
+    return null;
+  }
 }
 
 export async function GET() {
@@ -118,6 +145,16 @@ export async function GET() {
           } catch {
             // skip this feed, median continues with remaining sources
           }
+        })
+      );
+    }
+
+    // Chainlink Proof of Reserve feeds
+    const porResults: Record<string, { reserves: number; updated_at: string } | null> = {};
+    if (rpcUrl) {
+      await Promise.allSettled(
+        Object.entries(POR_FEEDS).map(async ([slug, contract]) => {
+          porResults[slug] = await fetchChainlinkPoR(contract, rpcUrl);
         })
       );
     }
@@ -209,7 +246,10 @@ export async function GET() {
     // Check for Depegs
     const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
     if (depegged.length === 0) {
-      return NextResponse.json({ message: "All stable, no alerts needed" });
+      return NextResponse.json({
+        message: "All stable, no alerts needed",
+        chainlink_por: { tusd: porResults["tusd"] ?? null },
+      });
     }
 
     const { data: subscribers, error: subError } = await supabase
@@ -248,7 +288,12 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json({ message: `Snapshots saved. Alerts sent to ${subscribers.length} premium subscribers.` });
+    return NextResponse.json({
+      message: `Snapshots saved. Alerts sent to ${subscribers.length} premium subscribers.`,
+      chainlink_por: {
+        tusd: porResults["tusd"] ?? null,
+      },
+    });
 
   } catch (error) {
     return NextResponse.json({ error: "Cron job failed" }, { status: 500 });
