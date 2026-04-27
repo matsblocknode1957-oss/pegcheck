@@ -52,7 +52,7 @@ export default function TermsPage() {
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "15px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>2. Data Accuracy</div>
-        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck aggregates price data from multiple third party sources including CoinGecko, Coinbase, Binance, Kraken and DefiLlama. Whilst we use a median calculation to improve accuracy, we cannot guarantee that data is always accurate, complete or up to date. FintechCheck accepts no liability for decisions made based on data displayed on PegCheck.</p>
+        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck aggregates price data from multiple third party sources including CoinGecko, Coinbase, Binance, Kraken, DefiLlama and Chainlink. Whilst we use a median calculation to improve accuracy, we cannot guarantee that data is always accurate, complete or up to date. FintechCheck accepts no liability for decisions made based on data displayed on PegCheck.</p>
       </div>
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
