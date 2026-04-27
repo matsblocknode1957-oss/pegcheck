@@ -60,19 +60,39 @@ export async function GET() {
       })
     );
 
-    // Source 3 — Binance
-    const bnSlugs = ["USDTUSDT","USDCUSDT","DAIUSDT","PYUSDUSDT","TUSDUSDT"];
-    const bnRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbols=${JSON.stringify(bnSlugs)}`);
-    const bnData: {symbol: string; price: string}[] = await bnRes.json();
-  const bnResults: Record<string, number> = {};
-    if (Array.isArray(bnData)) {
-      bnData.forEach(item => { bnResults[item.symbol] = parseFloat(item.price); });
-    }
+    // Source 3 — Binance (individual requests; USDT has no valid self-pair on Binance)
+    const bnPairs: [string, string][] = [
+      ["usdc",  "USDCUSDT"],
+      ["usds",  "DAIUSDT"],
+      ["pyusd", "PYUSDUSDT"],
+      ["tusd",  "TUSDUSDT"],
+    ];
+    const bnResults: Record<string, number> = {};
+    await Promise.allSettled(
+      bnPairs.map(async ([slug, symbol]) => {
+        const r = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+        const d = await r.json();
+        if (d?.price) bnResults[slug] = parseFloat(d.price);
+      })
+    );
 
-    // Source 4 — Kraken
-    const krRes = await fetch(`https://api.kraken.com/0/public/Ticker?pair=USDTUSD,USDCUSD,DAIUSD,PYUSDUSD,TUSDUSD`);
-    const krData = await krRes.json();
-    const kr = krData?.result ?? {};
+    // Source 4 — Kraken (individual requests; result key may differ from queried pair name)
+    const krPairs: [string, string][] = [
+      ["usdt",  "USDTUSD"],
+      ["usdc",  "USDCUSD"],
+      ["usds",  "DAIUSD"],
+      ["pyusd", "PYUSDUSD"],
+      ["tusd",  "TUSDUSD"],
+    ];
+    const krResults: Record<string, number> = {};
+    await Promise.allSettled(
+      krPairs.map(async ([slug, pair]) => {
+        const r = await fetch(`https://api.kraken.com/0/public/Ticker?pair=${pair}`);
+        const d = await r.json();
+        const first = Object.values(d?.result ?? {})[0] as any;
+        if (first?.c?.[0]) krResults[slug] = parseFloat(first.c[0]);
+      })
+    );
 
     // Source 5 — DefiLlama
     const dlRes = await fetch(`https://stablecoins.llama.fi/stablecoins?includePrices=true`);
@@ -98,32 +118,26 @@ export async function GET() {
       );
     }
 
-    const kr_usdt = kr["USDTUSD"]?.c?.[0] ? parseFloat(kr["USDTUSD"].c[0]) : 0;
-    const kr_usdc = kr["USDCUSD"]?.c?.[0] ? parseFloat(kr["USDCUSD"].c[0]) : 0;
-    const kr_usds = kr["DAIUSD"]?.c?.[0] ? parseFloat(kr["DAIUSD"].c[0]) : 0;
-    const kr_pyusd = kr["PYUSDUSD"]?.c?.[0] ? parseFloat(kr["PYUSDUSD"].c[0]) : 0;
-    const kr_tusd = kr["TUSDUSD"]?.c?.[0] ? parseFloat(kr["TUSDUSD"].c[0]) : 0;
-
     const prices = {
-      usdt: median([cgData["tether"]?.usd ?? 0, cbResults["USDT-USD"] ?? 0, bnResults["USDTUSDT"] ?? 0, kr_usdt, dlResults["usdt"] ?? 0, clResults["usdt"] ?? 0]),
-      usdc: median([cgData["usd-coin"]?.usd ?? 0, cbResults["USDC-USD"] ?? 0, bnResults["USDCUSDT"] ?? 0, kr_usdc, dlResults["usdc"] ?? 0, clResults["usdc"] ?? 0]),
-      usds: median([cgData["dai"]?.usd ?? 0, cbResults["DAI-USD"] ?? 0, bnResults["DAIUSDT"] ?? 0, kr_usds, dlResults["dai"] ?? 0, clResults["usds"] ?? 0]),
-      ethena: median([cgData["ethena-usde"]?.usd ?? 0, dlResults["usde"] ?? 0]),
-      pyusd: median([cgData["paypal-usd"]?.usd ?? 0, cbResults["PYUSD-USD"] ?? 0, bnResults["PYUSDUSDT"] ?? 0, kr_pyusd, dlResults["pyusd"] ?? 0, clResults["pyusd"] ?? 0]),
-      fdusd: median([cgData["first-digital-usd"]?.usd ?? 0, dlResults["fdusd"] ?? 0]),
-      rlusd: median([cgData["ripple-usd"]?.usd ?? 0, dlResults["rlusd"] ?? 0]),
-      tusd: median([cgData["true-usd"]?.usd ?? 0, cbResults["TUSD-USD"] ?? 0, bnResults["TUSDUSDT"] ?? 0, kr_tusd, dlResults["tusd"] ?? 0, clResults["tusd"] ?? 0]),
+      usdt:   median([cgData["tether"]?.usd ?? 0,        cbResults["USDT-USD"] ?? 0,                    krResults["usdt"]  ?? 0, dlResults["usdt"]  ?? 0, clResults["usdt"]  ?? 0]),
+      usdc:   median([cgData["usd-coin"]?.usd ?? 0,      cbResults["USDC-USD"] ?? 0,  bnResults["usdc"]  ?? 0, krResults["usdc"]  ?? 0, dlResults["usdc"]  ?? 0, clResults["usdc"]  ?? 0]),
+      usds:   median([cgData["dai"]?.usd ?? 0,           cbResults["DAI-USD"] ?? 0,   bnResults["usds"]  ?? 0, krResults["usds"]  ?? 0, dlResults["dai"]   ?? 0, clResults["usds"]  ?? 0]),
+      ethena: median([cgData["ethena-usde"]?.usd ?? 0,                                                                                    dlResults["usde"]  ?? 0]),
+      pyusd:  median([cgData["paypal-usd"]?.usd ?? 0,    cbResults["PYUSD-USD"] ?? 0, bnResults["pyusd"] ?? 0, krResults["pyusd"] ?? 0, dlResults["pyusd"] ?? 0, clResults["pyusd"] ?? 0]),
+      fdusd:  median([cgData["first-digital-usd"]?.usd ?? 0,                                                                              dlResults["fdusd"] ?? 0]),
+      rlusd:  median([cgData["ripple-usd"]?.usd ?? 0,                                                                                     dlResults["rlusd"] ?? 0]),
+      tusd:   median([cgData["true-usd"]?.usd ?? 0,      cbResults["TUSD-USD"] ?? 0,  bnResults["tusd"]  ?? 0, krResults["tusd"]  ?? 0, dlResults["tusd"]  ?? 0, clResults["tusd"]  ?? 0]),
     };
 
     const sources = {
-      usdt:    { coingecko: cgData["tether"]?.usd ?? 0,        coinbase: cbResults["USDT-USD"] ?? 0, binance: bnResults["USDTUSDT"] ?? 0,  kraken: kr_usdt,  defillama: dlResults["usdt"] ?? 0,  chainlink: clResults["usdt"] ?? 0 },
-      usdc:    { coingecko: cgData["usd-coin"]?.usd ?? 0,      coinbase: cbResults["USDC-USD"] ?? 0, binance: bnResults["USDCUSDT"] ?? 0,  kraken: kr_usdc,  defillama: dlResults["usdc"] ?? 0,  chainlink: clResults["usdc"] ?? 0 },
-      usds:    { coingecko: cgData["dai"]?.usd ?? 0,           coinbase: cbResults["DAI-USD"] ?? 0,  binance: bnResults["DAIUSDT"] ?? 0,   kraken: kr_usds,  defillama: dlResults["dai"] ?? 0,   chainlink: clResults["usds"] ?? 0 },
-      ethena:  { coingecko: cgData["ethena-usde"]?.usd ?? 0,                                                                                                 defillama: dlResults["usde"] ?? 0 },
-      pyusd:   { coingecko: cgData["paypal-usd"]?.usd ?? 0,    coinbase: cbResults["PYUSD-USD"] ?? 0, binance: bnResults["PYUSDUSDT"] ?? 0, kraken: kr_pyusd, defillama: dlResults["pyusd"] ?? 0, chainlink: clResults["pyusd"] ?? 0 },
-      fdusd:   { coingecko: cgData["first-digital-usd"]?.usd ?? 0,                                                                                           defillama: dlResults["fdusd"] ?? 0 },
-      rlusd:   { coingecko: cgData["ripple-usd"]?.usd ?? 0,                                                                                                  defillama: dlResults["rlusd"] ?? 0 },
-      tusd:    { coingecko: cgData["true-usd"]?.usd ?? 0,      coinbase: cbResults["TUSD-USD"] ?? 0,  binance: bnResults["TUSDUSDT"] ?? 0,  kraken: kr_tusd,  defillama: dlResults["tusd"] ?? 0,  chainlink: clResults["tusd"] ?? 0 },
+      usdt:   { coingecko: cgData["tether"]?.usd ?? 0,        coinbase: cbResults["USDT-USD"] ?? 0,                                      kraken: krResults["usdt"]  ?? 0, defillama: dlResults["usdt"]  ?? 0, chainlink: clResults["usdt"]  ?? 0 },
+      usdc:   { coingecko: cgData["usd-coin"]?.usd ?? 0,      coinbase: cbResults["USDC-USD"] ?? 0,  binance: bnResults["usdc"]  ?? 0,   kraken: krResults["usdc"]  ?? 0, defillama: dlResults["usdc"]  ?? 0, chainlink: clResults["usdc"]  ?? 0 },
+      usds:   { coingecko: cgData["dai"]?.usd ?? 0,           coinbase: cbResults["DAI-USD"] ?? 0,   binance: bnResults["usds"]  ?? 0,   kraken: krResults["usds"]  ?? 0, defillama: dlResults["dai"]   ?? 0, chainlink: clResults["usds"]  ?? 0 },
+      ethena: { coingecko: cgData["ethena-usde"]?.usd ?? 0,                                                                                                                defillama: dlResults["usde"]  ?? 0 },
+      pyusd:  { coingecko: cgData["paypal-usd"]?.usd ?? 0,    coinbase: cbResults["PYUSD-USD"] ?? 0, binance: bnResults["pyusd"] ?? 0,   kraken: krResults["pyusd"] ?? 0, defillama: dlResults["pyusd"] ?? 0, chainlink: clResults["pyusd"] ?? 0 },
+      fdusd:  { coingecko: cgData["first-digital-usd"]?.usd ?? 0,                                                                                                          defillama: dlResults["fdusd"] ?? 0 },
+      rlusd:  { coingecko: cgData["ripple-usd"]?.usd ?? 0,                                                                                                                 defillama: dlResults["rlusd"] ?? 0 },
+      tusd:   { coingecko: cgData["true-usd"]?.usd ?? 0,      coinbase: cbResults["TUSD-USD"] ?? 0,  binance: bnResults["tusd"]  ?? 0,   kraken: krResults["tusd"]  ?? 0, defillama: dlResults["tusd"]  ?? 0, chainlink: clResults["tusd"]  ?? 0 },
     };
 
 return NextResponse.json({ prices, sources });
