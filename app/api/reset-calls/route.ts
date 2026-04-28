@@ -8,19 +8,20 @@ export async function GET() {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { error, count } = await supabase
+    const { data, error } = await supabase
       .from("api_keys")
       .update({ calls_this_month: 0 })
       .neq("calls_this_month", 0)
-      .select("*", { count: "exact", head: true });
+      .select("*");
 
     if (error) {
       console.error("Reset calls error:", error);
       return NextResponse.json({ error: "Failed to reset call counts" }, { status: 500 });
     }
 
-    console.log(`Reset calls_this_month for ${count ?? 0} API keys`);
-    return NextResponse.json({ message: `Reset complete`, rows_updated: count ?? 0 });
+    const count = data?.length ?? 0;
+    console.log(`Reset calls_this_month for ${count} API keys`);
+    return NextResponse.json({ message: `Reset complete`, rows_updated: count });
 
   } catch (error) {
     return NextResponse.json({ error: "Reset failed" }, { status: 500 });
