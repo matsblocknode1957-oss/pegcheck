@@ -148,7 +148,8 @@ export default function OnchainPage() {
       </div>
 
       <div style={{ padding: "16px 20px", textAlign: "center" }}>
-        <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af" }}>Powered by Ethereum · Sepolia Testnet</div>
+        <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af", marginBottom: "8px" }}>Powered by Ethereum · Sepolia Testnet</div>
+        <a href="/" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>← Back to PegCheck</a>
       </div>
 
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: navBg, borderTop: `1px solid ${navBorder}`, display: "flex", padding: "8px 0", zIndex: 100 }}>
