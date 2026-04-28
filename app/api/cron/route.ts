@@ -245,6 +245,37 @@ export async function GET() {
 
     // Check for Depegs
     const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
+
+    // Log confirmed depegs (< 0.975) on-chain via Sepolia smart contract
+    const depeggedOnly = depegged.filter(([_, price]) => price < 0.975);
+    if (depeggedOnly.length > 0) {
+      const sepoliaRpc = process.env.SEPOLIA_RPC_URL ?? "";
+      const deployerKey = process.env.DEPLOYER_PRIVATE_KEY ?? "";
+      if (sepoliaRpc && deployerKey) {
+        try {
+          const { ethers } = await import("ethers");
+          const provider = new ethers.JsonRpcProvider(sepoliaRpc);
+          const wallet = new ethers.Wallet(deployerKey, provider);
+          const abi = ["function logDepegEvent(string symbol, uint256 price, string severity) external"];
+          const contract = new ethers.Contract("0xA00cbfF342F9009B23f08A0ED3c9918D2B5C86fa", abi, wallet);
+          await Promise.allSettled(
+            depeggedOnly.map(async ([slug, p]) => {
+              try {
+                const priceUint = BigInt(Math.round(p * 1e8));
+                const tx = await contract.logDepegEvent(slug.toUpperCase(), priceUint, "depegged");
+                await tx.wait();
+                console.log(`On-chain depeg logged for ${slug}: tx ${tx.hash}`);
+              } catch (e) {
+                console.error(`Failed to log on-chain depeg for ${slug}:`, e);
+              }
+            })
+          );
+        } catch (e) {
+          console.error("Failed to initialise ethers for on-chain logging:", e);
+        }
+      }
+    }
+
     if (depegged.length === 0) {
       return NextResponse.json({
         message: "All stable, no alerts needed",

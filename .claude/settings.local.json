@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:docs.chain.link)",
       "WebSearch",
-      "WebFetch(domain:data.chain.link)"
+      "WebFetch(domain:data.chain.link)",
+      "Bash(npm install *)"
     ]
   }
 }
