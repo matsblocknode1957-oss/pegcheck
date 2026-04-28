@@ -165,7 +165,7 @@ export default function AlertsPage() {
         />
         <button
           onClick={handleUpgrade}
-          style={{ width: "100%", padding: "12px", borderRadius: "8px", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer" }}
+          style={{ width: "100%", padding: "12px", borderRadius: "8px", background: "#16a34a", color: "#ffffff", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer" }}
         >
           {upgrading ? "Redirecting to checkout..." : "Upgrade to Premium — £4.99/month ⚡"}
         </button>
