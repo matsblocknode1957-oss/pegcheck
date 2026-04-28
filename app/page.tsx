@@ -219,6 +219,7 @@ export default function Home() {
         <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
           <a href="/terms" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Terms of Service</a>
           <a href="/privacy" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>Privacy Policy</a>
+          <a href="/onchain" style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#6b7280" : "#4b5563", textDecoration: "none" }}>⛓ On-Chain Record</a>
         </div>
       </div>
 
