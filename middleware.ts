@@ -41,10 +41,25 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  // Check monthly call limit
+  const TIER_LIMITS: Record<string, number | null> = {
+    starter: 10000,
+    pro: 100000,
+    enterprise: null,
+  };
+  const limit = TIER_LIMITS[data.tier] ?? 10000;
+  const calls = data.calls_this_month ?? 0;
+  if (limit !== null && calls >= limit) {
+    return NextResponse.json(
+      { error: "Monthly call limit reached. Please upgrade your plan at pegcheck.uk/developers" },
+      { status: 429 }
+    );
+  }
+
   // Increment call count
   await supabase
     .from("api_keys")
-    .update({ calls_this_month: (data.calls_this_month ?? 0) + 1 })
+    .update({ calls_this_month: calls + 1 })
     .eq("key", apiKey);
 
   return NextResponse.next();
