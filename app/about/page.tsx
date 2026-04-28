@@ -68,6 +68,7 @@ export default function AboutPage() {
           { label: "✅ Large transaction tracking", desc: "Live — significant on-chain movements flagged automatically." },
           { label: "✅ REST API with authentication", desc: "Live — real-time stablecoin data API with Bearer token auth, 3 pricing tiers and 30 day free trial." },
           { label: "✅ Developer dashboard", desc: "Live — API customers can view their key, usage stats and calls remaining at pegcheck.uk/dashboard." },
+          { label: "✅ Chainlink Proof of Reserve", desc: "Live — on-chain verified reserve data for supported stablecoins, powered by Chainlink." },
           { label: "Wallet integration", desc: "Connect your wallet and monitor only the stablecoins you actually hold." },
         ].map((item) => (
           <div key={item.label} style={{ display: "flex", gap: "12px", marginBottom: "14px", alignItems: "flex-start" }}>
