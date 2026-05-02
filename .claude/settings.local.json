@@ -4,7 +4,10 @@
       "WebFetch(domain:docs.chain.link)",
       "WebSearch",
       "WebFetch(domain:data.chain.link)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\charl\\\\pegcheck\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)"
     ]
   }
 }
