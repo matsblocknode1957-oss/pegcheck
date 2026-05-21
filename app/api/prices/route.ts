@@ -27,8 +27,10 @@ const UNISWAP_POOLS: Record<string, string> = {
   usdt: "0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36", // USDT/WETH 0.3%
 };
 
-// Returns WETH per stablecoin in human-readable units (e.g. 0.0005 for $2000 ETH)
-async function fetchUniswapPrice(poolAddress: string, rpcUrl: string): Promise<number> {
+// Returns WETH per stablecoin in human-readable units (e.g. 0.0005 for $2000 ETH).
+// stablecoinIsToken0: true  → token0=stablecoin(6dec), token1=WETH(18dec) — e.g. USDC/WETH
+//                    false → token0=WETH(18dec),       token1=stablecoin(6dec) — e.g. USDT/WETH
+async function fetchUniswapPrice(poolAddress: string, rpcUrl: string, stablecoinIsToken0 = true): Promise<number> {
   const res = await fetch(rpcUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -50,9 +52,9 @@ async function fetchUniswapPrice(poolAddress: string, rpcUrl: string): Promise<n
   const SCALE = BigInt(10 ** 18);
   const priceRawScaled = sqrtPriceX96 * sqrtPriceX96 * SCALE / Q192;
   const priceRaw = Number(priceRawScaled) / 1e18;
-  // Both pools: token0=stablecoin (6 dec), token1=WETH (18 dec)
-  // Human-readable WETH per stablecoin = priceRaw / 10^(18-6)
-  return priceRaw / 1e12;
+  // stablecoinIsToken0: price_raw = raw_WETH/raw_stable → WETH/stable = priceRaw / 1e12
+  // !stablecoinIsToken0: price_raw = raw_stable/raw_WETH → WETH/stable = 1 / (priceRaw * 1e12)
+  return stablecoinIsToken0 ? priceRaw / 1e12 : 1 / (priceRaw * 1e12);
 }
 
 async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<number> {
@@ -166,7 +168,7 @@ export async function GET() {
       const [ethUsd, usdcEthPerStable, usdtEthPerStable] = await Promise.all([
         fetchChainlinkPrice(ETH_USD_FEED, rpcUrl).catch(() => 0),
         fetchUniswapPrice(UNISWAP_POOLS.usdc, rpcUrl).catch(() => 0),
-        fetchUniswapPrice(UNISWAP_POOLS.usdt, rpcUrl).catch(() => 0),
+        fetchUniswapPrice(UNISWAP_POOLS.usdt, rpcUrl, false).catch(() => 0),
       ]);
       if (ethUsd > 0) {
         if (usdcEthPerStable > 0) uniswapResults.usdc = ethUsd * usdcEthPerStable;
