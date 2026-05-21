@@ -18,6 +18,43 @@ const CHAINLINK_FEEDS: Record<string, string> = {
   tusd: "0xec746eCF986E2927Abd291a2A1716c940100f8Ba",
 };
 
+// ETH/USD Chainlink feed (Ethereum Mainnet, 8 decimals)
+const ETH_USD_FEED = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419";
+
+// Uniswap V3 pool contracts (Ethereum Mainnet) — token0=stablecoin(6dec), token1=WETH(18dec)
+const UNISWAP_POOLS: Record<string, string> = {
+  usdc: "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640", // USDC/WETH 0.05%
+  usdt: "0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36", // USDT/WETH 0.3%
+};
+
+// Returns WETH per stablecoin in human-readable units (e.g. 0.0005 for $2000 ETH)
+async function fetchUniswapPrice(poolAddress: string, rpcUrl: string): Promise<number> {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "eth_call",
+      // slot0() selector: 0x3850c7bd
+      params: [{ to: poolAddress, data: "0x3850c7bd" }, "latest"],
+      id: 1,
+    }),
+  });
+  const json = await res.json();
+  if (!json.result || json.result === "0x") return 0;
+  // sqrtPriceX96 is the first return value (uint160, padded to 32 bytes)
+  const sqrtPriceX96 = BigInt("0x" + json.result.slice(2, 66));
+  // price_raw = (sqrtPriceX96 / 2^96)^2 = raw_token1 / raw_token0
+  // Scale by 1e18 before integer division to preserve precision through BigInt
+  const Q192 = BigInt(2) ** BigInt(192);
+  const SCALE = BigInt(10 ** 18);
+  const priceRawScaled = sqrtPriceX96 * sqrtPriceX96 * SCALE / Q192;
+  const priceRaw = Number(priceRawScaled) / 1e18;
+  // Both pools: token0=stablecoin (6 dec), token1=WETH (18 dec)
+  // Human-readable WETH per stablecoin = priceRaw / 10^(18-6)
+  return priceRaw / 1e12;
+}
+
 async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<number> {
   const res = await fetch(rpcUrl, {
     method: "POST",
@@ -123,6 +160,20 @@ export async function GET() {
       );
     }
 
+    // Source 7 — Uniswap V3 on-chain DEX prices (not included in median)
+    const uniswapResults: Record<string, number> = {};
+    if (rpcUrl) {
+      const [ethUsd, usdcEthPerStable, usdtEthPerStable] = await Promise.all([
+        fetchChainlinkPrice(ETH_USD_FEED, rpcUrl).catch(() => 0),
+        fetchUniswapPrice(UNISWAP_POOLS.usdc, rpcUrl).catch(() => 0),
+        fetchUniswapPrice(UNISWAP_POOLS.usdt, rpcUrl).catch(() => 0),
+      ]);
+      if (ethUsd > 0) {
+        if (usdcEthPerStable > 0) uniswapResults.usdc = ethUsd * usdcEthPerStable;
+        if (usdtEthPerStable > 0) uniswapResults.usdt = ethUsd * usdtEthPerStable;
+      }
+    }
+
     const prices = {
       usdt:   median([cgData["tether"]?.usd ?? 0,        cbResults["USDT-USD"] ?? 0,                    krResults["usdt"]  ?? 0, dlResults["usdt"]  ?? 0, clResults["usdt"]  ?? 0]),
       usdc:   median([cgData["usd-coin"]?.usd ?? 0,      cbResults["USDC-USD"] ?? 0,  bnResults["usdc"]  ?? 0, krResults["usdc"]  ?? 0, dlResults["usdc"]  ?? 0, clResults["usdc"]  ?? 0]),
@@ -145,7 +196,20 @@ export async function GET() {
       tusd:   { coingecko: cgData["true-usd"]?.usd ?? 0,      coinbase: cbResults["TUSD-USD"] ?? 0,  binance: bnResults["tusd"]  ?? 0,   kraken: krResults["tusd"]  ?? 0, defillama: dlResults["tusd"]  ?? 0, chainlink: clResults["tusd"]  ?? 0 },
     };
 
-return NextResponse.json({ prices, sources });
+    const uniswap = {
+      usdc: {
+        pool_price: uniswapResults["usdc"] ?? 0,
+        consensus_price: prices.usdc,
+        divergence_bps: Math.round(Math.abs((uniswapResults["usdc"] ?? 0) - prices.usdc) * 10000),
+      },
+      usdt: {
+        pool_price: uniswapResults["usdt"] ?? 0,
+        consensus_price: prices.usdt,
+        divergence_bps: Math.round(Math.abs((uniswapResults["usdt"] ?? 0) - prices.usdt) * 10000),
+      },
+    };
+
+    return NextResponse.json({ prices, sources, uniswap });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch prices" }, { status: 500 });
   }
