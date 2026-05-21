@@ -160,6 +160,8 @@ export default function CoinDetailPage() {
   const [sourcePrices, setSourcePrices] = useState<Record<string, number>>({});
   const [lastUpdated, setLastUpdated] = useState("Loading...");
   const [chainlinkPor, setChainlinkPor] = useState<{ reserves: number; updated_at: string } | null>(null);
+  const [uniswapData, setUniswapData] = useState<Record<string, { pool_price: number; consensus_price: number; divergence_bps: number }> | null>(null);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [dark, setDark] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("pegcheck-dark") === "true";
@@ -186,6 +188,7 @@ export default function CoinDetailPage() {
         if (data.sources && data.sources[slug]) {
           setSourcePrices(data.sources[slug]);
         }
+        if (data.uniswap) setUniswapData(data.uniswap);
       } catch (e) {
         console.error("Failed to fetch price", e);
       }
@@ -269,6 +272,27 @@ export default function CoinDetailPage() {
   const maxPrice = Math.max(...priceHistory.map(h => h.price), currentPrice);
   const priceRange = maxPrice - minPrice || 0.001;
 
+  // Chart coordinate constants: left margin for Y-axis, plot area bounds
+  const CL = 50, CR = 398, CT = 10, CB = 182, CW = 348, CH = 172;
+  const priceToY = (p: number) => CB - ((p - minPrice) / priceRange) * CH;
+  const indexToX = (i: number) => CL + (i / Math.max(priceHistory.length - 1, 1)) * CW;
+  const segColor = (p: number) => p < 0.999 ? "#ef4444" : p < 0.9995 ? "#f59e0b" : "#22c55e";
+  const yTicks = Array.from({ length: 4 }, (_, i) => minPrice + (i / 3) * priceRange);
+  const pegY = CB - ((1.0 - minPrice) / priceRange) * CH;
+  const showPeg = pegY >= CT - 5 && pegY <= CB + 5;
+
+  // Tooltip state derived for current render
+  const hovPoint = hoveredIdx !== null ? (priceHistory[hoveredIdx] ?? null) : null;
+  const hovX = hovPoint ? indexToX(hoveredIdx!) : 0;
+  const hovY = hovPoint ? priceToY(hovPoint.price) : 0;
+  const tipLeft = hovX > CL + CW / 2;
+  const tbx = tipLeft ? hovX - 86 : hovX + 8;
+  const tby = Math.max(CT + 2, hovY - 26);
+  const hovDateStr = hovPoint ? new Date(hovPoint.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
+  const hovTimeStr = hovPoint ? new Date(hovPoint.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
+
+  const uniswapEntry = (slug === "usdc" || slug === "usdt") ? (uniswapData?.[slug] ?? null) : null;
+
   return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: bg, minHeight: "100vh", paddingBottom: "80px", transition: "background 0.2s ease" }}>
 
@@ -311,21 +335,84 @@ export default function CoinDetailPage() {
           </div>
         </div>
         {priceHistory.length > 1 ? (
-          <svg width="100%" height="80" viewBox={`0 0 ${priceHistory.length} 80`} preserveAspectRatio="none">
+          <svg
+            width="100%" height="200" viewBox="0 0 400 200" preserveAspectRatio="none"
+            style={{ display: "block", cursor: "crosshair" }}
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const lx = ((e.clientX - rect.left) / rect.width) * 400;
+              const rx = lx - CL;
+              if (rx < 0 || rx > CW) { setHoveredIdx(null); return; }
+              setHoveredIdx(Math.max(0, Math.min(priceHistory.length - 1, Math.round((rx / CW) * (priceHistory.length - 1)))));
+            }}
+            onMouseLeave={() => setHoveredIdx(null)}
+            onTouchMove={(e) => {
+              const t = e.touches[0];
+              const rect = e.currentTarget.getBoundingClientRect();
+              const lx = ((t.clientX - rect.left) / rect.width) * 400;
+              const rx = lx - CL;
+              if (rx < 0 || rx > CW) { setHoveredIdx(null); return; }
+              setHoveredIdx(Math.max(0, Math.min(priceHistory.length - 1, Math.round((rx / CW) * (priceHistory.length - 1)))));
+            }}
+            onTouchEnd={() => setHoveredIdx(null)}
+          >
             <defs>
-              <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1a56db" stopOpacity="0.3"/>
-                <stop offset="100%" stopColor="#1a56db" stopOpacity="0"/>
+              <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={dark ? "#ffffff" : "#000000"} stopOpacity="0.05"/>
+                <stop offset="100%" stopColor={dark ? "#ffffff" : "#000000"} stopOpacity="0"/>
               </linearGradient>
             </defs>
+            {/* Horizontal grid lines at Y-axis tick positions */}
+            {yTicks.map((tick, i) => (
+              <line key={i} x1={CL} y1={priceToY(tick)} x2={CR} y2={priceToY(tick)}
+                stroke={dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)"} strokeWidth="1" />
+            ))}
+            {/* Area fill */}
             <path
-              d={`M ${priceHistory.map((h, i) => `${i},${80 - ((h.price - minPrice) / priceRange) * 70}`).join(" L ")} L ${priceHistory.length - 1},80 L 0,80 Z`}
-              fill="url(#chartGrad)"
+              d={`M ${CL},${CB} ${priceHistory.map((h, i) => `L ${indexToX(i)},${priceToY(h.price)}`).join(" ")} L ${indexToX(priceHistory.length - 1)},${CB} Z`}
+              fill="url(#chartFill)"
             />
-            <path
-              d={`M ${priceHistory.map((h, i) => `${i},${80 - ((h.price - minPrice) / priceRange) * 70}`).join(" L ")}`}
-              fill="none" stroke="#1a56db" strokeWidth="1.5"
-            />
+            {/* Peg reference line at $1.0000 */}
+            {showPeg && (
+              <>
+                <line x1={CL} y1={pegY} x2={CR} y2={pegY}
+                  stroke={dark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.2)"}
+                  strokeWidth="1" strokeDasharray="5,4" />
+                <text x={CR - 3} y={pegY - 3} textAnchor="end" fontSize="7"
+                  fill={dark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.3)"}>Peg: $1.0000</text>
+              </>
+            )}
+            {/* Y-axis labels */}
+            {yTicks.map((tick, i) => (
+              <text key={i} x={CL - 5} y={priceToY(tick) + 3} textAnchor="end" fontSize="7"
+                fill={dark ? "#6b7280" : "#9ca3af"}>{tick.toFixed(4)}</text>
+            ))}
+            {/* Y-axis rule */}
+            <line x1={CL} y1={CT} x2={CL} y2={CB}
+              stroke={dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"} strokeWidth="1" />
+            {/* Coloured line: red <0.9990, amber 0.9990–0.9995, green ≥0.9995 */}
+            {priceHistory.slice(0, -1).map((h, i) => (
+              <line key={i}
+                x1={indexToX(i)} y1={priceToY(h.price)}
+                x2={indexToX(i + 1)} y2={priceToY(priceHistory[i + 1].price)}
+                stroke={segColor(h.price)} strokeWidth="1.5" strokeLinecap="round" />
+            ))}
+            {/* Hover tooltip */}
+            {hovPoint && (
+              <>
+                <line x1={hovX} y1={CT} x2={hovX} y2={CB}
+                  stroke={dark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)"}
+                  strokeWidth="1" strokeDasharray="3,3" />
+                <circle cx={hovX} cy={hovY} r="3" fill={segColor(hovPoint.price)} />
+                <rect x={tbx} y={tby} width="84" height="28" rx="4"
+                  fill={dark ? "#1e2a40" : "#ffffff"}
+                  stroke={dark ? "#374151" : "#e5e7eb"} strokeWidth="0.5" />
+                <text x={tbx + 6} y={tby + 11} fontSize="7.5" fontWeight="700"
+                  fill={segColor(hovPoint.price)}>${hovPoint.price.toFixed(5)}</text>
+                <text x={tbx + 6} y={tby + 21} fontSize="7"
+                  fill={dark ? "#6b7280" : "#9ca3af"}>{hovDateStr} {hovTimeStr}</text>
+              </>
+            )}
           </svg>
         ) : (
           <div style={{ fontSize: "12px", color: textSecondary, textAlign: "center", padding: "20px 0" }}>Collecting price history...</div>
@@ -334,15 +421,53 @@ export default function CoinDetailPage() {
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
         <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Source Consensus</div>
-        {Object.entries(sourcePrices).length > 0 ? Object.entries(sourcePrices).map(([source, p]) => (
-          <div key={source} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-            <span style={{ fontSize: "12px", color: textSecondary, textTransform: "capitalize" }}>{source}</span>
-            <span style={{ fontFamily: "monospace", fontSize: "12px", color: textPrimary }}>${(p as number).toFixed(4)}</span>
-          </div>
-        )) : (
+        {Object.keys(sourcePrices).length > 0 ? (
+          <>
+            {Object.entries(sourcePrices).filter(([, p]) => (p as number) > 0).map(([source, p]) => (
+              <div key={source} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                <span style={{ fontSize: "12px", color: textSecondary, textTransform: "capitalize" }}>{source}</span>
+                <span style={{ fontFamily: "monospace", fontSize: "12px", color: textPrimary }}>${(p as number).toFixed(4)}</span>
+              </div>
+            ))}
+            {Object.values(sourcePrices).filter(p => (p as number) > 0).length > 1 && (
+              <div style={{ marginTop: "10px", paddingTop: "10px", borderTop: `1px solid ${cardBorder}`, display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "12px", color: textSecondary }}>Consensus (median)</span>
+                <span style={{ fontFamily: "monospace", fontSize: "12px", fontWeight: "700", color: textPrimary }}>${currentPrice.toFixed(4)}</span>
+              </div>
+            )}
+          </>
+        ) : (
           <div style={{ fontSize: "12px", color: textSecondary }}>Loading sources...</div>
         )}
       </div>
+
+      {uniswapEntry && (
+        <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
+          <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>DEX Divergence</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <span style={{ fontSize: "12px", color: textSecondary }}>Uniswap V3 Pool Price</span>
+            <span style={{ fontFamily: "monospace", fontSize: "12px", color: textPrimary }}>${uniswapEntry.pool_price.toFixed(5)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+            <span style={{ fontSize: "12px", color: textSecondary }}>Divergence vs Consensus</span>
+            <span style={{ fontFamily: "monospace", fontSize: "12px", color: textPrimary }}>{uniswapEntry.divergence_bps} bps</span>
+          </div>
+          {(() => {
+            const bps = uniswapEntry.divergence_bps;
+            const d = bps < 5
+              ? { text: "Tight",    color: "#22c55e", bg: dark ? "#052e16" : "#f0fdf4", border: dark ? "#166534" : "#bbf7d0" }
+              : bps <= 20
+              ? { text: "Moderate", color: "#f59e0b", bg: dark ? "#451a03" : "#fffbeb", border: dark ? "#92400e" : "#fde68a" }
+              : { text: "Wide",     color: "#ef4444", bg: dark ? "#450a0a" : "#fef2f2", border: dark ? "#991b1b" : "#fecaca" };
+            return (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "5px 12px", borderRadius: "8px", background: d.bg, border: `1px solid ${d.border}` }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: d.color, display: "inline-block" }} />
+                <span style={{ fontSize: "12px", fontWeight: "700", color: d.color }}>{d.text}</span>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
         <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Collateralisation</div>
