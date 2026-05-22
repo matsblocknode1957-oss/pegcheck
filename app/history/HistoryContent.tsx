@@ -55,7 +55,7 @@ export default function HistoryContent({ summaryResults, depegEvents }: Props) {
   const navBorder    = dark ? "#1e2a40" : "#eaecf0";
   const divider      = dark ? "#1e2a40" : "#e5e7eb";
 
-  const hallOfFame = [...summaryResults].sort((a, b) => a.atl - b.atl);
+  const hallOfFame = [...summaryResults].sort((a, b) => b.atl - a.atl);
   const mostStable = [...summaryResults]
     .filter((c) => c.avgDev > 0)
     .sort((a, b) => a.avgDev - b.avgDev)
@@ -97,8 +97,8 @@ export default function HistoryContent({ summaryResults, depegEvents }: Props) {
 
       {/* ── Hall of Fame ── */}
       <div style={{ padding: "20px 20px 12px" }}>
-        <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px" }}>All-Time Lows Hall of Fame</div>
-        <div style={{ fontSize: "12px", color: textSecondary, marginTop: "4px" }}>Every coin ranked by lowest price ever recorded, worst first.</div>
+        <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px" }}>Stability Rankings</div>
+        <div style={{ fontSize: "12px", color: textSecondary, marginTop: "4px" }}>Coins ranked by all-time low — #1 never dropped far from peg, worst at the bottom.</div>
       </div>
 
       <div style={{ background: tableHeaderBg, borderTop: `1px solid ${divider}`, borderBottom: `1px solid ${divider}` }}>
