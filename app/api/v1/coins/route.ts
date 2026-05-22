@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { COIN_PEGS } from "@/lib/coinPegs";
+import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const SLUGS = ["usdt","usdc","usds","ethena","pyusd","fdusd","rlusd","tusd","frax","gho","crvusd","lusd","usdp","usdd","mkusd","eurc","dola","alusd","usdx","bold"];
+const SLUGS = ["usdt","usdc","usds","ethena","pyusd","fdusd","rlusd","tusd","frax","gho","crvusd","lusd","usdp","usdd","mkusd","eurc","dola","alusd","bold"];
 
 // Chainlink Proof of Reserve feed contracts (Ethereum Mainnet, 8 decimals)
 const POR_FEEDS: Record<string, string> = {
@@ -71,9 +71,10 @@ export async function GET() {
         const peg = COIN_PEGS[slug] ?? 1.0;
         const deviation = ((price - peg) / peg) * 100;
         const absDeviation = Math.abs(deviation);
+        const { healthy, caution } = getThresholds(slug);
         const status =
-          absDeviation >= 0.5 ? "depegged" :
-          absDeviation >= 0.1 ? "warning" : "stable";
+          absDeviation >= caution * 100 ? "depegged" :
+          absDeviation >= healthy * 100 ? "warning" : "stable";
 
         return {
           slug: data.slug,

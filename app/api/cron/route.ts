@@ -79,7 +79,7 @@ export async function GET() {
 
     // CoinGecko
     const cgRes = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,usdx,bold&vs_currencies=usd"
+      "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold&vs_currencies=usd"
     );
     const cgData = await cgRes.json();
 
@@ -235,7 +235,6 @@ export async function GET() {
       eurc:   median([cgData["euro-coin"]?.usd     ?? 0, dlResults["eurc"]   ?? 0]),
       dola:   median([cgData["dola-usd"]?.usd      ?? 0, dlResults["dola"]   ?? 0]),
       alusd:  median([cgData["alchemix-usd"]?.usd  ?? 0, dlResults["alusd"]  ?? 0]),
-      usdx:   median([cgData["usdx"]?.usd          ?? 0, dlResults["usdx"]   ?? 0]),
       bold:   median([cgData["bold"]?.usd          ?? 0, dlResults["bold"]   ?? 0]),
     };
 
@@ -258,7 +257,6 @@ export async function GET() {
       eurc:   "EURC (Circle)",
       dola:   "DOLA (Inverse Finance)",
       alusd:  "alUSD (Alchemix)",
-      usdx:   "USDx (Synthetix)",
       bold:   "BOLD (Liquity V2)",
     };
 

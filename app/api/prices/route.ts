@@ -80,7 +80,7 @@ async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<nu
 export async function GET() {
   try {
     // Source 1 — CoinGecko
-    const cgIds = "tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,usdx,bold";
+    const cgIds = "tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold";
     const cgRes = await fetch(
       `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd`,
       { next: { revalidate: 60 } }
@@ -195,7 +195,6 @@ export async function GET() {
       eurc:   median([cgData["euro-coin"]?.usd     ?? 0, dlResults["eurc"]   ?? 0]),
       dola:   median([cgData["dola-usd"]?.usd      ?? 0, dlResults["dola"]   ?? 0]),
       alusd:  median([cgData["alchemix-usd"]?.usd  ?? 0, dlResults["alusd"]  ?? 0]),
-      usdx:   median([cgData["usdx"]?.usd          ?? 0, dlResults["usdx"]   ?? 0]),
       bold:   median([cgData["bold"]?.usd          ?? 0, dlResults["bold"]   ?? 0]),
     };
 
@@ -218,7 +217,6 @@ export async function GET() {
       eurc:   { coingecko: cgData["euro-coin"]?.usd      ?? 0, defillama: dlResults["eurc"]   ?? 0 },
       dola:   { coingecko: cgData["dola-usd"]?.usd       ?? 0, defillama: dlResults["dola"]   ?? 0 },
       alusd:  { coingecko: cgData["alchemix-usd"]?.usd   ?? 0, defillama: dlResults["alusd"]  ?? 0 },
-      usdx:   { coingecko: cgData["usdx"]?.usd           ?? 0, defillama: dlResults["usdx"]   ?? 0 },
       bold:   { coingecko: cgData["bold"]?.usd           ?? 0, defillama: dlResults["bold"]   ?? 0 },
     };
 

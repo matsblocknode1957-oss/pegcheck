@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer,
 } from "recharts";
-import { COIN_PEGS } from "@/lib/coinPegs";
+import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 
 interface CoinOption {
   slug: string;
@@ -51,6 +51,7 @@ export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
   }, [selectedSlug]);
 
   const peg = COIN_PEGS[selectedSlug] ?? 1.0;
+  const { healthy: healthyT, caution: cautionT } = getThresholds(selectedSlug);
   const prices = chartData.map((d) => d.price);
   const dataMin = prices.length ? Math.min(...prices) : peg * 0.9985;
   const dataMax = prices.length ? Math.max(...prices) : peg * 1.0015;
@@ -65,7 +66,7 @@ export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
     const pt: ChartPoint = payload[0].payload;
     const price = Number(payload[0].value);
     const diff = Math.abs(price - peg) / peg;
-    const priceColor = diff > 0.005 ? "#dc2626" : diff > 0.001 ? "#d97706" : "#16a34a";
+    const priceColor = diff > cautionT ? "#dc2626" : diff > healthyT ? "#d97706" : "#16a34a";
     return (
       <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: "8px", padding: "8px 12px" }}>
         <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "4px" }}>

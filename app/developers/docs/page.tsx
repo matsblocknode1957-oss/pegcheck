@@ -32,7 +32,7 @@ export default function DocsPage() {
         <h2 className="text-lg font-semibold mb-1">Supported stablecoins</h2>
         <p className="text-gray-400 text-sm mb-4">Use these slugs in any endpoint that accepts a <span className="font-mono text-gray-300">[slug]</span> parameter.</p>
         <div className="grid grid-cols-2 gap-2">
-          {["usdt", "usdc", "usds", "ethena", "pyusd", "fdusd", "rlusd", "tusd", "frax", "gho", "crvusd", "lusd", "usdp", "usdd", "mkusd", "eurc", "dola", "alusd", "usdx", "bold"].map((slug) => (
+          {["usdt", "usdc", "usds", "ethena", "pyusd", "fdusd", "rlusd", "tusd", "frax", "gho", "crvusd", "lusd", "usdp", "usdd", "mkusd", "eurc", "dola", "alusd", "bold"].map((slug) => (
             <div key={slug} className="bg-[#0d1117] rounded-lg px-3 py-2 font-mono text-sm text-blue-400">{slug}</div>
           ))}
         </div>

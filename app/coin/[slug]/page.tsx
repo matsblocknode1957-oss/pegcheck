@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { COIN_PEGS } from "@/lib/coinPegs";
+import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 
 const COIN_DATA: Record<string, {
   name: string; issuer: string; icon: string; bgColor: string;
@@ -191,16 +191,6 @@ const COIN_DATA: Record<string, {
     description: "alUSD is a self-repaying synthetic stablecoin from Alchemix. It is minted against yield-bearing collateral and repays itself over time as the underlying collateral generates yield.",
     contractAddress: "0xBC6DA0FE9aD5f3b0d58160288917AA56653660e9",
   },
-  usdx: {
-    name: "USDx", issuer: "Synthetix", icon: "/icons/usdx.png", bgColor: "#0c0e16",
-    collateral: "SNX (staked, highly over-collateralised)",
-    collateralRatio: ">500%",
-    reserveAudit: "On-chain (public)",
-    auditDate: "Real-time",
-    auditScore: 68,
-    description: "USDx (formerly sUSD) is the native stablecoin of Synthetix, backed by staked SNX tokens at very high collateral ratios. It is subject to SNX price volatility and has occasionally traded at a discount.",
-    contractAddress: "0x57Ab1ec28D129707052df4dF418D58a2D46d5f51",
-  },
   bold: {
     name: "BOLD", issuer: "Liquity V2", icon: "/icons/bold.svg", bgColor: "#0f766e",
     collateral: "ETH + Liquid Staking Tokens",
@@ -342,11 +332,12 @@ export default function CoinDetailPage() {
   }, [slug, chartRange]);
 
   const coinPeg = COIN_PEGS[slug] ?? 1.0;
+  const { healthy: healthyT, caution: cautionT } = getThresholds(slug);
 
   const getStatus = (p: number) => {
     const diff = Math.abs(p - coinPeg) / coinPeg;
-    if (diff <= 0.001) return "Healthy";
-    if (diff <= 0.005) return "Caution";
+    if (diff <= healthyT) return "Healthy";
+    if (diff <= cautionT) return "Caution";
     return "Depeg";
   };
 
@@ -402,8 +393,8 @@ export default function CoinDetailPage() {
   const indexToX = (i: number) => CL + (i / Math.max(priceHistory.length - 1, 1)) * CW;
   const segColor = (p: number) => {
     const diff = Math.abs(p - coinPeg) / coinPeg;
-    if (diff > 0.005) return "#ef4444";
-    if (diff > 0.001) return "#f59e0b";
+    if (diff > cautionT) return "#ef4444";
+    if (diff > healthyT) return "#f59e0b";
     return "#22c55e";
   };
   const yTicks = Array.from({ length: 4 }, (_, i) => minPrice + (i / 3) * priceRange);

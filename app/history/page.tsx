@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Metadata } from "next";
 import HistoryChart from "./HistoryChart";
-import { COIN_PEGS } from "@/lib/coinPegs";
+import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 
 export const revalidate = 300;
 
@@ -29,7 +29,6 @@ const COINS = [
   { slug: "eurc",   name: "EURC",   icon: "/icons/eurc.png",   bgColor: "#2563eb" },
   { slug: "dola",   name: "DOLA",   icon: "/icons/dola.png",   bgColor: "#1e3a5f" },
   { slug: "alusd",  name: "alUSD",  icon: "/icons/alusd.png",  bgColor: "#f59e0b" },
-  { slug: "usdx",   name: "USDx",   icon: "/icons/usdx.png",   bgColor: "#0c0e16" },
   { slug: "bold",   name: "BOLD",   icon: "/icons/bold.svg",   bgColor: "#0f766e" },
 ] as const;
 
@@ -53,10 +52,11 @@ interface DepegEvent {
   recovered: boolean;
 }
 
-function atlBadge(atl: number, peg: number): { color: string; bg: string; label: string } {
+function atlBadge(atl: number, peg: number, slug: string): { color: string; bg: string; label: string } {
+  const { healthy, caution } = getThresholds(slug);
   const diff = Math.abs(atl - peg) / peg;
-  if (diff <= 0.001) return { color: "#16a34a", bg: "#052e16", label: "Stable" };
-  if (diff <= 0.005) return { color: "#d97706", bg: "#451a03", label: "Caution" };
+  if (diff <= healthy) return { color: "#16a34a", bg: "#052e16", label: "Stable" };
+  if (diff <= caution) return { color: "#d97706", bg: "#451a03", label: "Caution" };
   return { color: "#dc2626", bg: "#450a0a", label: "Depeg" };
 }
 
@@ -162,7 +162,7 @@ export default async function HistoryPage() {
       .from("price_history")
       .select("slug, price, created_at")
       .eq("slug", "eurc")
-      .lt("price", 1.0794)
+      .lt("price", 1.1287)
       .order("created_at", { ascending: true }),
   ]);
 
@@ -204,7 +204,7 @@ export default async function HistoryPage() {
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", padding: "0 20px 24px" }}>
         {summaryResults.map((coin) => {
-          const badge = atlBadge(coin.atl, COIN_PEGS[coin.slug] ?? 1.0);
+          const badge = atlBadge(coin.atl, COIN_PEGS[coin.slug] ?? 1.0, coin.slug);
           return (
             <div
               key={coin.slug}

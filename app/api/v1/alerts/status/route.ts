@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { COIN_PEGS } from "@/lib/coinPegs";
+import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const SLUGS = ["usdt","usdc","usds","ethena","pyusd","fdusd","rlusd","tusd","frax","gho","crvusd","lusd","usdp","usdd","mkusd","eurc","dola","alusd","usdx","bold"];
+const SLUGS = ["usdt","usdc","usds","ethena","pyusd","fdusd","rlusd","tusd","frax","gho","crvusd","lusd","usdp","usdd","mkusd","eurc","dola","alusd","bold"];
 
 export async function GET() {
   try {
@@ -28,13 +28,14 @@ export async function GET() {
       const peg = COIN_PEGS[slug] ?? 1.0;
       const deviation = ((price - peg) / peg) * 100;
       const absDeviation = Math.abs(deviation);
+      const { healthy, caution } = getThresholds(slug);
 
-      if (absDeviation >= 0.1) {
+      if (absDeviation >= healthy * 100) {
         alerts.push({
           coin: slug.toUpperCase(),
           price,
           deviation: parseFloat(deviation.toFixed(4)),
-          severity: absDeviation >= 0.5 ? "depegged" : "warning",
+          severity: absDeviation >= caution * 100 ? "depegged" : "warning",
           triggered_at: row.created_at,
         });
       }
