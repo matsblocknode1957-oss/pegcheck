@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer,
 } from "recharts";
+import { COIN_PEGS } from "@/lib/coinPegs";
 
 interface CoinOption {
   slug: string;
@@ -49,11 +50,12 @@ export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
     return () => { cancelled = true; };
   }, [selectedSlug]);
 
+  const peg = COIN_PEGS[selectedSlug] ?? 1.0;
   const prices = chartData.map((d) => d.price);
-  const dataMin = prices.length ? Math.min(...prices) : 0.998;
-  const dataMax = prices.length ? Math.max(...prices) : 1.002;
-  const yMin = parseFloat(Math.min(dataMin - 0.0005, 0.9985).toFixed(4));
-  const yMax = parseFloat(Math.max(dataMax + 0.0005, 1.0015).toFixed(4));
+  const dataMin = prices.length ? Math.min(...prices) : peg * 0.9985;
+  const dataMax = prices.length ? Math.max(...prices) : peg * 1.0015;
+  const yMin = parseFloat(Math.min(dataMin - 0.0005, peg * 0.9985).toFixed(4));
+  const yMax = parseFloat(Math.max(dataMax + 0.0005, peg * 1.0015).toFixed(4));
 
   const formatXTick = (iso: string) =>
     new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" });
@@ -62,7 +64,8 @@ export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
     if (!active || !payload?.length) return null;
     const pt: ChartPoint = payload[0].payload;
     const price = Number(payload[0].value);
-    const priceColor = price < 0.995 ? "#dc2626" : price < 0.999 ? "#d97706" : "#16a34a";
+    const diff = Math.abs(price - peg) / peg;
+    const priceColor = diff > 0.005 ? "#dc2626" : diff > 0.001 ? "#d97706" : "#16a34a";
     return (
       <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: "8px", padding: "8px 12px" }}>
         <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "4px" }}>
@@ -143,7 +146,7 @@ export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
               />
               <Tooltip content={<CustomTooltip />} />
               <ReferenceLine
-                y={1.0}
+                y={peg}
                 stroke="#374151"
                 strokeDasharray="5 4"
               />

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { COIN_PEGS } from "@/lib/coinPegs";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,15 +25,16 @@ export async function GET() {
 
       const row = data[0];
       const price = Number(row.price);
-      const deviation = ((price - 1) * 100);
+      const peg = COIN_PEGS[slug] ?? 1.0;
+      const deviation = ((price - peg) / peg) * 100;
       const absDeviation = Math.abs(deviation);
 
-      if (absDeviation >= 1) {
+      if (absDeviation >= 0.1) {
         alerts.push({
           coin: slug.toUpperCase(),
           price,
           deviation: parseFloat(deviation.toFixed(4)),
-          severity: absDeviation >= 3 ? "depegged" : "warning",
+          severity: absDeviation >= 0.5 ? "depegged" : "warning",
           triggered_at: row.created_at,
         });
       }

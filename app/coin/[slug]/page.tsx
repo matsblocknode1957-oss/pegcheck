@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { COIN_PEGS } from "@/lib/coinPegs";
 
 const COIN_DATA: Record<string, {
   name: string; issuer: string; icon: string; bgColor: string;
@@ -340,9 +341,12 @@ export default function CoinDetailPage() {
     fetchHistory();
   }, [slug, chartRange]);
 
+  const coinPeg = COIN_PEGS[slug] ?? 1.0;
+
   const getStatus = (p: number) => {
-    if (p >= 0.999) return "Healthy";
-    if (p >= 0.995) return "Caution";
+    const diff = Math.abs(p - coinPeg) / coinPeg;
+    if (diff <= 0.001) return "Healthy";
+    if (diff <= 0.005) return "Caution";
     return "Depeg";
   };
 
@@ -396,9 +400,14 @@ export default function CoinDetailPage() {
   const CL = 50, CR = 398, CT = 10, CB = 182, CW = 348, CH = 172;
   const priceToY = (p: number) => CB - ((p - minPrice) / priceRange) * CH;
   const indexToX = (i: number) => CL + (i / Math.max(priceHistory.length - 1, 1)) * CW;
-  const segColor = (p: number) => p < 0.999 ? "#ef4444" : p < 0.9995 ? "#f59e0b" : "#22c55e";
+  const segColor = (p: number) => {
+    const diff = Math.abs(p - coinPeg) / coinPeg;
+    if (diff > 0.005) return "#ef4444";
+    if (diff > 0.001) return "#f59e0b";
+    return "#22c55e";
+  };
   const yTicks = Array.from({ length: 4 }, (_, i) => minPrice + (i / 3) * priceRange);
-  const pegY = CB - ((1.0 - minPrice) / priceRange) * CH;
+  const pegY = CB - ((coinPeg - minPrice) / priceRange) * CH;
   const showPeg = pegY >= CT - 5 && pegY <= CB + 5;
 
   // Tooltip state derived for current render

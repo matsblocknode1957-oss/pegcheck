@@ -2,6 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
+import { COIN_PEGS } from "@/lib/coinPegs";
 
 export default function AlertsPage() {
   const [email, setEmail] = useState("");
@@ -53,9 +54,10 @@ export default function AlertsPage() {
     { name: "BOLD",   issuer: "Liquity V2",      slug: "bold",   icon: "/icons/bold.svg",   bgColor: "#0f766e" },
   ];
 
-  const getStatus = (price: number) => {
-    if (price >= 0.999) return "Healthy";
-    if (price >= 0.995) return "Caution";
+  const getStatus = (price: number, peg: number) => {
+    const diff = Math.abs(price - peg) / peg;
+    if (diff <= 0.001) return "Healthy";
+    if (diff <= 0.005) return "Caution";
     return "Depeg";
   };
 
@@ -77,8 +79,8 @@ export default function AlertsPage() {
   };
 
   const depegged = coins.filter((c) => {
-    const price = prices[c.slug] ?? 1.0;
-    return getStatus(price) !== "Healthy";
+    const price = prices[c.slug] ?? (COIN_PEGS[c.slug] ?? 1.0);
+    return getStatus(price, COIN_PEGS[c.slug] ?? 1.0) !== "Healthy";
   });
 
   const handleUpgrade = async () => {
@@ -144,8 +146,8 @@ export default function AlertsPage() {
           </div>
         ) : (
           depegged.map((coin) => {
-            const price = prices[coin.slug] ?? 1.0;
-            const status = getStatus(price);
+            const price = prices[coin.slug] ?? (COIN_PEGS[coin.slug] ?? 1.0);
+            const status = getStatus(price, COIN_PEGS[coin.slug] ?? 1.0);
             return (
               <div key={coin.slug} style={{ background: cardBg, padding: "14px 16px", borderTop: `1px solid ${cardBorder}`, display: "flex", alignItems: "center", gap: "12px" }}>
                 <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { COIN_PEGS } from "@/lib/coinPegs";
 
 function median(values: number[]): number {
   const sorted = values.filter(v => v > 0.5 && v < 1.5).sort((a, b) => a - b);
@@ -268,10 +269,10 @@ export async function GET() {
     else console.log("Price history saved:", snapshots.length, "rows");
 
     // Check for Depegs
-    const depegged = Object.entries(prices).filter(([_, price]) => price < 0.975);
+    const depegged = Object.entries(prices).filter(([slug, price]) => price < (COIN_PEGS[slug] ?? 1.0) * 0.975);
 
-    // Log confirmed depegs (< 0.975) on-chain via Sepolia smart contract
-    const depeggedOnly = depegged.filter(([_, price]) => price < 0.975);
+    // Log confirmed depegs (< peg * 0.975) on-chain via Sepolia smart contract
+    const depeggedOnly = depegged.filter(([slug, price]) => price < (COIN_PEGS[slug] ?? 1.0) * 0.975);
     if (depeggedOnly.length > 0) {
       const sepoliaRpc = process.env.SEPOLIA_RPC_URL ?? "";
       const deployerKey = process.env.DEPLOYER_PRIVATE_KEY ?? "";

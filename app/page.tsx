@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { COIN_PEGS } from "@/lib/coinPegs";
 
 export default function Home() {
   const stablecoins = [
@@ -20,7 +21,7 @@ export default function Home() {
     { name: "USDP",   issuer: "Paxos",           peg: 1.0,   icon: "/icons/usdp.png",   slug: "usdp",   bgColor: "#00735b" },
     { name: "USDD",   issuer: "TRON DAO",        peg: 1.0,   icon: "/icons/usdd.png",   slug: "usdd",   bgColor: "#eb0029" },
     { name: "mkUSD",  issuer: "Prisma Finance",  peg: 1.0,   icon: "/icons/mkusd.png",  slug: "mkusd",  bgColor: "#6b21a8" },
-    { name: "EURC",   issuer: "Circle",          peg: 1.0,   icon: "/icons/eurc.png",   slug: "eurc",   bgColor: "#2563eb" },
+    { name: "EURC",   issuer: "Circle",          peg: 1.08,  icon: "/icons/eurc.png",   slug: "eurc",   bgColor: "#2563eb" },
     { name: "DOLA",   issuer: "Inverse Finance", peg: 1.0,   icon: "/icons/dola.png",   slug: "dola",   bgColor: "#1e3a5f" },
     { name: "alUSD",  issuer: "Alchemix",        peg: 1.0,   icon: "/icons/alusd.png",  slug: "alusd",  bgColor: "#f59e0b" },
     { name: "USDx",   issuer: "Synthetix",       peg: 1.0,   icon: "/icons/usdx.png",   slug: "usdx",   bgColor: "#0c0e16" },
@@ -89,9 +90,10 @@ export default function Home() {
 
   const getLivePrice = (slug: string, fallback: number) => prices[slug] ?? fallback;
 
-  const getStatus = (price: number) => {
-    if (price >= 0.999) return "Healthy";
-    if (price >= 0.995) return "Caution";
+  const getStatus = (price: number, peg: number) => {
+    const diff = Math.abs(price - peg) / peg;
+    if (diff <= 0.001) return "Healthy";
+    if (diff <= 0.005) return "Caution";
     return "Depeg";
   };
 
@@ -112,9 +114,9 @@ export default function Home() {
     return "#fef2f2";
   };
 
-  const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg)) === "Healthy").length;
-  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg)) === "Caution").length;
-  const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg)) === "Depeg").length;
+  const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), COIN_PEGS[c.slug] ?? 1.0) === "Healthy").length;
+  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), COIN_PEGS[c.slug] ?? 1.0) === "Caution").length;
+  const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), COIN_PEGS[c.slug] ?? 1.0) === "Depeg").length;
 
   const bg = dark ? "#0a0e1a" : "#f8f9fb";
   const headerBg = dark ? "#0d1628" : "#ffffff";
@@ -178,7 +180,7 @@ export default function Home() {
       <div style={{ background: cardBg, transition: "background 0.2s ease" }}>
         {stablecoins.map((coin) => {
           const livePrice = getLivePrice(coin.slug, coin.peg);
-          const liveStatus = getStatus(livePrice);
+          const liveStatus = getStatus(livePrice, COIN_PEGS[coin.slug] ?? 1.0);
           return (
             <Link
               key={coin.name}

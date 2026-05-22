@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Metadata } from "next";
 import HistoryChart from "./HistoryChart";
+import { COIN_PEGS } from "@/lib/coinPegs";
 
 export const revalidate = 300;
 
@@ -52,9 +53,10 @@ interface DepegEvent {
   recovered: boolean;
 }
 
-function atlBadge(atl: number): { color: string; bg: string; label: string } {
-  if (atl >= 0.999) return { color: "#16a34a", bg: "#052e16", label: "Stable" };
-  if (atl >= 0.995) return { color: "#d97706", bg: "#451a03", label: "Caution" };
+function atlBadge(atl: number, peg: number): { color: string; bg: string; label: string } {
+  const diff = Math.abs(atl - peg) / peg;
+  if (diff <= 0.001) return { color: "#16a34a", bg: "#052e16", label: "Stable" };
+  if (diff <= 0.005) return { color: "#d97706", bg: "#451a03", label: "Caution" };
   return { color: "#dc2626", bg: "#450a0a", label: "Depeg" };
 }
 
@@ -131,7 +133,7 @@ export default async function HistoryPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const [summaryResults, depegResult] = await Promise.all([
+  const [summaryResults, usdDepegResult, eurcDepegResult] = await Promise.all([
     Promise.all(
       COINS.map(async (coin) => {
         const { data } = await supabase
@@ -145,7 +147,7 @@ export default async function HistoryPage() {
           name: coin.name,
           icon: coin.icon,
           bgColor: coin.bgColor,
-          atl: data?.[0]?.price ?? 1.0,
+          atl: data?.[0]?.price ?? (COIN_PEGS[coin.slug] ?? 1.0),
           atlDate: data?.[0]?.created_at ?? null,
         } as SummaryItem;
       })
@@ -153,11 +155,22 @@ export default async function HistoryPage() {
     supabase
       .from("price_history")
       .select("slug, price, created_at")
+      .neq("slug", "eurc")
       .lt("price", 0.999)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("price_history")
+      .select("slug, price, created_at")
+      .eq("slug", "eurc")
+      .lt("price", 1.0794)
       .order("created_at", { ascending: true }),
   ]);
 
-  const depegEvents = groupDepegEvents(depegResult.data ?? []);
+  const allDepegRows = [
+    ...(usdDepegResult.data ?? []),
+    ...(eurcDepegResult.data ?? []),
+  ];
+  const depegEvents = groupDepegEvents(allDepegRows);
 
   const bg = "#0a0e1a";
   const headerBg = "#0d1628";
@@ -191,7 +204,7 @@ export default async function HistoryPage() {
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", padding: "0 20px 24px" }}>
         {summaryResults.map((coin) => {
-          const badge = atlBadge(coin.atl);
+          const badge = atlBadge(coin.atl, COIN_PEGS[coin.slug] ?? 1.0);
           return (
             <div
               key={coin.slug}

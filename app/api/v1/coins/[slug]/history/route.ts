@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { COIN_PEGS } from "@/lib/coinPegs";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,12 +38,14 @@ export async function GET(
       );
     }
 
+    const peg = COIN_PEGS[slug] ?? 1.0;
     const history = data.map((row) => {
       const price = Number(row.price);
-      const deviation = ((price - 1) * 100);
+      const deviation = ((price - peg) / peg) * 100;
+      const absDeviation = Math.abs(deviation);
       const status =
-        Math.abs(deviation) >= 3 ? "depegged" :
-        Math.abs(deviation) >= 1 ? "warning" : "stable";
+        absDeviation >= 0.5 ? "depegged" :
+        absDeviation >= 0.1 ? "warning" : "stable";
 
       return {
         timestamp: row.created_at,
