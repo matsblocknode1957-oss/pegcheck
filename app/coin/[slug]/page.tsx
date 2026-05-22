@@ -266,6 +266,7 @@ export default function CoinDetailPage() {
   const coin = COIN_DATA[slug];
 
   const [price, setPrice] = useState<number | null>(null);
+  const [eurUsd, setEurUsd] = useState(1.13);
   const [priceHistory, setPriceHistory] = useState<{ created_at: string; price: number }[]>([]);
   const [chartRange, setChartRange] = useState<7 | 30 | 90>(7);
   const [sourcePrices, setSourcePrices] = useState<Record<string, number>>({});
@@ -293,6 +294,7 @@ export default function CoinDetailPage() {
         const data = await res.json();
         if (data.prices && data.prices[slug]) {
           setPrice(data.prices[slug]);
+          if (data.eurUsd) setEurUsd(data.eurUsd);
           const now = new Date();
           setLastUpdated(now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
         }
@@ -331,7 +333,7 @@ export default function CoinDetailPage() {
     fetchHistory();
   }, [slug, chartRange]);
 
-  const coinPeg = COIN_PEGS[slug] ?? 1.0;
+  const coinPeg = slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
   const { healthy: healthyT, caution: cautionT } = getThresholds(slug);
 
   const getStatus = (p: number) => {
@@ -439,7 +441,7 @@ export default function CoinDetailPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <div style={{ fontSize: "32px", fontWeight: "800", fontFamily: "monospace", color: textPrimary }}>${currentPrice.toFixed(4)}</div>
-            <div style={{ fontSize: "11px", color: textSecondary, marginTop: "2px" }}>Target: $1.0000</div>
+            <div style={{ fontSize: "11px", color: textSecondary, marginTop: "2px" }}>Target: ${coinPeg.toFixed(4)}</div>
           </div>
           <span style={{ padding: "6px 14px", borderRadius: "20px", fontSize: "13px", fontWeight: "700", background: statusBg(status), color: statusColor(status) }}>{status}</span>
         </div>

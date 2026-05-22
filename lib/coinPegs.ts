@@ -21,7 +21,8 @@ export const COIN_PEGS: Record<string, number> = {
 };
 
 export const COIN_THRESHOLDS: Record<string, { healthy: number; caution: number }> = {
-  lusd: { healthy: 0.005, caution: 0.015 },
+  lusd:  { healthy: 0.005, caution: 0.015 },
+  mkusd: { healthy: 0.005, caution: 0.015 },
 };
 
 export const DEFAULT_THRESHOLDS = { healthy: 0.001, caution: 0.005 };

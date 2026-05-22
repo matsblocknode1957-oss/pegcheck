@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
+import { fetchEurUsd } from "@/lib/fetchEurUsd";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -74,7 +75,7 @@ export async function GET(
 
     const row = data[0];
     const price = Number(row.price);
-    const peg = COIN_PEGS[slug] ?? 1.0;
+    const peg = slug === "eurc" ? await fetchEurUsd() : (COIN_PEGS[slug] ?? 1.0);
     const deviation = ((price - peg) / peg) * 100;
     const absDeviation = Math.abs(deviation);
     const { healthy, caution } = getThresholds(slug);

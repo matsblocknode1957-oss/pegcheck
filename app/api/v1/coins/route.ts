@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
+import { fetchEurUsd } from "@/lib/fetchEurUsd";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,6 +45,9 @@ async function fetchChainlinkPoR(
 
 export async function GET() {
   try {
+    const eurUsd = await fetchEurUsd();
+    const effectivePeg = (slug: string) => slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
+
     // Fetch PoR data in parallel with coin price queries
     const rpcUrl = process.env.ALCHEMY_RPC_URL ?? "";
     const porResults: Record<string, { reserves: number; updated_at: string } | null> = {};
@@ -68,7 +72,7 @@ export async function GET() {
         if (error || !data) return null;
 
         const price = Number(data.price);
-        const peg = COIN_PEGS[slug] ?? 1.0;
+        const peg = effectivePeg(slug);
         const deviation = ((price - peg) / peg) * 100;
         const absDeviation = Math.abs(deviation);
         const { healthy, caution } = getThresholds(slug);

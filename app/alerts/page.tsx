@@ -7,6 +7,7 @@ import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 export default function AlertsPage() {
   const [email, setEmail] = useState("");
   const [prices, setPrices] = useState<Record<string, number>>({});
+  const [eurUsd, setEurUsd] = useState(1.13);
   const [upgrading, setUpgrading] = useState(false);
   const [dark, setDark] = useState(() => {
     if (typeof window !== "undefined") {
@@ -27,7 +28,7 @@ export default function AlertsPage() {
   useEffect(() => {
     fetch("/api/prices")
       .then((r) => r.json())
-      .then((d) => { if (d.prices) setPrices(d.prices); })
+      .then((d) => { if (d.prices) setPrices(d.prices); if (d.eurUsd) setEurUsd(d.eurUsd); })
       .catch(() => {});
   }, []);
 
@@ -52,6 +53,8 @@ export default function AlertsPage() {
     { name: "alUSD",  issuer: "Alchemix",        slug: "alusd",  icon: "/icons/alusd.png",  bgColor: "#f59e0b" },
     { name: "BOLD",   issuer: "Liquity V2",      slug: "bold",   icon: "/icons/bold.svg",   bgColor: "#0f766e" },
   ];
+
+  const getEffectivePeg = (slug: string) => slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
 
   const getStatus = (price: number, peg: number, slug = '') => {
     const { healthy, caution } = getThresholds(slug);
@@ -79,8 +82,8 @@ export default function AlertsPage() {
   };
 
   const depegged = coins.filter((c) => {
-    const price = prices[c.slug] ?? (COIN_PEGS[c.slug] ?? 1.0);
-    return getStatus(price, COIN_PEGS[c.slug] ?? 1.0, c.slug) !== "Healthy";
+    const price = prices[c.slug] ?? getEffectivePeg(c.slug);
+    return getStatus(price, getEffectivePeg(c.slug), c.slug) !== "Healthy";
   });
 
   const handleUpgrade = async () => {
@@ -146,8 +149,8 @@ export default function AlertsPage() {
           </div>
         ) : (
           depegged.map((coin) => {
-            const price = prices[coin.slug] ?? (COIN_PEGS[coin.slug] ?? 1.0);
-            const status = getStatus(price, COIN_PEGS[coin.slug] ?? 1.0, coin.slug);
+            const price = prices[coin.slug] ?? getEffectivePeg(coin.slug);
+            const status = getStatus(price, getEffectivePeg(coin.slug), coin.slug);
             return (
               <div key={coin.slug} style={{ background: cardBg, padding: "14px 16px", borderTop: `1px solid ${cardBorder}`, display: "flex", alignItems: "center", gap: "12px" }}>
                 <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>

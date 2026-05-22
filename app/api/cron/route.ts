@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { COIN_PEGS } from "@/lib/coinPegs";
+import { fetchEurUsd } from "@/lib/fetchEurUsd";
 
 function median(values: number[]): number {
   const sorted = values.filter(v => v > 0.5 && v < 1.5).sort((a, b) => a - b);
@@ -76,6 +77,9 @@ export async function GET() {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    const eurUsd = await fetchEurUsd();
+    const effectivePeg = (slug: string) => slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
 
     // CoinGecko
     const cgRes = await fetch(
@@ -267,10 +271,10 @@ export async function GET() {
     else console.log("Price history saved:", snapshots.length, "rows");
 
     // Check for Depegs
-    const depegged = Object.entries(prices).filter(([slug, price]) => price < (COIN_PEGS[slug] ?? 1.0) * 0.975);
+    const depegged = Object.entries(prices).filter(([slug, price]) => price < effectivePeg(slug) * 0.975);
 
     // Log confirmed depegs (< peg * 0.975) on-chain via Sepolia smart contract
-    const depeggedOnly = depegged.filter(([slug, price]) => price < (COIN_PEGS[slug] ?? 1.0) * 0.975);
+    const depeggedOnly = depegged.filter(([slug, price]) => price < effectivePeg(slug) * 0.975);
     if (depeggedOnly.length > 0) {
       const sepoliaRpc = process.env.SEPOLIA_RPC_URL ?? "";
       const deployerKey = process.env.DEPLOYER_PRIVATE_KEY ?? "";

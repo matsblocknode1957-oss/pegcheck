@@ -28,6 +28,7 @@ export default function Home() {
   ];
 
   const [prices, setPrices] = useState<Record<string, number>>({});
+  const [eurUsd, setEurUsd] = useState(1.13);
   const [lastUpdated, setLastUpdated] = useState<string>("Loading...");
   const [hoveredCoin, setHoveredCoin] = useState<string | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -54,6 +55,7 @@ export default function Home() {
         const data = await res.json();
         if (data.prices) {
           setPrices(data.prices);
+          if (data.eurUsd) setEurUsd(data.eurUsd);
           const now = new Date();
           setLastUpdated(now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
         }
@@ -88,6 +90,7 @@ export default function Home() {
   };
 
   const getLivePrice = (slug: string, fallback: number) => prices[slug] ?? fallback;
+  const getEffectivePeg = (slug: string) => slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
 
   const getStatus = (price: number, peg: number, slug = '') => {
     const { healthy, caution } = getThresholds(slug);
@@ -114,9 +117,9 @@ export default function Home() {
     return "#fef2f2";
   };
 
-  const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), COIN_PEGS[c.slug] ?? 1.0, c.slug) === "Healthy").length;
-  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), COIN_PEGS[c.slug] ?? 1.0, c.slug) === "Caution").length;
-  const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), COIN_PEGS[c.slug] ?? 1.0, c.slug) === "Depeg").length;
+  const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), getEffectivePeg(c.slug), c.slug) === "Healthy").length;
+  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), getEffectivePeg(c.slug), c.slug) === "Caution").length;
+  const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), getEffectivePeg(c.slug), c.slug) === "Depeg").length;
 
   const bg = dark ? "#0a0e1a" : "#f8f9fb";
   const headerBg = dark ? "#0d1628" : "#ffffff";
@@ -180,7 +183,7 @@ export default function Home() {
       <div style={{ background: cardBg, transition: "background 0.2s ease" }}>
         {stablecoins.map((coin) => {
           const livePrice = getLivePrice(coin.slug, coin.peg);
-          const liveStatus = getStatus(livePrice, COIN_PEGS[coin.slug] ?? 1.0, coin.slug);
+          const liveStatus = getStatus(livePrice, getEffectivePeg(coin.slug), coin.slug);
           return (
             <Link
               key={coin.name}
