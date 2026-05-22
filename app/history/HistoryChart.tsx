@@ -5,28 +5,22 @@ import {
 } from "recharts";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 
-interface CoinOption {
-  slug: string;
-  name: string;
-}
+interface CoinOption { slug: string; name: string; }
+interface ChartPoint { time: string; price: number; }
 
-interface ChartPoint {
-  time: string;
-  price: number;
-}
-
-const bg = "#0a0e1a";
-const cardBg = "#0d1628";
-const cardBorder = "#1e2a40";
-const textPrimary = "#f9fafb";
-const textSecondary = "#6b7280";
-const inputBg = "#111f38";
-
-export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
+export default function HistoryChart({ coins, dark }: { coins: CoinOption[]; dark: boolean }) {
   const [selectedSlug, setSelectedSlug] = useState(coins[0]?.slug ?? "usdt");
+  const [days, setDays] = useState<7 | 30 | 90>(30);
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const cardBg     = dark ? "#0d1628" : "#ffffff";
+  const cardBorder = dark ? "#1e2a40" : "#e5e7eb";
+  const textPrimary    = dark ? "#f9fafb" : "#111827";
+  const textSecondary  = dark ? "#6b7280" : "#6b7280";
+  const inputBg    = dark ? "#111f38" : "#f3f4f6";
+  const gridColor  = dark ? "#1e2a40" : "#e5e7eb";
 
   useEffect(() => {
     let cancelled = false;
@@ -34,7 +28,7 @@ export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/history/chart?slug=${selectedSlug}`);
+        const res = await fetch(`/api/history/chart?slug=${selectedSlug}&days=${days}`);
         const json = await res.json();
         if (!cancelled) {
           if (json.error) throw new Error(json.error);
@@ -48,7 +42,7 @@ export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
     };
     fetchData();
     return () => { cancelled = true; };
-  }, [selectedSlug]);
+  }, [selectedSlug, days]);
 
   const peg = COIN_PEGS[selectedSlug] ?? 1.0;
   const { healthy: healthyT, caution: cautionT } = getThresholds(selectedSlug);
@@ -59,7 +53,7 @@ export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
   const yMax = parseFloat(Math.max(dataMax + 0.0005, peg * 1.0015).toFixed(4));
 
   const formatXTick = (iso: string) =>
-    new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" });
+    new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
@@ -81,35 +75,59 @@ export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
 
   return (
     <div>
-      <select
-        value={selectedSlug}
-        onChange={(e) => setSelectedSlug(e.target.value)}
-        style={{
-          background: inputBg,
-          border: `1px solid ${cardBorder}`,
-          borderRadius: "8px",
-          color: textPrimary,
-          fontSize: "13px",
-          fontWeight: "600",
-          padding: "8px 12px",
-          marginBottom: "14px",
-          cursor: "pointer",
-          outline: "none",
-          fontFamily: "'Segoe UI', sans-serif",
-          appearance: "none",
-          WebkitAppearance: "none",
-          paddingRight: "32px",
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "right 10px center",
-        }}
-      >
-        {coins.map((coin) => (
-          <option key={coin.slug} value={coin.slug} style={{ background: "#0d1628" }}>
-            {coin.name}
-          </option>
-        ))}
-      </select>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px", flexWrap: "wrap" }}>
+        <select
+          value={selectedSlug}
+          onChange={(e) => setSelectedSlug(e.target.value)}
+          style={{
+            flex: "1 1 120px",
+            background: inputBg,
+            border: `1px solid ${cardBorder}`,
+            borderRadius: "8px",
+            color: textPrimary,
+            fontSize: "13px",
+            fontWeight: "600",
+            padding: "8px 12px",
+            cursor: "pointer",
+            outline: "none",
+            fontFamily: "'Segoe UI', sans-serif",
+            appearance: "none",
+            WebkitAppearance: "none",
+            paddingRight: "32px",
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 10px center",
+          }}
+        >
+          {coins.map((coin) => (
+            <option key={coin.slug} value={coin.slug} style={{ background: dark ? "#0d1628" : "#ffffff" }}>
+              {coin.name}
+            </option>
+          ))}
+        </select>
+        <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+          {([7, 30, 90] as const).map((d) => (
+            <button
+              key={d}
+              onClick={() => setDays(d)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: "700",
+                border: "none",
+                cursor: "pointer",
+                background: days === d ? "#1a56db" : inputBg,
+                color: days === d ? "#ffffff" : textSecondary,
+                fontFamily: "'Segoe UI', sans-serif",
+                transition: "background 0.15s",
+              }}
+            >
+              {d}D
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: "12px", padding: "16px 8px 8px 0" }}>
         {loading ? (
@@ -127,15 +145,15 @@ export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e2a40" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
               <XAxis
                 dataKey="time"
                 tickFormatter={formatXTick}
                 tick={{ fill: textSecondary, fontSize: 10 }}
                 tickLine={false}
-                axisLine={{ stroke: "#1e2a40" }}
+                axisLine={{ stroke: gridColor }}
                 interval="preserveStartEnd"
-                minTickGap={80}
+                minTickGap={60}
               />
               <YAxis
                 domain={[yMin, yMax]}
@@ -146,11 +164,7 @@ export default function HistoryChart({ coins }: { coins: CoinOption[] }) {
                 width={68}
               />
               <Tooltip content={<CustomTooltip />} />
-              <ReferenceLine
-                y={peg}
-                stroke="#374151"
-                strokeDasharray="5 4"
-              />
+              <ReferenceLine y={peg} stroke={dark ? "#374151" : "#d1d5db"} strokeDasharray="5 4" />
               <Line
                 type="monotone"
                 dataKey="price"

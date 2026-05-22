@@ -4,19 +4,24 @@ import { createClient } from "@supabase/supabase-js";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const slug = searchParams.get("slug");
+  const days = Math.min(Math.max(parseInt(searchParams.get("days") ?? "30"), 1), 365);
 
   if (!slug) return NextResponse.json({ error: "Missing slug" }, { status: 400 });
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
+
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await supabase
     .from("price_history")
     .select("price, created_at")
     .eq("slug", slug)
-    .order("created_at", { ascending: true });
+    .gte("created_at", since)
+    .order("created_at", { ascending: true })
+    .limit(15000);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -29,7 +34,7 @@ export async function GET(request: Request) {
     const key = d.toISOString();
     if (!buckets.has(key)) buckets.set(key, { sum: 0, count: 0 });
     const b = buckets.get(key)!;
-    b.sum += row.price;
+    b.sum += Number(row.price);
     b.count++;
   }
 
