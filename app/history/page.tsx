@@ -183,6 +183,8 @@ export default async function HistoryPage() {
   const navBg = "#0d1628";
   const navBorder = "#1e2a40";
 
+  const hallOfFame = [...summaryResults].sort((a, b) => a.atl - b.atl);
+
   return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: bg, minHeight: "100vh", paddingBottom: "80px" }}>
 
@@ -196,6 +198,53 @@ export default async function HistoryPage() {
           </div>
         </a>
       </div>
+
+      {/* ── Section 0: Hall of Fame ── */}
+      <div style={{ padding: "20px 20px 12px" }}>
+        <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px" }}>All-Time Lows Hall of Fame</div>
+        <div style={{ fontSize: "12px", color: textSecondary, marginTop: "4px" }}>Every coin ranked by lowest price ever recorded, worst first.</div>
+      </div>
+
+      <div style={{ background: tableHeaderBg, borderTop: `1px solid ${headerBorder}`, borderBottom: `1px solid ${headerBorder}` }}>
+        <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 88px 80px 72px", padding: "8px 20px", columnGap: "8px" }}>
+          <span style={{ fontSize: "10px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px" }}>#</span>
+          <span style={{ fontSize: "10px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px" }}>Coin</span>
+          <span style={{ fontSize: "10px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px" }}>ATL Price</span>
+          <span style={{ fontSize: "10px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px" }}>Date</span>
+          <span style={{ fontSize: "10px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px" }}>vs Peg</span>
+        </div>
+      </div>
+
+      {hallOfFame.map((coin, i) => {
+        const peg = COIN_PEGS[coin.slug] ?? 1.0;
+        const pctFromPeg = ((peg - coin.atl) / peg) * 100;
+        const { healthy, caution } = getThresholds(coin.slug);
+        const absDiff = Math.abs(coin.atl - peg) / peg;
+        const rowColor = absDiff > caution ? "#dc2626" : absDiff > healthy ? "#d97706" : "#16a34a";
+        const rankColors = ["#f59e0b", "#9ca3af", "#b45309"];
+        const rankColor = i < 3 ? rankColors[i] : textSecondary;
+        return (
+          <div
+            key={coin.slug}
+            style={{ display: "grid", gridTemplateColumns: "28px 1fr 88px 80px 72px", padding: "11px 20px", borderBottom: `1px solid ${cardBorder}`, background: cardBg, alignItems: "center", columnGap: "8px" }}
+          >
+            <span style={{ fontSize: "12px", fontWeight: "700", color: rankColor, fontFamily: "monospace" }}>{i + 1}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0 }}>
+              <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                <img src={coin.icon} alt={coin.name} width={14} height={14} style={{ objectFit: "contain" }} />
+              </div>
+              <span style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{coin.name}</span>
+            </div>
+            <span style={{ fontSize: "13px", fontFamily: "monospace", fontWeight: "700", color: rowColor }}>${coin.atl.toFixed(4)}</span>
+            <span style={{ fontSize: "11px", color: textSecondary }}>{coin.atlDate ? formatDate(coin.atlDate) : "—"}</span>
+            <span style={{ fontSize: "12px", fontFamily: "monospace", fontWeight: "600", color: rowColor }}>
+              {pctFromPeg > 0 ? `-${pctFromPeg.toFixed(2)}%` : pctFromPeg < -0.001 ? `+${Math.abs(pctFromPeg).toFixed(2)}%` : "0.00%"}
+            </span>
+          </div>
+        );
+      })}
+
+      <div style={{ height: "1px", background: headerBorder, margin: "0 0 0 0" }} />
 
       {/* ── Section 1: All-Time Lows ── */}
       <div style={{ padding: "20px 20px 12px" }}>
