@@ -40,7 +40,7 @@ export default function AboutPage() {
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>What is PegCheck?</div>
-        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck is a real-time stablecoin health monitoring platform. It tracks the peg price of the most widely used stablecoins — USDT, USDC, USDS, PYUSD, FDUSD, RLUSD, TUSD and Ethena — and flags any deviation the moment it happens. Premium subscribers receive instant email alerts when any coin drops below $0.975.</p>
+        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck is a real-time stablecoin health monitoring platform. It tracks 19 stablecoins — including USD-pegged coins like USDT, USDC, USDS, PYUSD, LUSD, FRAX and BOLD, as well as EUR-pegged coins like EURC — and flags any peg deviation the moment it happens. Each coin is tracked against its own individual peg target and threshold. DEX divergence is also monitored via Uniswap V3, showing when on-chain pool prices diverge from the off-chain consensus. Premium subscribers receive instant email alerts when any coin depegs.</p>
       </div>
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
@@ -55,7 +55,7 @@ export default function AboutPage() {
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>How it works</div>
-        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck pulls live price data every 60 seconds from 6 independent sources — CoinGecko, Coinbase, Binance, Kraken, DefiLlama and Chainlink — and calculates a median price to eliminate bad data. Green means healthy. Amber means caution. Red means depeg detected.</p>
+        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck pulls live price data every 60 seconds from 7 independent sources — CoinGecko, Coinbase, Binance, Kraken, DefiLlama, Chainlink and Uniswap V3 — and calculates a median consensus price to eliminate bad data. A dual-source confidence score flags when fewer than two sources agree. Each coin is evaluated against its own peg target and per-coin thresholds: most coins use ±0.1% healthy / ±0.5% caution, while coins designed to trade slightly above peg (like LUSD and mkUSD) use wider bands. Green means healthy. Amber means caution. Red means depeg detected.</p>
       </div>
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
@@ -70,6 +70,10 @@ export default function AboutPage() {
           { label: "✅ Developer dashboard", desc: "Live — API customers can view their key, usage stats and calls remaining at pegcheck.uk/dashboard." },
           { label: "✅ Chainlink Proof of Reserve", desc: "Live — on-chain verified reserve data for supported stablecoins, powered by Chainlink." },
           { label: "✅ On-chain depeg event logging", desc: <>Live — every depeg event is permanently recorded on the Sepolia blockchain and publicly verifiable at <a href="/onchain" style={{ color: "#1a56db", textDecoration: "none" }}>pegcheck.uk/onchain</a>.</> },
+          { label: "✅ Depeg History Page", desc: "Live — full historical depeg events, stability rankings, all-time lows and most stable coins across all 19 tracked stablecoins." },
+          { label: "✅ DEX Divergence Monitoring", desc: "Live — Uniswap V3 pool prices cross-checked against consensus for USDC and USDT, divergence shown in basis points on each coin detail page." },
+          { label: "✅ 19 Stablecoin Coverage", desc: "Live — expanded from 8 to 19 coins including FRAX, GHO, crvUSD, LUSD, USDP, USDD, mkUSD, EURC, DOLA, alUSD and BOLD." },
+          { label: "✅ Individual Peg Targets", desc: "Live — each coin tracked against its own peg (USD or EUR), with per-coin healthy/caution/depeg thresholds tuned to each coin's design." },
           { label: "Wallet integration", desc: "Connect your wallet and monitor only the stablecoins you actually hold." },
         ].map((item) => (
           <div key={item.label} style={{ display: "flex", gap: "12px", marginBottom: "14px", alignItems: "flex-start" }}>
@@ -90,7 +94,7 @@ export default function AboutPage() {
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>🛠️ For Developers</div>
         <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: "0 0 12px 0" }}>
-          Building a wallet, exchange, or DeFi app? PegCheck offers a REST API with real-time stablecoin prices, depeg alerts, and webhook notifications — powered by 1,500+ data points.
+          Building a wallet, exchange, or DeFi app? PegCheck offers a REST API with real-time data for all 19 stablecoins — prices, deviation, status, depeg history and Uniswap V3 DEX divergence (via the <code style={{ fontSize: "12px", background: dark ? "#1e2a40" : "#f3f4f6", padding: "1px 5px", borderRadius: "4px", color: textPrimary }}>uniswap</code> field in the response). Powered by 7 independent sources with median consensus.
         </p>
         <a href="/developers" style={{ display: "inline-block", background: "#1a56db", color: "#fff", fontSize: "13px", fontWeight: "700", padding: "10px 20px", borderRadius: "8px", textDecoration: "none" }}>
           View API & Pricing →
