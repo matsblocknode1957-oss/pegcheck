@@ -29,7 +29,7 @@ const COINS = [
   { slug: "dola",   name: "DOLA",   icon: "/icons/dola.png",   bgColor: "#1e3a5f" },
   { slug: "alusd",  name: "alUSD",  icon: "/icons/alusd.png",  bgColor: "#f59e0b" },
   { slug: "usdx",   name: "USDx",   icon: "/icons/usdx.png",   bgColor: "#0c0e16" },
-  { slug: "bold",   name: "BOLD",   icon: "/icons/bold.png",   bgColor: "#0f766e" },
+  { slug: "bold",   name: "BOLD",   icon: "/icons/bold.svg",   bgColor: "#0f766e" },
 ] as const;
 
 type CoinSlug = typeof COINS[number]["slug"];

@@ -201,7 +201,7 @@ const COIN_DATA: Record<string, {
     contractAddress: "0x57Ab1ec28D129707052df4dF418D58a2D46d5f51",
   },
   bold: {
-    name: "BOLD", issuer: "Liquity V2", icon: "/icons/bold.png", bgColor: "#0f766e",
+    name: "BOLD", issuer: "Liquity V2", icon: "/icons/bold.svg", bgColor: "#0f766e",
     collateral: "ETH + Liquid Staking Tokens",
     collateralRatio: ">100%",
     reserveAudit: "On-chain (public)",

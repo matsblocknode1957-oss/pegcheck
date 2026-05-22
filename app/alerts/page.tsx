@@ -50,7 +50,7 @@ export default function AlertsPage() {
     { name: "DOLA",   issuer: "Inverse Finance", slug: "dola",   icon: "/icons/dola.png",   bgColor: "#1e3a5f" },
     { name: "alUSD",  issuer: "Alchemix",        slug: "alusd",  icon: "/icons/alusd.png",  bgColor: "#f59e0b" },
     { name: "USDx",   issuer: "Synthetix",       slug: "usdx",   icon: "/icons/usdx.png",   bgColor: "#0c0e16" },
-    { name: "BOLD",   issuer: "Liquity V2",      slug: "bold",   icon: "/icons/bold.png",   bgColor: "#0f766e" },
+    { name: "BOLD",   issuer: "Liquity V2",      slug: "bold",   icon: "/icons/bold.svg",   bgColor: "#0f766e" },
   ];
 
   const getStatus = (price: number) => {

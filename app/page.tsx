@@ -24,7 +24,7 @@ export default function Home() {
     { name: "DOLA",   issuer: "Inverse Finance", peg: 1.0,   icon: "/icons/dola.png",   slug: "dola",   bgColor: "#1e3a5f" },
     { name: "alUSD",  issuer: "Alchemix",        peg: 1.0,   icon: "/icons/alusd.png",  slug: "alusd",  bgColor: "#f59e0b" },
     { name: "USDx",   issuer: "Synthetix",       peg: 1.0,   icon: "/icons/usdx.png",   slug: "usdx",   bgColor: "#0c0e16" },
-    { name: "BOLD",   issuer: "Liquity V2",      peg: 1.0,   icon: "/icons/bold.png",   slug: "bold",   bgColor: "#0f766e" },
+    { name: "BOLD",   issuer: "Liquity V2",      peg: 1.0,   icon: "/icons/bold.svg",   slug: "bold",   bgColor: "#0f766e" },
   ];
 
   const [prices, setPrices] = useState<Record<string, number>>({});
