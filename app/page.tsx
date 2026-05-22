@@ -262,6 +262,13 @@ export default function Home() {
           </svg>
           <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === "/about" ? "#1a56db" : textSecondary }}>About</span>
         </a>
+        <a href="/history" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pathname === "/history" ? "#1a56db" : textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span style={{ fontSize: "10px", fontWeight: "600", color: pathname === "/history" ? "#1a56db" : textSecondary }}>History</span>
+        </a>
       </div>
 
     </main>
