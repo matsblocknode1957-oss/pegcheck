@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const SLUGS = ["usdt","usdc","usds","ethena","pyusd","fdusd","rlusd","tusd"];
+const SLUGS = ["usdt","usdc","usds","ethena","pyusd","fdusd","rlusd","tusd","frax","gho","crvusd","lusd","usdp","usdd","mkusd","eurc","dola","alusd","usdx","bold"];
 
 export async function GET() {
   try {

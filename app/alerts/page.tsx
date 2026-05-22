@@ -38,7 +38,19 @@ export default function AlertsPage() {
     { name: "PYUSD", issuer: "PayPal", slug: "pyusd", icon: "/icons/pyusd.png", bgColor: "#003087" },
     { name: "FDUSD", issuer: "First Digital", slug: "fdusd", icon: "/icons/fdusd.png", bgColor: "#1a1a1a" },
     { name: "RLUSD", issuer: "Ripple", slug: "rlusd", icon: "/icons/rlusd.png", bgColor: "#346aa9" },
-    { name: "TUSD", issuer: "TrueUSD", slug: "tusd", icon: "/icons/tusd.png", bgColor: "#1a3a5c" },
+    { name: "TUSD",   issuer: "TrueUSD",        slug: "tusd",   icon: "/icons/tusd.png",   bgColor: "#1a3a5c" },
+    { name: "FRAX",   issuer: "Frax Finance",    slug: "frax",   icon: "/icons/frax.png",   bgColor: "#1c1c1c" },
+    { name: "GHO",    issuer: "Aave",            slug: "gho",    icon: "/icons/gho.png",    bgColor: "#b6509e" },
+    { name: "crvUSD", issuer: "Curve Finance",   slug: "crvusd", icon: "/icons/crvusd.png", bgColor: "#3a3a3a" },
+    { name: "LUSD",   issuer: "Liquity",         slug: "lusd",   icon: "/icons/lusd.png",   bgColor: "#2eb6ae" },
+    { name: "USDP",   issuer: "Paxos",           slug: "usdp",   icon: "/icons/usdp.png",   bgColor: "#00735b" },
+    { name: "USDD",   issuer: "TRON DAO",        slug: "usdd",   icon: "/icons/usdd.png",   bgColor: "#eb0029" },
+    { name: "mkUSD",  issuer: "Prisma Finance",  slug: "mkusd",  icon: "/icons/mkusd.png",  bgColor: "#6b21a8" },
+    { name: "EURC",   issuer: "Circle",          slug: "eurc",   icon: "/icons/eurc.png",   bgColor: "#2563eb" },
+    { name: "DOLA",   issuer: "Inverse Finance", slug: "dola",   icon: "/icons/dola.png",   bgColor: "#1e3a5f" },
+    { name: "alUSD",  issuer: "Alchemix",        slug: "alusd",  icon: "/icons/alusd.png",  bgColor: "#f59e0b" },
+    { name: "USDx",   issuer: "Synthetix",       slug: "usdx",   icon: "/icons/usdx.png",   bgColor: "#0c0e16" },
+    { name: "BOLD",   issuer: "Liquity V2",      slug: "bold",   icon: "/icons/bold.png",   bgColor: "#0f766e" },
   ];
 
   const getStatus = (price: number) => {

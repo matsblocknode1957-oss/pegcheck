@@ -12,7 +12,19 @@ export default function Home() {
     { name: "PYUSD", issuer: "PayPal", peg: 1.0, icon: "/icons/pyusd.png", slug: "pyusd", bgColor: "#003087" },
     { name: "FDUSD", issuer: "First Digital", peg: 1.0, icon: "/icons/fdusd.png", slug: "fdusd", bgColor: "#1a1a1a" },
     { name: "RLUSD", issuer: "Ripple", peg: 1.0, icon: "/icons/rlusd.png", slug: "rlusd", bgColor: "#346aa9" },
-    { name: "TUSD", issuer: "TrueUSD", peg: 0.997, icon: "/icons/tusd.png", slug: "tusd", bgColor: "#1a3a5c" },
+    { name: "TUSD",   issuer: "TrueUSD",        peg: 0.997, icon: "/icons/tusd.png",   slug: "tusd",   bgColor: "#1a3a5c" },
+    { name: "FRAX",   issuer: "Frax Finance",    peg: 1.0,   icon: "/icons/frax.png",   slug: "frax",   bgColor: "#1c1c1c" },
+    { name: "GHO",    issuer: "Aave",            peg: 1.0,   icon: "/icons/gho.png",    slug: "gho",    bgColor: "#b6509e" },
+    { name: "crvUSD", issuer: "Curve Finance",   peg: 1.0,   icon: "/icons/crvusd.png", slug: "crvusd", bgColor: "#3a3a3a" },
+    { name: "LUSD",   issuer: "Liquity",         peg: 1.0,   icon: "/icons/lusd.png",   slug: "lusd",   bgColor: "#2eb6ae" },
+    { name: "USDP",   issuer: "Paxos",           peg: 1.0,   icon: "/icons/usdp.png",   slug: "usdp",   bgColor: "#00735b" },
+    { name: "USDD",   issuer: "TRON DAO",        peg: 1.0,   icon: "/icons/usdd.png",   slug: "usdd",   bgColor: "#eb0029" },
+    { name: "mkUSD",  issuer: "Prisma Finance",  peg: 1.0,   icon: "/icons/mkusd.png",  slug: "mkusd",  bgColor: "#6b21a8" },
+    { name: "EURC",   issuer: "Circle",          peg: 1.0,   icon: "/icons/eurc.png",   slug: "eurc",   bgColor: "#2563eb" },
+    { name: "DOLA",   issuer: "Inverse Finance", peg: 1.0,   icon: "/icons/dola.png",   slug: "dola",   bgColor: "#1e3a5f" },
+    { name: "alUSD",  issuer: "Alchemix",        peg: 1.0,   icon: "/icons/alusd.png",  slug: "alusd",  bgColor: "#f59e0b" },
+    { name: "USDx",   issuer: "Synthetix",       peg: 1.0,   icon: "/icons/usdx.png",   slug: "usdx",   bgColor: "#0c0e16" },
+    { name: "BOLD",   issuer: "Liquity V2",      peg: 1.0,   icon: "/icons/bold.png",   slug: "bold",   bgColor: "#0f766e" },
   ];
 
   const [prices, setPrices] = useState<Record<string, number>>({});
