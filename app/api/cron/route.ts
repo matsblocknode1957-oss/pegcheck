@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { COIN_PEGS } from "@/lib/coinPegs";
 import { fetchEurUsd } from "@/lib/fetchEurUsd";
 
+// Temporarily excluded from alerts — persistent depeg, remove when recovered
+const EXCLUDED_FROM_ALERTS = ["frax", "dola", "alusd"];
+
 function median(values: number[]): number {
   const sorted = values.filter(v => v > 0.5 && v < 1.5).sort((a, b) => a - b);
   if (sorted.length === 0) return 1.0;
@@ -288,7 +291,9 @@ export async function GET() {
       })
     );
     const alertableSlugs = new Set(depegChecks.filter(Boolean));
-    const depegged = currentlyDepegged.filter(([slug]) => alertableSlugs.has(slug));
+    const depegged = currentlyDepegged.filter(([slug]) =>
+      alertableSlugs.has(slug) && !EXCLUDED_FROM_ALERTS.includes(slug)
+    );
 
     // Log confirmed depegs on-chain via Sepolia smart contract
     if (depegged.length > 0) {
