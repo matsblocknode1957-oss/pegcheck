@@ -270,12 +270,28 @@ export async function GET() {
     if (priceError) console.error("Price history insert error:", priceError);
     else console.log("Price history saved:", snapshots.length, "rows");
 
-    // Check for Depegs
-    const depegged = Object.entries(prices).filter(([slug, price]) => price < effectivePeg(slug) * 0.975);
+    // Check for Depegs — only alert if coin has ≥2 history records AND wasn't already depegged last cycle
+    const currentlyDepegged = Object.entries(prices).filter(([slug, price]) => price < effectivePeg(slug) * 0.975);
 
-    // Log confirmed depegs (< peg * 0.975) on-chain via Sepolia smart contract
-    const depeggedOnly = depegged.filter(([slug, price]) => price < effectivePeg(slug) * 0.975);
-    if (depeggedOnly.length > 0) {
+    const depegChecks = await Promise.all(
+      currentlyDepegged.map(async ([slug]) => {
+        const { data } = await supabase
+          .from("price_history")
+          .select("price")
+          .eq("slug", slug)
+          .order("created_at", { ascending: false })
+          .limit(2);
+        if (!data || data.length < 2) return null; // first ever fetch — skip
+        const prevPrice = Number(data[1].price);
+        if (prevPrice < effectivePeg(slug) * 0.975) return null; // already depegged last cycle — skip
+        return slug;
+      })
+    );
+    const alertableSlugs = new Set(depegChecks.filter(Boolean));
+    const depegged = currentlyDepegged.filter(([slug]) => alertableSlugs.has(slug));
+
+    // Log confirmed depegs on-chain via Sepolia smart contract
+    if (depegged.length > 0) {
       const sepoliaRpc = process.env.SEPOLIA_RPC_URL ?? "";
       const deployerKey = process.env.DEPLOYER_PRIVATE_KEY ?? "";
       if (sepoliaRpc && deployerKey) {
@@ -286,7 +302,7 @@ export async function GET() {
           const abi = ["function logDepegEvent(string symbol, uint256 price, string severity) external"];
           const contract = new ethers.Contract("0xA00cbfF342F9009B23f08A0ED3c9918D2B5C86fa", abi, wallet);
           await Promise.allSettled(
-            depeggedOnly.map(async ([slug, p]) => {
+            depegged.map(async ([slug, p]) => {
               try {
                 const priceUint = BigInt(Math.round(p * 1e8));
                 const tx = await contract.logDepegEvent(slug.toUpperCase(), priceUint, "depegged");
