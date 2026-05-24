@@ -15,7 +15,7 @@ async function rpc(url: string, method: string, params: unknown[]) {
 }
 
 export async function GET() {
-  const rpcUrl = process.env.ALCHEMY_SEPOLIA_RPC_URL ?? "";
+  const rpcUrl = process.env.SEPOLIA_RPC_URL ?? "";
   if (!rpcUrl) return NextResponse.json({ error: "RPC not configured" }, { status: 500 });
 
   try {
