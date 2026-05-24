@@ -24,7 +24,7 @@ export async function GET() {
     try {
       const logsResult = await rpc(rpcUrl, "eth_getLogs", [{
         address: CONTRACT,
-        fromBlock: "0x0",
+        fromBlock: "0x" + (10900000).toString(16),
         toBlock: "latest",
       }]);
       if (Array.isArray(logsResult.result)) logs = logsResult.result;
