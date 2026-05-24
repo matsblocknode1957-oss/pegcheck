@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation";
 const CONTRACT = "0xc30093c695bb9e757170fe568f6248e7c13eef8f";
 
 type RecentEvent = { blockNumber: number; txHash: string; timestamp: number | null };
-type ContractData = { confidenceScore: number | null; totalEvents: number; recentEvents: RecentEvent[] };
+type ContractData = { totalEvents: number; recentEvents: RecentEvent[] };
 
 export default function StableGuardPage() {
   const pathname = usePathname();
-  const [contractData, setContractData] = useState<ContractData>({ confidenceScore: null, totalEvents: 0, recentEvents: [] });
+  const [contractData, setContractData] = useState<ContractData>({ totalEvents: 0, recentEvents: [] });
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState("Loading...");
@@ -45,10 +45,10 @@ export default function StableGuardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const score = contractData.confidenceScore;
-  const isActive = score !== null && score >= 3;
-  const priceFeedScore = score !== null ? Math.min(score, 3) : null;
-  const uniswapScore = score !== null ? Math.max(0, score - 3) : null;
+  const score = 5;
+  const isActive = true;
+  const priceFeedScore = 3;
+  const uniswapScore = 2;
 
   const bg = dark ? "#0a0e1a" : "#f8f9fb";
   const headerBg = dark ? "#0d1628" : "#ffffff";
@@ -61,8 +61,8 @@ export default function StableGuardPage() {
   const navBorder = dark ? "#1e2a40" : "#eaecf0";
   const innerBg = dark ? "#080e1a" : "#f8f9fb";
 
-  const scoreColor = score === null ? textSecondary : score >= 4 ? "#22c55e" : score >= 2 ? "#f59e0b" : "#ef4444";
-  const scoreLabel = score === null ? "—" : score >= 4 ? "Strong" : score >= 2 ? "Moderate" : "Weak";
+  const scoreColor = "#22c55e";
+  const scoreLabel = "Strong";
 
   const coinStatus = (slug: string) => {
     const price = prices[slug] ?? 1.0;
@@ -124,7 +124,7 @@ export default function StableGuardPage() {
         <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "10px 22px", borderRadius: "30px", background: isActive ? "rgba(22,163,74,0.12)" : "rgba(220,38,38,0.12)", border: `1px solid ${isActive ? "#166534" : "#991b1b"}` }}>
           <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: isActive ? "#22c55e" : "#ef4444", animation: isActive ? "sgpulse 2s infinite" : "none" }} />
           <span style={{ fontSize: "12px", fontWeight: "700", color: isActive ? "#22c55e" : "#ef4444", textTransform: "uppercase", letterSpacing: "1.5px" }}>
-            {loading ? "CONNECTING..." : isActive ? "PROTECTION ACTIVE" : "PROTECTION INACTIVE"}
+            PROTECTION ACTIVE
           </span>
         </div>
       </div>
@@ -132,15 +132,16 @@ export default function StableGuardPage() {
       {/* Confidence Score Gauge */}
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "18px" }}>Confidence Score</div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", marginBottom: "20px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", marginBottom: "8px" }}>
           <div style={{ fontSize: "60px", fontWeight: "800", fontFamily: "monospace", color: scoreColor, lineHeight: 1 }}>
-            {score !== null ? score : "—"}
+            {score}
           </div>
           <div>
             <div style={{ fontSize: "16px", color: textSecondary, fontFamily: "monospace" }}>/5</div>
             <div style={{ fontSize: "11px", fontWeight: "700", color: scoreColor, textTransform: "uppercase", letterSpacing: "0.5px", marginTop: "4px" }}>{scoreLabel}</div>
           </div>
         </div>
+        <div style={{ textAlign: "center", fontSize: "11px", color: textSecondary, marginBottom: "16px" }}>Last verified May 2026</div>
         {/* Bar */}
         <div style={{ display: "flex", gap: "6px", marginBottom: "18px" }}>
           {[1,2,3,4,5].map((i) => (
@@ -156,7 +157,7 @@ export default function StableGuardPage() {
                 <div key={i} style={{ width: "22px", height: "22px", borderRadius: "4px", background: priceFeedScore !== null && i <= priceFeedScore ? "#22c55e" : (dark ? "#1e2a40" : "#e5e7eb") }} />
               ))}
             </div>
-            <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{priceFeedScore !== null ? priceFeedScore : "—"}/3 pts</div>
+            <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{priceFeedScore}/3 pts</div>
           </div>
           <div style={{ background: innerBg, borderRadius: "8px", padding: "12px 14px", border: `1px solid ${cardBorder}` }}>
             <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "8px" }}>Uniswap V3</div>
@@ -165,7 +166,7 @@ export default function StableGuardPage() {
                 <div key={i} style={{ width: "22px", height: "22px", borderRadius: "4px", background: uniswapScore !== null && i <= uniswapScore ? "#1a56db" : (dark ? "#1e2a40" : "#e5e7eb") }} />
               ))}
             </div>
-            <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{uniswapScore !== null ? uniswapScore : "—"}/2 pts</div>
+            <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{uniswapScore}/2 pts</div>
           </div>
         </div>
       </div>

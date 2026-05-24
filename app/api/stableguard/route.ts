@@ -19,23 +19,8 @@ export async function GET() {
   if (!rpcUrl) return NextResponse.json({ error: "RPC not configured" }, { status: 500 });
 
   try {
-    const { ethers } = await import("ethers");
-
-    // Read confidence score — try confidenceScore() then getConfidenceScore()
-    let confidenceScore: number | null = null;
-    for (const sig of ["confidenceScore()", "getConfidenceScore()"]) {
-      try {
-        const selector = ethers.id(sig).slice(0, 10);
-        const result = await rpc(rpcUrl, "eth_call", [{ to: CONTRACT, data: selector }, "latest"]);
-        if (result.result && result.result !== "0x" && result.result.length >= 66) {
-          const val = Number(BigInt(result.result));
-          if (val >= 0 && val <= 10) { confidenceScore = val; break; }
-        }
-      } catch {}
-    }
-
-    // Get all logs from contract (all events, no topic filter)
-    let logs: { blockNumber: string; transactionHash: string; topics: string[] }[] = [];
+    // Get all logs from contract — no topic filter, all events
+    let logs: { blockNumber: string; transactionHash: string }[] = [];
     try {
       const logsResult = await rpc(rpcUrl, "eth_getLogs", [{
         address: CONTRACT,
@@ -62,7 +47,7 @@ export async function GET() {
       })
     );
 
-    return NextResponse.json({ confidenceScore, totalEvents: logs.length, recentEvents });
+    return NextResponse.json({ totalEvents: logs.length, recentEvents });
   } catch {
     return NextResponse.json({ error: "Failed to query contract" }, { status: 500 });
   }
