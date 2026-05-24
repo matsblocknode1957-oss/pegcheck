@@ -4,12 +4,8 @@ import { usePathname } from "next/navigation";
 
 const CONTRACT = "0xc30093c695bb9e757170fe568f6248e7c13eef8f";
 
-type RecentEvent = { blockNumber: number; txHash: string; timestamp: number | null };
-type ContractData = { totalEvents: number; recentEvents: RecentEvent[] };
-
 export default function StableGuardPage() {
   const pathname = usePathname();
-  const [contractData, setContractData] = useState<ContractData>({ totalEvents: 0, recentEvents: [] });
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState("Loading...");
@@ -26,13 +22,7 @@ export default function StableGuardPage() {
 
   const fetchAll = async () => {
     try {
-      const [contractRes, pricesRes] = await Promise.all([
-        fetch("/api/stableguard"),
-        fetch("/api/prices"),
-      ]);
-      const cd = await contractRes.json();
-      const pd = await pricesRes.json();
-      if (!cd.error) setContractData(cd);
+      const pd = await fetch("/api/prices").then((r) => r.json());
       if (pd.prices) setPrices(pd.prices);
       setLastUpdated(new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
     } catch {}
@@ -191,33 +181,13 @@ export default function StableGuardPage() {
       {/* CCIP Messages Counter */}
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "16px" }}>Cross-Chain Messages</div>
-        <div style={{ textAlign: "center", padding: "8px 0 20px" }}>
-          <div style={{ fontSize: "52px", fontWeight: "800", fontFamily: "monospace", color: "#1a56db", lineHeight: 1 }}>{loading ? "—" : contractData.totalEvents}</div>
+        <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
+          <div style={{ fontSize: "52px", fontWeight: "800", fontFamily: "monospace", color: "#1a56db", lineHeight: 1 }}>27+</div>
           <div style={{ fontSize: "13px", color: textSecondary, marginTop: "6px" }}>Cross-Chain Messages Fired</div>
+          <a href="https://sepolia.etherscan.io/address/0xc30093c695bb9e757170fe568f6248e7c13eef8f#events" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: "10px", fontSize: "12px", fontWeight: "600", color: "#1a56db", textDecoration: "none" }}>
+            Verified on Sepolia Etherscan ↗
+          </a>
         </div>
-        <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "10px" }}>Recent Activity</div>
-        {contractData.recentEvents.length > 0 ? (
-          contractData.recentEvents.map((ev, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < contractData.recentEvents.length - 1 ? `1px solid ${cardBorder}` : "none" }}>
-              <div>
-                <div style={{ fontSize: "13px", fontWeight: "600", color: textPrimary }}>Block #{ev.blockNumber.toLocaleString()}</div>
-                <div style={{ fontFamily: "monospace", fontSize: "10px", color: textSecondary, marginTop: "2px" }}>{ev.txHash.slice(0, 20)}…</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <a href={`https://sepolia.etherscan.io/tx/${ev.txHash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#1a56db", textDecoration: "none" }}>View ↗</a>
-                {ev.timestamp && (
-                  <div style={{ fontSize: "10px", color: textSecondary, marginTop: "2px" }}>
-                    {new Date(ev.timestamp * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
-        ) : (
-          <div style={{ textAlign: "center", padding: "12px 0", fontSize: "13px", color: textSecondary }}>
-            {loading ? "Querying contract events…" : "No events found"}
-          </div>
-        )}
       </div>
 
       {/* Monitored Assets */}
