@@ -90,8 +90,25 @@ export default function StableGuardPage() {
   const navColor = (href: string) => pathname === href ? "#1a56db" : textSecondary;
 
   const monitoredCoins = [
-    { slug: "usdt", name: "USDT", issuer: "Tether", icon: "/icons/usdt.png", bgColor: "#26a17b" },
-    { slug: "usdc", name: "USDC", issuer: "Circle", icon: "/icons/usdc.png", bgColor: "#2775ca" },
+    { slug: "usdt",   name: "USDT",   icon: "/icons/usdt.png",   bgColor: "#26a17b" },
+    { slug: "usdc",   name: "USDC",   icon: "/icons/usdc.png",   bgColor: "#2775ca" },
+    { slug: "usds",   name: "USDS",   icon: "/icons/usds.png",   bgColor: "#f4b731" },
+    { slug: "ethena", name: "USDe",   icon: "/icons/ethena.png", bgColor: "#1a1a2e" },
+    { slug: "pyusd",  name: "PYUSD",  icon: "/icons/pyusd.png",  bgColor: "#003087" },
+    { slug: "fdusd",  name: "FDUSD",  icon: "/icons/fdusd.png",  bgColor: "#1a1a1a" },
+    { slug: "rlusd",  name: "RLUSD",  icon: "/icons/rlusd.png",  bgColor: "#346aa9" },
+    { slug: "tusd",   name: "TUSD",   icon: "/icons/tusd.png",   bgColor: "#1a3a5c" },
+    { slug: "frax",   name: "FRAX",   icon: "/icons/frax.png",   bgColor: "#1c1c1c" },
+    { slug: "gho",    name: "GHO",    icon: "/icons/gho.png",    bgColor: "#b6509e" },
+    { slug: "crvusd", name: "crvUSD", icon: "/icons/crvusd.png", bgColor: "#3a3a3a" },
+    { slug: "lusd",   name: "LUSD",   icon: "/icons/lusd.png",   bgColor: "#2eb6ae" },
+    { slug: "usdp",   name: "USDP",   icon: "/icons/usdp.png",   bgColor: "#00735b" },
+    { slug: "usdd",   name: "USDD",   icon: "/icons/usdd.png",   bgColor: "#eb0029" },
+    { slug: "mkusd",  name: "mkUSD",  icon: "/icons/mkusd.png",  bgColor: "#6b21a8" },
+    { slug: "eurc",   name: "EURC",   icon: "/icons/eurc.png",   bgColor: "#2563eb" },
+    { slug: "dola",   name: "DOLA",   icon: "/icons/dola.png",   bgColor: "#1e3a5f" },
+    { slug: "alusd",  name: "alUSD",  icon: "/icons/alusd.png",  bgColor: "#f59e0b" },
+    { slug: "bold",   name: "BOLD",   icon: "/icons/bold.svg",   bgColor: "#0f766e" },
   ];
 
   return (
@@ -205,28 +222,29 @@ export default function StableGuardPage() {
 
       {/* Monitored Assets */}
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
-        <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Monitored Assets</div>
-        {monitoredCoins.map((coin, i) => {
-          const price = prices[coin.slug] ?? 1.0;
-          const s = coinStatus(coin.slug);
-          return (
-            <div key={coin.slug} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: i < monitoredCoins.length - 1 ? `1px solid ${cardBorder}` : "none" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                  <img src={coin.icon} alt={coin.name} style={{ width: "24px", height: "24px", objectFit: "contain" }} />
+        <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "14px" }}>
+          Monitored Assets <span style={{ fontWeight: "400", textTransform: "none", letterSpacing: 0 }}>({monitoredCoins.length})</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+          {monitoredCoins.map((coin) => {
+            const price = prices[coin.slug] ?? 1.0;
+            const s = coinStatus(coin.slug);
+            return (
+              <div key={coin.slug} style={{ background: innerBg, borderRadius: "10px", padding: "12px", border: `1px solid ${cardBorder}`, display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                    <img src={coin.icon} alt={coin.name} style={{ width: "18px", height: "18px", objectFit: "contain" }} />
+                  </div>
+                  <span style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{coin.name}</span>
                 </div>
-                <div>
-                  <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary }}>{coin.name}</div>
-                  <div style={{ fontSize: "11px", color: textSecondary }}>{coin.issuer}</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontFamily: "monospace", fontSize: "12px", fontWeight: "600", color: textPrimary }}>${price.toFixed(4)}</span>
+                  <span style={{ padding: "2px 7px", borderRadius: "20px", fontSize: "10px", fontWeight: "700", background: statusBg(s), color: statusColor(s) }}>{s}</span>
                 </div>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontFamily: "monospace", fontSize: "14px", fontWeight: "600", color: textPrimary }}>${price.toFixed(4)}</div>
-                <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: "600", background: statusBg(s), color: statusColor(s) }}>{s}</span>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Chainlink Services */}
