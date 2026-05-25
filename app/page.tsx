@@ -101,6 +101,7 @@ export default function Home() {
   const [connectError, setConnectError] = useState<string | null>(null);
   const [hasWallet, setHasWallet] = useState(false);
   const [balancesLoading, setBalancesLoading] = useState(false);
+  const [scoreCopied, setScoreCopied] = useState(false);
 
   const pathname = usePathname();
 
@@ -153,6 +154,19 @@ export default function Home() {
       }
     } finally {
       setIsConnecting(false);
+    }
+  };
+
+  const shareScore = async () => {
+    const text = `🔒 My stablecoin portfolio risk score: ${portfolioRiskScore.toFixed(1)}/10 — ${riskLabel}\nMonitored by PegCheck — real-time stablecoin health tracking\npegcheck.uk`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try { await navigator.share({ text }); } catch { /* cancelled */ }
+    } else {
+      try {
+        await navigator.clipboard.writeText(text);
+        setScoreCopied(true);
+        setTimeout(() => setScoreCopied(false), 2000);
+      } catch { /* clipboard unavailable */ }
     }
   };
 
@@ -455,6 +469,29 @@ export default function Home() {
                 <div style={{ fontSize: "16px", fontWeight: "700", color: riskColor, marginBottom: "3px" }}>{riskLabel}</div>
                 <div style={{ fontSize: "12px", color: riskColor, opacity: 0.75, lineHeight: "1.4" }}>Based on your current stablecoin holdings</div>
               </div>
+            </div>
+          )}
+
+          {/* Share score button */}
+          {!balancesLoading && holdings.length > 0 && portfolioTotal > 0 && (
+            <div style={{ padding: "10px 16px", borderBottom: `1px solid ${cardBorder}`, display: "flex", justifyContent: "flex-end" }}>
+              <button
+                onClick={shareScore}
+                style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 10px", borderRadius: "7px", border: `1px solid ${cardBorder}`, background: "none", cursor: "pointer", fontSize: "11px", fontWeight: "600", color: textSecondary }}
+              >
+                {scoreCopied ? (
+                  "Copied!"
+                ) : (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                      <polyline points="16 6 12 2 8 6"/>
+                      <line x1="12" y1="2" x2="12" y2="15"/>
+                    </svg>
+                    Share score
+                  </>
+                )}
+              </button>
             </div>
           )}
 
