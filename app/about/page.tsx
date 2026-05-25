@@ -74,7 +74,7 @@ export default function AboutPage() {
           { label: "✅ DEX Divergence Monitoring", desc: "Live — Uniswap V3 pool prices cross-checked against consensus for USDC and USDT, divergence shown in basis points on each coin detail page." },
           { label: "✅ 19 Stablecoin Coverage", desc: "Live — expanded from 8 to 19 coins including FRAX, GHO, crvUSD, LUSD, USDP, USDD, mkUSD, EURC, DOLA, alUSD and BOLD." },
           { label: "✅ Individual Peg Targets", desc: "Live — each coin tracked against its own peg (USD or EUR), with per-coin healthy/caution/depeg thresholds tuned to each coin's design." },
-          { label: "Wallet integration", desc: "Connect your wallet and monitor only the stablecoins you actually hold." },
+          { label: "✅ Wallet integration", desc: "Live — connect your wallet to see only the stablecoins you hold, with balances, USD values and live health status." },
         ].map((item) => (
           <div key={item.label} style={{ display: "flex", gap: "12px", marginBottom: "14px", alignItems: "flex-start" }}>
             <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: dark ? "#1e2a40" : "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: "1px" }}>

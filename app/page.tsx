@@ -247,36 +247,9 @@ export default function Home() {
             <div style={{ fontSize: "12px", color: textSecondary, marginTop: "3px" }}>Prices from 6 independent sources</div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          {/* Wallet indicator */}
-          {walletAddress ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 8px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6" }}>
-              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#16a34a", flexShrink: 0 }} />
-              <span style={{ fontSize: "11px", fontFamily: "monospace", color: textPrimary }}>{truncateAddress(walletAddress)}</span>
-              <button
-                onClick={disconnectWallet}
-                title="Disconnect wallet"
-                style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, fontSize: "14px", padding: "0", lineHeight: 1, display: "flex", alignItems: "center" }}
-              >×</button>
-            </div>
-          ) : hasWallet ? (
-            <button
-              onClick={connectWallet}
-              disabled={isConnecting}
-              style={{ fontSize: "11px", fontWeight: "600", color: "#1a56db", background: "none", border: `1px solid #1a56db`, borderRadius: "8px", padding: "4px 10px", cursor: isConnecting ? "wait" : "pointer", opacity: isConnecting ? 0.6 : 1 }}
-            >
-              {isConnecting ? "Connecting..." : "Connect Wallet"}
-            </button>
-          ) : (
-            <button
-              onClick={connectWallet}
-              style={{ fontSize: "11px", color: textSecondary, background: "none", border: "none", cursor: "pointer", textDecoration: "underline dotted", padding: 0 }}
-            >
-              Connect wallet
-            </button>
-          )}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <div style={{ fontSize: "11px", color: textSecondary, fontFamily: "monospace" }}>Updated {lastUpdated}</div>
-          <button onClick={toggleDark} style={{ width: "34px", height: "34px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>
+          <button onClick={toggleDark} style={{ width: "34px", height: "34px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>
             {dark ? "☀️" : "🌙"}
           </button>
         </div>
@@ -303,65 +276,6 @@ export default function Home() {
           </div>
         )}
       </div>
-
-      {/* Your Holdings section */}
-      {walletAddress && (
-        <div style={{ margin: "12px 20px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", borderBottom: `1px solid ${cardBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>Your Holdings</div>
-            {balancesLoading && (
-              <span style={{ fontSize: "11px", color: textSecondary }}>Loading...</span>
-            )}
-          </div>
-          {!balancesLoading && holdings.length === 0 ? (
-            <div style={{ padding: "14px 16px", fontSize: "12px", color: textSecondary }}>
-              No tracked stablecoin holdings found on this wallet
-            </div>
-          ) : (
-            holdings.map((coin) => {
-              const bal = walletBalances[coin.slug];
-              const amount = formatBalance(bal.balance, bal.decimals);
-              const price = getLivePrice(coin.slug, coin.peg);
-              const usdValue = amount * price;
-              const status = getStatus(price, getEffectivePeg(coin.slug), coin.slug);
-              return (
-                <Link
-                  key={coin.slug}
-                  href={`/coin/${coin.slug}`}
-                  style={{
-                    textDecoration: "none",
-                    display: "grid",
-                    gridTemplateColumns: "1fr auto auto",
-                    alignItems: "center",
-                    gap: "10px",
-                    padding: "10px 16px",
-                    borderBottom: `1px solid ${cardBorder}`,
-                    background: cardBg,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                    <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                      <img src={coin.icon} alt={coin.name} style={{ width: "18px", height: "18px", objectFit: "contain" }} />
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{coin.name}</div>
-                      <div style={{ fontSize: "11px", color: textSecondary, fontFamily: "monospace" }}>
-                        {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ fontFamily: "monospace", fontSize: "13px", color: textPrimary, textAlign: "right" }}>
-                    ${usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
-                  <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "10px", fontWeight: "600", background: statusBg(status), color: statusColor(status), whiteSpace: "nowrap" }}>
-                    {status}
-                  </span>
-                </Link>
-              );
-            })
-          )}
-        </div>
-      )}
 
       {/* Table header */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px", padding: "8px 20px", background: tableHeaderBg, borderBottom: `1px solid ${headerBorder}` }}>
@@ -421,6 +335,84 @@ export default function Home() {
       <div style={{ padding: "12px 20px", textAlign: "center" }}>
         <span style={{ fontSize: "11px", color: textSecondary }}>Tap any coin for full reserve details →</span>
       </div>
+
+      {/* Wallet card */}
+      {walletAddress ? (
+        <div style={{ margin: "0 20px 4px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, overflow: "hidden" }}>
+          <div style={{ padding: "14px 16px", borderBottom: `1px solid ${cardBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>Your Holdings</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {balancesLoading && <span style={{ fontSize: "11px", color: textSecondary }}>Loading...</span>}
+              <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#16a34a", flexShrink: 0 }} />
+                <span style={{ fontSize: "11px", fontFamily: "monospace", color: textSecondary }}>{truncateAddress(walletAddress)}</span>
+              </div>
+              <button onClick={disconnectWallet} style={{ fontSize: "11px", color: textSecondary, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>Disconnect</button>
+            </div>
+          </div>
+          {!balancesLoading && holdings.length === 0 ? (
+            <div style={{ padding: "20px 16px", textAlign: "center", fontSize: "12px", color: textSecondary }}>
+              No tracked stablecoin holdings found on this wallet
+            </div>
+          ) : (
+            holdings.map((coin) => {
+              const bal = walletBalances[coin.slug];
+              const amount = formatBalance(bal.balance, bal.decimals);
+              const price = getLivePrice(coin.slug, coin.peg);
+              const usdValue = amount * price;
+              const status = getStatus(price, getEffectivePeg(coin.slug), coin.slug);
+              return (
+                <Link
+                  key={coin.slug}
+                  href={`/coin/${coin.slug}`}
+                  style={{ textDecoration: "none", display: "grid", gridTemplateColumns: "1fr auto auto", alignItems: "center", gap: "10px", padding: "11px 16px", borderBottom: `1px solid ${cardBorder}`, background: cardBg }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                    <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                      <img src={coin.icon} alt={coin.name} style={{ width: "20px", height: "20px", objectFit: "contain" }} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{coin.name}</div>
+                      <div style={{ fontSize: "11px", color: textSecondary, fontFamily: "monospace" }}>
+                        {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: "monospace", fontSize: "13px", color: textPrimary, textAlign: "right" }}>
+                    ${usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "10px", fontWeight: "600", background: statusBg(status), color: statusColor(status), whiteSpace: "nowrap" }}>
+                    {status}
+                  </span>
+                </Link>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        <div style={{ margin: "0 20px 4px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, padding: "28px 20px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "14px" }}>
+          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: dark ? "#1e2a40" : "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={dark ? "#6b7280" : "#9ca3af"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 12V8a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/>
+              <path d="M20 12h-5a2 2 0 1 0 0 4h5"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{ fontSize: "15px", fontWeight: "700", color: textPrimary, marginBottom: "5px" }}>Connect Your Wallet</div>
+            <div style={{ fontSize: "13px", color: textSecondary, lineHeight: "1.5", maxWidth: "280px" }}>See your stablecoin holdings and personalised risk exposure</div>
+          </div>
+          <button
+            onClick={connectWallet}
+            disabled={isConnecting}
+            style={{ padding: "11px 28px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", color: "white", fontSize: "14px", fontWeight: "700", cursor: isConnecting ? "wait" : "pointer", opacity: isConnecting ? 0.7 : 1 }}
+          >
+            {isConnecting ? "Connecting..." : "Connect Wallet"}
+          </button>
+          {!hasWallet && (
+            <div style={{ fontSize: "11px", color: textSecondary }}>No wallet detected — install MetaMask or another browser wallet</div>
+          )}
+        </div>
+      )}
 
       <div style={{ padding: "12px 20px 4px", textAlign: "center" }}>
         <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af", marginBottom: "8px" }}>Not financial advice</div>
