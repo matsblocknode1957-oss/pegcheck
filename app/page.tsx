@@ -1,19 +1,38 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      on?: (event: string, handler: (...args: unknown[]) => void) => void;
+    };
+  }
+}
+
+function formatBalance(balance: string, decimals: number): number {
+  const n = BigInt(balance);
+  const divisor = BigInt(10) ** BigInt(decimals);
+  return Number(n / divisor) + Number(n % divisor) / Number(divisor);
+}
+
+function truncateAddress(addr: string): string {
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
 export default function Home() {
   const stablecoins = [
-    { name: "USDT", issuer: "Tether", peg: 1.0, icon: "/icons/usdt.png", slug: "usdt", bgColor: "#26a17b" },
-    { name: "USDC", issuer: "Circle", peg: 1.0, icon: "/icons/usdc.png", slug: "usdc", bgColor: "#2775ca" },
-    { name: "USDS", issuer: "MakerDAO", peg: 0.999, icon: "/icons/usds.png", slug: "usds", bgColor: "#f4b731" },
-    { name: "Ethena", issuer: "Ethena Labs", peg: 1.0, icon: "/icons/ethena.png", slug: "ethena", bgColor: "#1a1a2e" },
-    { name: "PYUSD", issuer: "PayPal", peg: 1.0, icon: "/icons/pyusd.png", slug: "pyusd", bgColor: "#003087" },
-    { name: "FDUSD", issuer: "First Digital", peg: 1.0, icon: "/icons/fdusd.png", slug: "fdusd", bgColor: "#1a1a1a" },
-    { name: "RLUSD", issuer: "Ripple", peg: 1.0, icon: "/icons/rlusd.png", slug: "rlusd", bgColor: "#346aa9" },
-    { name: "TUSD",   issuer: "TrueUSD",        peg: 0.997, icon: "/icons/tusd.png",   slug: "tusd",   bgColor: "#1a3a5c" },
+    { name: "USDT",   issuer: "Tether",         peg: 1.0,   icon: "/icons/usdt.png",   slug: "usdt",   bgColor: "#26a17b" },
+    { name: "USDC",   issuer: "Circle",          peg: 1.0,   icon: "/icons/usdc.png",   slug: "usdc",   bgColor: "#2775ca" },
+    { name: "USDS",   issuer: "MakerDAO",        peg: 0.999, icon: "/icons/usds.png",   slug: "usds",   bgColor: "#f4b731" },
+    { name: "Ethena", issuer: "Ethena Labs",     peg: 1.0,   icon: "/icons/ethena.png", slug: "ethena", bgColor: "#1a1a2e" },
+    { name: "PYUSD",  issuer: "PayPal",          peg: 1.0,   icon: "/icons/pyusd.png",  slug: "pyusd",  bgColor: "#003087" },
+    { name: "FDUSD",  issuer: "First Digital",   peg: 1.0,   icon: "/icons/fdusd.png",  slug: "fdusd",  bgColor: "#1a1a1a" },
+    { name: "RLUSD",  issuer: "Ripple",          peg: 1.0,   icon: "/icons/rlusd.png",  slug: "rlusd",  bgColor: "#346aa9" },
+    { name: "TUSD",   issuer: "TrueUSD",         peg: 0.997, icon: "/icons/tusd.png",   slug: "tusd",   bgColor: "#1a3a5c" },
     { name: "FRAX",   issuer: "Frax Finance",    peg: 1.0,   icon: "/icons/frax.png",   slug: "frax",   bgColor: "#1c1c1c" },
     { name: "GHO",    issuer: "Aave",            peg: 1.0,   icon: "/icons/gho.png",    slug: "gho",    bgColor: "#b6509e" },
     { name: "crvUSD", issuer: "Curve Finance",   peg: 1.0,   icon: "/icons/crvusd.png", slug: "crvusd", bgColor: "#3a3a3a" },
@@ -40,6 +59,13 @@ export default function Home() {
     return false;
   });
 
+  // Wallet state
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [walletBalances, setWalletBalances] = useState<Record<string, { balance: string; decimals: number }>>({});
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [hasWallet, setHasWallet] = useState(false);
+  const [balancesLoading, setBalancesLoading] = useState(false);
+
   const pathname = usePathname();
 
   const toggleDark = () => {
@@ -47,6 +73,73 @@ export default function Home() {
     setDark(next);
     localStorage.setItem("pegcheck-dark", String(next));
   };
+
+  const fetchBalances = useCallback(async (address: string) => {
+    setBalancesLoading(true);
+    try {
+      const res = await fetch(`/api/balances?address=${address}`);
+      const data = await res.json();
+      if (data.balances) setWalletBalances(data.balances);
+    } catch {
+      // silently fail — holdings section simply won't show
+    } finally {
+      setBalancesLoading(false);
+    }
+  }, []);
+
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      alert("No Ethereum wallet detected. Install MetaMask or another wallet extension.");
+      return;
+    }
+    setIsConnecting(true);
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
+      if (accounts[0]) {
+        const addr = accounts[0].toLowerCase();
+        setWalletAddress(addr);
+        localStorage.setItem("pegcheck-wallet", addr);
+        fetchBalances(addr);
+      }
+    } catch {
+      // user rejected
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const disconnectWallet = () => {
+    setWalletAddress(null);
+    setWalletBalances({});
+    localStorage.removeItem("pegcheck-wallet");
+  };
+
+  // Check for injected wallet and restore saved address on mount
+  useEffect(() => {
+    setHasWallet(!!window.ethereum);
+    const saved = localStorage.getItem("pegcheck-wallet");
+    if (saved) {
+      setWalletAddress(saved);
+      fetchBalances(saved);
+    }
+  }, [fetchBalances]);
+
+  // Listen for account changes
+  useEffect(() => {
+    if (!window.ethereum?.on) return;
+    const handler = (accounts: unknown) => {
+      const list = accounts as string[];
+      if (list.length === 0) {
+        disconnectWallet();
+      } else {
+        const addr = list[0].toLowerCase();
+        setWalletAddress(addr);
+        localStorage.setItem("pegcheck-wallet", addr);
+        fetchBalances(addr);
+      }
+    };
+    window.ethereum.on("accountsChanged", handler);
+  }, [fetchBalances]);
 
   useEffect(() => {
     const fetchPrices = async () => {
@@ -121,6 +214,14 @@ export default function Home() {
   const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), getEffectivePeg(c.slug), c.slug) === "Caution").length;
   const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), getEffectivePeg(c.slug), c.slug) === "Depeg").length;
 
+  const holdings = walletAddress
+    ? stablecoins.filter((coin) => {
+        const bal = walletBalances[coin.slug];
+        if (!bal || bal.balance === "0") return false;
+        return formatBalance(bal.balance, bal.decimals) > 0.0001;
+      })
+    : [];
+
   const bg = dark ? "#0a0e1a" : "#f8f9fb";
   const headerBg = dark ? "#0d1628" : "#ffffff";
   const headerBorder = dark ? "#1e2a40" : "#eaecf0";
@@ -137,22 +238,51 @@ export default function Home() {
   return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: bg, minHeight: "100vh", paddingBottom: "70px", transition: "background 0.2s ease" }}>
 
-      <div style={{ background: headerBg, padding: "16px 20px", borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.2s ease" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      {/* Header */}
+      <div style={{ background: headerBg, padding: "16px 20px", borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", transition: "background 0.2s ease" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
           <div style={{ width: "38px", height: "38px", flexShrink: 0, background: "linear-gradient(135deg, #1a56db, #0e3fa8)", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "15px" }}>P✓</div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: "20px", fontWeight: "700", color: textPrimary, lineHeight: "1.2" }}>PegCheck</div>
             <div style={{ fontSize: "12px", color: textSecondary, marginTop: "3px" }}>Prices from 6 independent sources</div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {/* Wallet indicator */}
+          {walletAddress ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 8px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6" }}>
+              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#16a34a", flexShrink: 0 }} />
+              <span style={{ fontSize: "11px", fontFamily: "monospace", color: textPrimary }}>{truncateAddress(walletAddress)}</span>
+              <button
+                onClick={disconnectWallet}
+                title="Disconnect wallet"
+                style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, fontSize: "14px", padding: "0", lineHeight: 1, display: "flex", alignItems: "center" }}
+              >×</button>
+            </div>
+          ) : hasWallet ? (
+            <button
+              onClick={connectWallet}
+              disabled={isConnecting}
+              style={{ fontSize: "11px", fontWeight: "600", color: "#1a56db", background: "none", border: `1px solid #1a56db`, borderRadius: "8px", padding: "4px 10px", cursor: isConnecting ? "wait" : "pointer", opacity: isConnecting ? 0.6 : 1 }}
+            >
+              {isConnecting ? "Connecting..." : "Connect Wallet"}
+            </button>
+          ) : (
+            <button
+              onClick={connectWallet}
+              style={{ fontSize: "11px", color: textSecondary, background: "none", border: "none", cursor: "pointer", textDecoration: "underline dotted", padding: 0 }}
+            >
+              Connect wallet
+            </button>
+          )}
           <div style={{ fontSize: "11px", color: textSecondary, fontFamily: "monospace" }}>Updated {lastUpdated}</div>
-          <button onClick={toggleDark} style={{ width: "34px", height: "34px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>
+          <button onClick={toggleDark} style={{ width: "34px", height: "34px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>
             {dark ? "☀️" : "🌙"}
           </button>
         </div>
       </div>
 
+      {/* Summary pills */}
       <div style={{ display: "flex", gap: "8px", padding: "12px 20px", background: headerBg, borderBottom: `1px solid ${headerBorder}`, flexWrap: "wrap" }}>
         {healthyCount > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px", borderRadius: "20px", background: dark ? "#052e16" : "#f0fdf4" }}>
@@ -174,12 +304,73 @@ export default function Home() {
         )}
       </div>
 
+      {/* Your Holdings section */}
+      {walletAddress && (
+        <div style={{ margin: "12px 20px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, overflow: "hidden" }}>
+          <div style={{ padding: "12px 16px", borderBottom: `1px solid ${cardBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>Your Holdings</div>
+            {balancesLoading && (
+              <span style={{ fontSize: "11px", color: textSecondary }}>Loading...</span>
+            )}
+          </div>
+          {!balancesLoading && holdings.length === 0 ? (
+            <div style={{ padding: "14px 16px", fontSize: "12px", color: textSecondary }}>
+              No tracked stablecoin holdings found on this wallet
+            </div>
+          ) : (
+            holdings.map((coin) => {
+              const bal = walletBalances[coin.slug];
+              const amount = formatBalance(bal.balance, bal.decimals);
+              const price = getLivePrice(coin.slug, coin.peg);
+              const usdValue = amount * price;
+              const status = getStatus(price, getEffectivePeg(coin.slug), coin.slug);
+              return (
+                <Link
+                  key={coin.slug}
+                  href={`/coin/${coin.slug}`}
+                  style={{
+                    textDecoration: "none",
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto auto",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "10px 16px",
+                    borderBottom: `1px solid ${cardBorder}`,
+                    background: cardBg,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                    <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                      <img src={coin.icon} alt={coin.name} style={{ width: "18px", height: "18px", objectFit: "contain" }} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{coin.name}</div>
+                      <div style={{ fontSize: "11px", color: textSecondary, fontFamily: "monospace" }}>
+                        {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: "monospace", fontSize: "13px", color: textPrimary, textAlign: "right" }}>
+                    ${usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "10px", fontWeight: "600", background: statusBg(status), color: statusColor(status), whiteSpace: "nowrap" }}>
+                    {status}
+                  </span>
+                </Link>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Table header */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px", padding: "8px 20px", background: tableHeaderBg, borderBottom: `1px solid ${headerBorder}` }}>
         <span style={{ fontSize: "11px", fontWeight: "600", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px" }}>Coin</span>
         <span style={{ fontSize: "11px", fontWeight: "600", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "center" }}>Peg</span>
         <span style={{ fontSize: "11px", fontWeight: "600", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right" }}>Status</span>
       </div>
 
+      {/* Coin list */}
       <div style={{ background: cardBg, transition: "background 0.2s ease" }}>
         {stablecoins.map((coin) => {
           const livePrice = getLivePrice(coin.slug, coin.peg);
