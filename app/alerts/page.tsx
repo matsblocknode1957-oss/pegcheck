@@ -4,6 +4,34 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect } from "react";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 
+function formatBalance(balance: string, decimals: number): number {
+  const n = BigInt(balance);
+  const divisor = BigInt(10) ** BigInt(decimals);
+  return Number(n / divisor) + Number(n % divisor) / Number(divisor);
+}
+
+const ALL_COINS = [
+  { name: "USDT",   issuer: "Tether",         slug: "usdt",   icon: "/icons/usdt.png",   bgColor: "#26a17b" },
+  { name: "USDC",   issuer: "Circle",          slug: "usdc",   icon: "/icons/usdc.png",   bgColor: "#2775ca" },
+  { name: "USDS",   issuer: "MakerDAO",        slug: "usds",   icon: "/icons/usds.png",   bgColor: "#f4b731" },
+  { name: "Ethena", issuer: "Ethena Labs",     slug: "ethena", icon: "/icons/ethena.png", bgColor: "#1a1a2e" },
+  { name: "PYUSD",  issuer: "PayPal",          slug: "pyusd",  icon: "/icons/pyusd.png",  bgColor: "#003087" },
+  { name: "FDUSD",  issuer: "First Digital",   slug: "fdusd",  icon: "/icons/fdusd.png",  bgColor: "#1a1a1a" },
+  { name: "RLUSD",  issuer: "Ripple",          slug: "rlusd",  icon: "/icons/rlusd.png",  bgColor: "#346aa9" },
+  { name: "TUSD",   issuer: "TrueUSD",         slug: "tusd",   icon: "/icons/tusd.png",   bgColor: "#1a3a5c" },
+  { name: "FRAX",   issuer: "Frax Finance",    slug: "frax",   icon: "/icons/frax.png",   bgColor: "#1c1c1c" },
+  { name: "GHO",    issuer: "Aave",            slug: "gho",    icon: "/icons/gho.png",    bgColor: "#b6509e" },
+  { name: "crvUSD", issuer: "Curve Finance",   slug: "crvusd", icon: "/icons/crvusd.png", bgColor: "#3a3a3a" },
+  { name: "LUSD",   issuer: "Liquity",         slug: "lusd",   icon: "/icons/lusd.png",   bgColor: "#2eb6ae" },
+  { name: "USDP",   issuer: "Paxos",           slug: "usdp",   icon: "/icons/usdp.png",   bgColor: "#00735b" },
+  { name: "USDD",   issuer: "TRON DAO",        slug: "usdd",   icon: "/icons/usdd.png",   bgColor: "#eb0029" },
+  { name: "mkUSD",  issuer: "Prisma Finance",  slug: "mkusd",  icon: "/icons/mkusd.png",  bgColor: "#6b21a8" },
+  { name: "EURC",   issuer: "Circle",          slug: "eurc",   icon: "/icons/eurc.png",   bgColor: "#2563eb" },
+  { name: "DOLA",   issuer: "Inverse Finance", slug: "dola",   icon: "/icons/dola.png",   bgColor: "#1e3a5f" },
+  { name: "alUSD",  issuer: "Alchemix",        slug: "alusd",  icon: "/icons/alusd.png",  bgColor: "#f59e0b" },
+  { name: "BOLD",   issuer: "Liquity V2",      slug: "bold",   icon: "/icons/bold.svg",   bgColor: "#0f766e" },
+];
+
 export default function AlertsPage() {
   const [email, setEmail] = useState("");
   const [prices, setPrices] = useState<Record<string, number>>({});
@@ -16,6 +44,14 @@ export default function AlertsPage() {
     return false;
   });
 
+  // Wallet-aware state
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [balancesLoading, setBalancesLoading] = useState(false);
+  // selectedCoins starts as all coins; overwritten to held-only once wallet balances load
+  const [selectedCoins, setSelectedCoins] = useState<Set<string>>(
+    () => new Set(ALL_COINS.map((c) => c.slug))
+  );
+
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const upgraded = searchParams?.get("upgraded") === "true";
 
@@ -25,6 +61,16 @@ export default function AlertsPage() {
     localStorage.setItem("pegcheck-dark", String(next));
   };
 
+  const toggleCoin = (slug: string) => {
+    setSelectedCoins((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  };
+
+  // Fetch prices
   useEffect(() => {
     fetch("/api/prices")
       .then((r) => r.json())
@@ -32,27 +78,29 @@ export default function AlertsPage() {
       .catch(() => {});
   }, []);
 
-  const coins = [
-    { name: "USDT", issuer: "Tether", slug: "usdt", icon: "/icons/usdt.png", bgColor: "#26a17b" },
-    { name: "USDC", issuer: "Circle", slug: "usdc", icon: "/icons/usdc.png", bgColor: "#2775ca" },
-    { name: "USDS", issuer: "MakerDAO", slug: "usds", icon: "/icons/usds.png", bgColor: "#f4b731" },
-    { name: "Ethena", issuer: "Ethena Labs", slug: "ethena", icon: "/icons/ethena.png", bgColor: "#1a1a2e" },
-    { name: "PYUSD", issuer: "PayPal", slug: "pyusd", icon: "/icons/pyusd.png", bgColor: "#003087" },
-    { name: "FDUSD", issuer: "First Digital", slug: "fdusd", icon: "/icons/fdusd.png", bgColor: "#1a1a1a" },
-    { name: "RLUSD", issuer: "Ripple", slug: "rlusd", icon: "/icons/rlusd.png", bgColor: "#346aa9" },
-    { name: "TUSD",   issuer: "TrueUSD",        slug: "tusd",   icon: "/icons/tusd.png",   bgColor: "#1a3a5c" },
-    { name: "FRAX",   issuer: "Frax Finance",    slug: "frax",   icon: "/icons/frax.png",   bgColor: "#1c1c1c" },
-    { name: "GHO",    issuer: "Aave",            slug: "gho",    icon: "/icons/gho.png",    bgColor: "#b6509e" },
-    { name: "crvUSD", issuer: "Curve Finance",   slug: "crvusd", icon: "/icons/crvusd.png", bgColor: "#3a3a3a" },
-    { name: "LUSD",   issuer: "Liquity",         slug: "lusd",   icon: "/icons/lusd.png",   bgColor: "#2eb6ae" },
-    { name: "USDP",   issuer: "Paxos",           slug: "usdp",   icon: "/icons/usdp.png",   bgColor: "#00735b" },
-    { name: "USDD",   issuer: "TRON DAO",        slug: "usdd",   icon: "/icons/usdd.png",   bgColor: "#eb0029" },
-    { name: "mkUSD",  issuer: "Prisma Finance",  slug: "mkusd",  icon: "/icons/mkusd.png",  bgColor: "#6b21a8" },
-    { name: "EURC",   issuer: "Circle",          slug: "eurc",   icon: "/icons/eurc.png",   bgColor: "#2563eb" },
-    { name: "DOLA",   issuer: "Inverse Finance", slug: "dola",   icon: "/icons/dola.png",   bgColor: "#1e3a5f" },
-    { name: "alUSD",  issuer: "Alchemix",        slug: "alusd",  icon: "/icons/alusd.png",  bgColor: "#f59e0b" },
-    { name: "BOLD",   issuer: "Liquity V2",      slug: "bold",   icon: "/icons/bold.svg",   bgColor: "#0f766e" },
-  ];
+  // Check for connected wallet and pre-select held coins
+  useEffect(() => {
+    const addr = localStorage.getItem("pegcheck-wallet");
+    if (!addr) return;
+    setWalletAddress(addr);
+    setBalancesLoading(true);
+    fetch(`/api/balances?address=${addr}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.balances) return;
+        const held = new Set(
+          Object.entries(data.balances as Record<string, { balance: string; decimals: number }>)
+            .filter(([, b]) => formatBalance(b.balance, b.decimals) > 0.0001)
+            .map(([slug]) => slug)
+        );
+        // Only override selection if the wallet actually holds something
+        if (held.size > 0) setSelectedCoins(held);
+      })
+      .catch(() => {})
+      .finally(() => setBalancesLoading(false));
+  }, []);
+
+  const coins = ALL_COINS;
 
   const getEffectivePeg = (slug: string) => slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
 
@@ -130,6 +178,25 @@ export default function AlertsPage() {
         </button>
       </div>
 
+      {/* Wallet personalisation banner */}
+      <div style={{ margin: "16px 20px 0", padding: "10px 14px", borderRadius: "10px", border: `1px solid ${walletAddress ? (dark ? "#1e3a5f" : "#bfdbfe") : (dark ? "#1e2a40" : "#e5e7eb")}`, background: walletAddress ? (dark ? "#0d1f38" : "#eff6ff") : (dark ? "#0d1628" : "#f9fafb"), display: "flex", alignItems: "center", gap: "10px" }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={walletAddress ? "#1a56db" : textSecondary} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <path d="M20 12V8a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/>
+          <path d="M20 12h-5a2 2 0 1 0 0 4h5"/>
+        </svg>
+        {walletAddress ? (
+          <span style={{ fontSize: "12px", color: dark ? "#93c5fd" : "#1d4ed8", lineHeight: "1.4" }}>
+            {balancesLoading
+              ? "Loading your wallet holdings…"
+              : "Showing alerts for your connected wallet holdings. You can still adjust the selection below."}
+          </span>
+        ) : (
+          <span style={{ fontSize: "12px", color: textSecondary, lineHeight: "1.4" }}>
+            <a href="/" style={{ color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>Connect your wallet</a> on the home page to personalise your alerts.
+          </span>
+        )}
+      </div>
+
       {upgraded && (
         <div style={{ margin: "16px 20px 0", background: dark ? "#052e16" : "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "12px", padding: "16px", textAlign: "center" }}>
           <div style={{ fontSize: "16px", fontWeight: "700", color: "#16a34a" }}>🎉 Welcome to Premium!</div>
@@ -168,6 +235,60 @@ export default function AlertsPage() {
             );
           })
         )}
+      </div>
+
+      {/* Coin selection */}
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, overflow: "hidden" }}>
+        <div style={{ padding: "14px 16px", borderBottom: `1px solid ${cardBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>Coins to Monitor</div>
+            <div style={{ fontSize: "11px", color: textSecondary, marginTop: "2px" }}>
+              {selectedCoins.size} of {coins.length} selected
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              onClick={() => setSelectedCoins(new Set(coins.map((c) => c.slug)))}
+              style={{ fontSize: "11px", color: "#1a56db", background: "none", border: `1px solid ${dark ? "#1e3a5f" : "#bfdbfe"}`, borderRadius: "6px", padding: "3px 8px", cursor: "pointer" }}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setSelectedCoins(new Set())}
+              style={{ fontSize: "11px", color: textSecondary, background: "none", border: `1px solid ${cardBorder}`, borderRadius: "6px", padding: "3px 8px", cursor: "pointer" }}
+            >
+              None
+            </button>
+          </div>
+        </div>
+        {coins.map((coin) => {
+          const price = prices[coin.slug] ?? getEffectivePeg(coin.slug);
+          const status = getStatus(price, getEffectivePeg(coin.slug), coin.slug);
+          const checked = selectedCoins.has(coin.slug);
+          return (
+            <label
+              key={coin.slug}
+              style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 16px", borderBottom: `1px solid ${cardBorder}`, cursor: "pointer", background: checked ? (dark ? "#0d1f38" : "#f8fbff") : cardBg, transition: "background 0.1s" }}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => toggleCoin(coin.slug)}
+                style={{ width: "16px", height: "16px", accentColor: "#1a56db", flexShrink: 0, cursor: "pointer" }}
+              />
+              <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                <img src={coin.icon} alt={coin.name} style={{ width: "18px", height: "18px", objectFit: "contain" }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{coin.name}</div>
+                <div style={{ fontSize: "11px", color: textSecondary }}>{coin.issuer}</div>
+              </div>
+              <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "10px", fontWeight: "600", background: statusBg(status), color: statusColor(status), whiteSpace: "nowrap", flexShrink: 0 }}>
+                {status}
+              </span>
+            </label>
+          );
+        })}
       </div>
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
