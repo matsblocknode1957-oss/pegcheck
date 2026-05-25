@@ -4,13 +4,47 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 
+type EthProvider = {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+  on?: (event: string, handler: (...args: unknown[]) => void) => void;
+  isMetaMask?: boolean;
+  isCoinbaseWallet?: boolean;
+  isTrust?: boolean;
+  isTrustWallet?: boolean;
+  providers?: EthProvider[];
+};
+
 declare global {
   interface Window {
-    ethereum?: {
-      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-      on?: (event: string, handler: (...args: unknown[]) => void) => void;
-    };
+    ethereum?: EthProvider;
+    coinbaseWalletExtension?: EthProvider;
   }
+}
+
+// Resolve the best available EIP-1193 provider across common wallet types.
+// When multiple extensions co-exist they populate window.ethereum.providers (EIP-5749).
+function resolveProvider(): EthProvider | null {
+  const eth = window.ethereum;
+  if (eth?.providers?.length) {
+    // Prefer the first non-MetaMask entry so Coinbase / Trust users aren't forced
+    // through MetaMask, then fall back to MetaMask, then whatever is first.
+    return (
+      eth.providers.find((p) => p.isCoinbaseWallet) ??
+      eth.providers.find((p) => p.isTrust || p.isTrustWallet) ??
+      eth.providers.find((p) => p.isMetaMask) ??
+      eth.providers[0]
+    );
+  }
+  if (eth) return eth;
+  // Coinbase Wallet SDK can inject on its own key when window.ethereum is absent
+  return window.coinbaseWalletExtension ?? null;
+}
+
+function getWalletName(provider: EthProvider): string {
+  if (provider.isCoinbaseWallet) return "Coinbase Wallet";
+  if (provider.isTrust || provider.isTrustWallet) return "Trust Wallet";
+  if (provider.isMetaMask) return "MetaMask";
+  return "Wallet";
 }
 
 function formatBalance(balance: string, decimals: number): number {
@@ -61,8 +95,10 @@ export default function Home() {
 
   // Wallet state
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [walletName, setWalletName] = useState<string>("");
   const [walletBalances, setWalletBalances] = useState<Record<string, { balance: string; decimals: number }>>({});
   const [isConnecting, setIsConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
   const [hasWallet, setHasWallet] = useState(false);
   const [balancesLoading, setBalancesLoading] = useState(false);
 
@@ -88,21 +124,33 @@ export default function Home() {
   }, []);
 
   const connectWallet = async () => {
-    if (!window.ethereum) {
-      alert("No Ethereum wallet detected. Install MetaMask or another wallet extension.");
+    const provider = resolveProvider();
+    if (!provider) {
+      setConnectError("No Ethereum wallet detected. Install MetaMask, Coinbase Wallet, or Trust Wallet.");
       return;
     }
     setIsConnecting(true);
+    setConnectError(null);
     try {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
+      const accounts = await provider.request({ method: "eth_requestAccounts" }) as string[];
       if (accounts[0]) {
         const addr = accounts[0].toLowerCase();
+        const name = getWalletName(provider);
         setWalletAddress(addr);
+        setWalletName(name);
         localStorage.setItem("pegcheck-wallet", addr);
+        localStorage.setItem("pegcheck-wallet-name", name);
         fetchBalances(addr);
       }
-    } catch {
-      // user rejected
+    } catch (err: unknown) {
+      const code = (err as { code?: number })?.code;
+      if (code === 4001) {
+        setConnectError("Connection rejected. Approve the request in your wallet.");
+      } else if (code === -32002) {
+        setConnectError("A connection request is already pending — check your wallet.");
+      } else {
+        setConnectError("Failed to connect. Make sure your wallet is unlocked and try again.");
+      }
     } finally {
       setIsConnecting(false);
     }
@@ -110,23 +158,29 @@ export default function Home() {
 
   const disconnectWallet = () => {
     setWalletAddress(null);
+    setWalletName("");
     setWalletBalances({});
+    setConnectError(null);
     localStorage.removeItem("pegcheck-wallet");
+    localStorage.removeItem("pegcheck-wallet-name");
   };
 
-  // Check for injected wallet and restore saved address on mount
+  // Check for any injected wallet and restore saved session on mount
   useEffect(() => {
-    setHasWallet(!!window.ethereum);
+    setHasWallet(!!resolveProvider());
     const saved = localStorage.getItem("pegcheck-wallet");
+    const savedName = localStorage.getItem("pegcheck-wallet-name");
     if (saved) {
       setWalletAddress(saved);
+      if (savedName) setWalletName(savedName);
       fetchBalances(saved);
     }
   }, [fetchBalances]);
 
-  // Listen for account changes
+  // Listen for account changes on the active provider
   useEffect(() => {
-    if (!window.ethereum?.on) return;
+    const provider = resolveProvider();
+    if (!provider?.on) return;
     const handler = (accounts: unknown) => {
       const list = accounts as string[];
       if (list.length === 0) {
@@ -138,7 +192,7 @@ export default function Home() {
         fetchBalances(addr);
       }
     };
-    window.ethereum.on("accountsChanged", handler);
+    provider.on("accountsChanged", handler);
   }, [fetchBalances]);
 
   useEffect(() => {
@@ -345,7 +399,10 @@ export default function Home() {
               {balancesLoading && <span style={{ fontSize: "11px", color: textSecondary }}>Loading...</span>}
               <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                 <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#16a34a", flexShrink: 0 }} />
-                <span style={{ fontSize: "11px", fontFamily: "monospace", color: textSecondary }}>{truncateAddress(walletAddress)}</span>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                  {walletName && <span style={{ fontSize: "10px", fontWeight: "600", color: textSecondary, lineHeight: 1.2 }}>{walletName}</span>}
+                  <span style={{ fontSize: "11px", fontFamily: "monospace", color: textSecondary }}>{truncateAddress(walletAddress)}</span>
+                </div>
               </div>
               <button onClick={disconnectWallet} style={{ fontSize: "11px", color: textSecondary, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>Disconnect</button>
             </div>
@@ -401,6 +458,11 @@ export default function Home() {
             <div style={{ fontSize: "15px", fontWeight: "700", color: textPrimary, marginBottom: "5px" }}>Connect Your Wallet</div>
             <div style={{ fontSize: "13px", color: textSecondary, lineHeight: "1.5", maxWidth: "280px" }}>See your stablecoin holdings and personalised risk exposure</div>
           </div>
+          {connectError && (
+            <div style={{ padding: "10px 14px", borderRadius: "8px", background: dark ? "#450a0a" : "#fef2f2", border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`, fontSize: "12px", color: "#dc2626", maxWidth: "300px", lineHeight: "1.5" }}>
+              {connectError}
+            </div>
+          )}
           <button
             onClick={connectWallet}
             disabled={isConnecting}
@@ -409,7 +471,7 @@ export default function Home() {
             {isConnecting ? "Connecting..." : "Connect Wallet"}
           </button>
           {!hasWallet && (
-            <div style={{ fontSize: "11px", color: textSecondary }}>No wallet detected — install MetaMask or another browser wallet</div>
+            <div style={{ fontSize: "11px", color: textSecondary }}>No wallet detected — install MetaMask, Coinbase Wallet, or Trust Wallet</div>
           )}
         </div>
       )}
