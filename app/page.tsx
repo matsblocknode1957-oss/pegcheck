@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
@@ -102,6 +102,8 @@ export default function Home() {
   const [hasWallet, setHasWallet] = useState(false);
   const [balancesLoading, setBalancesLoading] = useState(false);
   const [scoreCopied, setScoreCopied] = useState(false);
+  const [scoreHistory, setScoreHistory] = useState<{ risk_score: number; created_at: string }[]>([]);
+  const snapshotSentRef = useRef<string | null>(null);
 
   const pathname = usePathname();
 
@@ -208,6 +210,59 @@ export default function Home() {
     };
     provider.on("accountsChanged", handler);
   }, [fetchBalances]);
+
+  // Save snapshot and refresh history whenever balances + prices are both loaded
+  useEffect(() => {
+    if (!walletAddress || Object.keys(walletBalances).length === 0 || Object.keys(prices).length === 0) return;
+
+    // Inline score calculation — avoids referencing render-derived consts before their declaration
+    const heldSlugs = Object.entries(walletBalances).filter(([, b]) => formatBalance(b.balance, b.decimals) > 0.0001);
+    if (heldSlugs.length === 0) return;
+
+    const total = heldSlugs.reduce((sum, [slug, b]) => {
+      const price = prices[slug] ?? (COIN_PEGS[slug] ?? 1.0);
+      return sum + formatBalance(b.balance, b.decimals) * price;
+    }, 0);
+    if (total === 0) return;
+
+    const score = (() => {
+      const weighted = heldSlugs.reduce((sum, [slug, b]) => {
+        const price = prices[slug] ?? (COIN_PEGS[slug] ?? 1.0);
+        const peg = COIN_PEGS[slug] ?? 1.0;
+        const weight = (formatBalance(b.balance, b.decimals) * price) / total;
+        const { healthy, caution } = getThresholds(slug);
+        const diff = Math.abs(price - peg) / peg;
+        const pts = diff > caution ? 10 : diff > healthy ? 5 : 1;
+        return sum + weight * pts;
+      }, 0);
+      return Math.round(weighted * 10) / 10;
+    })();
+
+    // Client-side dedup: only attempt once per address per clock-hour
+    const hourKey = `${walletAddress}:${new Date().toISOString().slice(0, 13)}`;
+    if (snapshotSentRef.current === hourKey) return;
+    snapshotSentRef.current = hourKey;
+
+    fetch("/api/wallet/snapshot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address: walletAddress, riskScore: score, totalValue: total, coinCount: heldSlugs.length }),
+    }).catch(() => {});
+
+    fetch(`/api/wallet/snapshot?address=${walletAddress}`)
+      .then((r) => r.json())
+      .then((data) => { if (data.snapshots) setScoreHistory(data.snapshots.slice(0, 7)); })
+      .catch(() => {});
+  }, [walletAddress, walletBalances, prices]);
+
+  // Fetch history when wallet first connects (before a snapshot is saved this session)
+  useEffect(() => {
+    if (!walletAddress) { setScoreHistory([]); return; }
+    fetch(`/api/wallet/snapshot?address=${walletAddress}`)
+      .then((r) => r.json())
+      .then((data) => { if (data.snapshots) setScoreHistory(data.snapshots.slice(0, 7)); })
+      .catch(() => {});
+  }, [walletAddress]);
 
   useEffect(() => {
     const fetchPrices = async () => {
@@ -494,6 +549,35 @@ export default function Home() {
               </button>
             </div>
           )}
+
+          {/* Score history */}
+          {scoreHistory.length > 1 && (() => {
+            const latest = scoreHistory[0].risk_score;
+            const previous = scoreHistory[1].risk_score;
+            const diff = latest - previous;
+            const trend = diff < -0.05
+              ? `📉 Down from ${previous.toFixed(1)} last session — improving`
+              : diff > 0.05
+              ? `📈 Up from ${previous.toFixed(1)} last session — risk increasing`
+              : `➡️ Stable since last session`;
+            const dotColor = (s: number) => s <= 3 ? "#16a34a" : s <= 6 ? "#d97706" : "#dc2626";
+            // Show oldest→newest left to right
+            const dots = [...scoreHistory].reverse();
+            return (
+              <div style={{ padding: "10px 16px", borderBottom: `1px solid ${cardBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                <span style={{ fontSize: "11px", color: textSecondary, lineHeight: "1.4", flex: 1 }}>{trend}</span>
+                <div style={{ display: "flex", gap: "4px", alignItems: "center", flexShrink: 0 }}>
+                  {dots.map((s, i) => (
+                    <div
+                      key={i}
+                      title={`${s.risk_score.toFixed(1)}`}
+                      style={{ width: "8px", height: "8px", borderRadius: "50%", background: dotColor(s.risk_score), opacity: i === dots.length - 1 ? 1 : 0.55 + (i / dots.length) * 0.45 }}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Holdings rows */}
           {!balancesLoading && holdings.length === 0 ? (
