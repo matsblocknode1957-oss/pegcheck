@@ -276,6 +276,32 @@ export default function Home() {
       })
     : [];
 
+  const portfolioTotal = holdings.reduce((sum, coin) => {
+    const bal = walletBalances[coin.slug];
+    const amount = formatBalance(bal.balance, bal.decimals);
+    return sum + amount * getLivePrice(coin.slug, coin.peg);
+  }, 0);
+
+  const portfolioRiskScore = (() => {
+    if (holdings.length === 0 || portfolioTotal === 0) return 0;
+    const weighted = holdings.reduce((sum, coin) => {
+      const bal = walletBalances[coin.slug];
+      const amount = formatBalance(bal.balance, bal.decimals);
+      const price = getLivePrice(coin.slug, coin.peg);
+      const weight = (amount * price) / portfolioTotal;
+      const status = getStatus(price, getEffectivePeg(coin.slug), coin.slug);
+      const pts = status === "Depeg" ? 10 : status === "Caution" ? 5 : 1;
+      return sum + weight * pts;
+    }, 0);
+    return Math.round(weighted * 10) / 10;
+  })();
+
+  const riskColor = portfolioRiskScore <= 3 ? "#16a34a" : portfolioRiskScore <= 6 ? "#d97706" : "#dc2626";
+  const riskLabel = portfolioRiskScore <= 3 ? "Low Risk" : portfolioRiskScore <= 6 ? "Moderate Risk" : "High Risk";
+  const riskBg = dark
+    ? (portfolioRiskScore <= 3 ? "#052e16" : portfolioRiskScore <= 6 ? "#451a03" : "#450a0a")
+    : (portfolioRiskScore <= 3 ? "#f0fdf4" : portfolioRiskScore <= 6 ? "#fffbeb" : "#fef2f2");
+
   const bg = dark ? "#0a0e1a" : "#f8f9fb";
   const headerBg = dark ? "#0d1628" : "#ffffff";
   const headerBorder = dark ? "#1e2a40" : "#eaecf0";
@@ -393,9 +419,17 @@ export default function Home() {
       {/* Wallet card */}
       {walletAddress ? (
         <div style={{ margin: "0 20px 4px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}`, overflow: "hidden" }}>
-          <div style={{ padding: "14px 16px", borderBottom: `1px solid ${cardBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>Your Holdings</div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {/* Card header: title + total value left, wallet indicator right */}
+          <div style={{ padding: "14px 16px", borderBottom: `1px solid ${cardBorder}`, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>Your Holdings</div>
+              {portfolioTotal > 0 && (
+                <div style={{ fontSize: "18px", fontWeight: "800", fontFamily: "monospace", color: textPrimary, marginTop: "3px", lineHeight: 1 }}>
+                  ${portfolioTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
               {balancesLoading && <span style={{ fontSize: "11px", color: textSecondary }}>Loading...</span>}
               <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                 <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#16a34a", flexShrink: 0 }} />
@@ -407,6 +441,24 @@ export default function Home() {
               <button onClick={disconnectWallet} style={{ fontSize: "11px", color: textSecondary, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>Disconnect</button>
             </div>
           </div>
+
+          {/* Risk score panel */}
+          {!balancesLoading && holdings.length > 0 && portfolioTotal > 0 && (
+            <div style={{ padding: "16px", borderBottom: `1px solid ${cardBorder}`, display: "flex", alignItems: "center", gap: "16px", background: riskBg }}>
+              <div style={{ flexShrink: 0, textAlign: "center", minWidth: "56px" }}>
+                <div style={{ fontSize: "40px", fontWeight: "800", lineHeight: 1, color: riskColor, fontFamily: "monospace" }}>
+                  {portfolioRiskScore.toFixed(1)}
+                </div>
+                <div style={{ fontSize: "10px", color: riskColor, opacity: 0.7, marginTop: "2px" }}>/ 10</div>
+              </div>
+              <div>
+                <div style={{ fontSize: "16px", fontWeight: "700", color: riskColor, marginBottom: "3px" }}>{riskLabel}</div>
+                <div style={{ fontSize: "12px", color: riskColor, opacity: 0.75, lineHeight: "1.4" }}>Based on your current stablecoin holdings</div>
+              </div>
+            </div>
+          )}
+
+          {/* Holdings rows */}
           {!balancesLoading && holdings.length === 0 ? (
             <div style={{ padding: "20px 16px", textAlign: "center", fontSize: "12px", color: textSecondary }}>
               No tracked stablecoin holdings found on this wallet
