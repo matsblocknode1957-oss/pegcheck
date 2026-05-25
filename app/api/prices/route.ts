@@ -79,13 +79,19 @@ async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<nu
 
 export async function GET() {
   try {
-    // Source 1 — CoinGecko
+    // Source 1 — CoinGecko (coin prices + live EUR/USD rate in parallel)
     const cgIds = "tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold";
-    const cgRes = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd`,
-      { next: { revalidate: 60 } }
-    );
+    const [cgRes, eurUsdRes] = await Promise.all([
+      fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd`,
+        { next: { revalidate: 60 } }
+      ),
+      fetch("https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=eur").catch(() => null),
+    ]);
     const cgData = await cgRes.json();
+    const eurUsdRaw = eurUsdRes ? await eurUsdRes.json().catch(() => null) : null;
+    const eurPerUsd = eurUsdRaw?.usd?.eur;
+    const eurUsd = (eurPerUsd && eurPerUsd > 0.5 && eurPerUsd < 2.0) ? 1 / eurPerUsd : 1.13;
 
     // Source 2 — Coinbase
     const cbSlugs = ["USDT-USD","USDC-USD","DAI-USD","PYUSD-USD","TUSD-USD"];
@@ -233,7 +239,7 @@ export async function GET() {
       },
     };
 
-    return NextResponse.json({ prices, sources, uniswap });
+    return NextResponse.json({ prices, sources, uniswap, eurUsd });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch prices" }, { status: 500 });
   }

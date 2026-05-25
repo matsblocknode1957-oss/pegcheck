@@ -7,7 +7,24 @@
       "Bash(npm install *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\charl\\\\pegcheck\" -Force)",
       "Bash(Select-Object Name, PSIsContainer)",
-      "Bash(Format-Table -AutoSize)"
+      "Bash(Format-Table -AutoSize)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npx netlify *)",
+      "Bash(Select-Object -Property Mode, Name)",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(python3 -c \"from PIL import Image; img = Image.open\\('usdt.png'\\); print\\(img.size\\)\")",
+      "Bash(identify usdt.png)",
+      "Bash(curl -s \"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,usdx,bold&per_page=20\")",
+      "Bash(node -e ' *)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\charl\\\\pegcheck\\\\public\\\\icons\\\\usdx.png\" -Force)",
+      "Bash(git restore *)",
+      "Bash(Select-Object Name, FullName)",
+      "PowerShell(\\(Get-ChildItem \"C:\\\\Users\\\\charl\\\\pegcheck\"\\) | ForEach-Object { $_.Name })",
+      "PowerShell(\\(Get-ChildItem -Path \"C:\\\\Users\\\\charl\\\\pegcheck\\\\data\" -Force\\) | ForEach-Object { $_.Name })",
+      "PowerShell(\\(Get-ChildItem -Path \"C:\\\\Users\\\\charl\\\\pegcheck\\\\lib\" -Force\\) | ForEach-Object { $_.Name })"
     ]
   }
 }
