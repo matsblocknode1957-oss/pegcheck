@@ -30,6 +30,16 @@ interface CoinStats {
   dataPoints: number;
 }
 
+interface WhaleRow {
+  slug: string; amount: number; action: string; created_at: string;
+}
+
+interface WhaleStats {
+  count: number;
+  totalVolume: number;
+  top3: WhaleRow[];
+}
+
 function getStatus(price: number, slug: string): "Healthy" | "Caution" | "Depeg" {
   const peg = COIN_PEGS[slug] ?? 1.0;
   const { healthy, caution } = getThresholds(slug);
@@ -58,7 +68,13 @@ function statusBadgeStyle(s: string): string {
   return "background:#2d0a0a;color:#fca5a5;border:1px solid rgba(239,68,68,.3)";
 }
 
-function buildHtml(coins: CoinStats[], whaleCount: number, weekOf: string, marketScore: number): string {
+function fmtVolume(n: number): string {
+  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`;
+  if (n >= 1_000_000)     return `$${(n / 1_000_000).toFixed(1)}M`;
+  return `$${n.toLocaleString()}`;
+}
+
+function buildHtml(coins: CoinStats[], whale: WhaleStats, weekOf: string, marketScore: number): string {
   const healthyCoins = coins.filter(c => c.status === "Healthy");
   const cautionCoins = coins.filter(c => c.status === "Caution");
   const depegCoins   = coins.filter(c => c.status === "Depeg");
@@ -149,7 +165,7 @@ function buildHtml(coins: CoinStats[], whaleCount: number, weekOf: string, marke
             }
           </p>
           <p style="margin:0;font-size:12px;color:#4b5563">
-            ${whaleCount} large on-chain transfers tracked this week.
+            ${whale.count} large on-chain transfers (≥$1M) tracked this week.
           </p>
         </td>
       </tr>
@@ -207,24 +223,41 @@ function buildHtml(coins: CoinStats[], whaleCount: number, weekOf: string, marke
   <!-- Whale Activity -->
   <tr><td style="background:#0d1628;padding:20px 32px;border-left:1px solid #1e2a40;border-right:1px solid #1e2a40;border-top:1px solid #1e2a40">
     <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">Whale Activity</div>
-    <table width="100%" cellpadding="0" cellspacing="0">
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px">
       <tr>
-        <td width="20%" style="text-align:center;padding:16px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
-          <div style="font-size:36px;font-weight:800;color:#3b82f6;font-family:monospace">${whaleCount}</div>
+        <td width="48%" style="text-align:center;padding:16px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
+          <div style="font-size:32px;font-weight:800;color:#3b82f6;font-family:monospace">${whale.count}</div>
           <div style="font-size:10px;color:#6b7280;margin-top:4px;text-transform:uppercase;letter-spacing:1px">Large Transfers</div>
-          <div style="font-size:10px;color:#4b5563;margin-top:2px">Last 7 days</div>
+          <div style="font-size:10px;color:#4b5563;margin-top:2px">≥$1M · Last 7 days</div>
         </td>
         <td width="4%"></td>
-        <td style="vertical-align:middle;padding-left:8px">
-          <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6">
-            ${whaleCount === 0
-              ? "No significant whale transfers detected this week. On-chain activity remained within normal parameters across all 19 monitored stablecoins."
-              : `${whaleCount} large on-chain transfer${whaleCount > 1 ? "s" : ""} were detected across monitored stablecoin contracts this week. Large transfers ≥$100k are tracked for mint, burn, and whale movement activity.`
-            }
-          </p>
+        <td width="48%" style="text-align:center;padding:16px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
+          <div style="font-size:32px;font-weight:800;color:#8b5cf6;font-family:monospace">${fmtVolume(whale.totalVolume)}</div>
+          <div style="font-size:10px;color:#6b7280;margin-top:4px;text-transform:uppercase;letter-spacing:1px">Total Volume</div>
+          <div style="font-size:10px;color:#4b5563;margin-top:2px">USD moved on-chain</div>
         </td>
       </tr>
     </table>
+    ${whale.count === 0
+      ? `<p style="margin:0;font-size:13px;color:#6b7280">No transfers ≥$1M detected this week across monitored stablecoin contracts.</p>`
+      : `<div style="font-size:11px;font-weight:700;color:#4b5563;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Top Transfers</div>
+         ${whale.top3.map((tx, i) => {
+           const coinName = COIN_NAMES[tx.slug] ?? tx.slug.toUpperCase();
+           const actionColor = tx.action === "mint" ? "#10b981" : tx.action === "burn" ? "#ef4444" : "#3b82f6";
+           const actionLabel = tx.action.replace("_", " ").toUpperCase();
+           const date = new Date(tx.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+           return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#0a0e1a;border-radius:7px;border:1px solid #1e2a40;margin-bottom:6px">
+             <div>
+               <span style="font-size:13px;font-weight:700;color:#f9fafb">${coinName}</span>
+               <span style="margin-left:8px;font-size:10px;font-weight:700;color:${actionColor};background:${actionColor}22;padding:2px 6px;border-radius:3px">${actionLabel}</span>
+             </div>
+             <div style="text-align:right">
+               <div style="font-size:13px;font-weight:700;color:#f9fafb;font-family:monospace">${fmtVolume(tx.amount)}</div>
+               <div style="font-size:11px;color:#4b5563">${date}</div>
+             </div>
+           </div>`;
+         }).join("")}`
+    }
   </td></tr>
 
   <!-- Footer -->
@@ -284,11 +317,20 @@ export async function POST(request: Request) {
       .gte("created_at", sinceIso)
       .order("created_at", { ascending: true });
 
-    // Fetch whale transfer count for last 7 days
-    const { count: whaleCount } = await supabase
+    // Fetch whale transfers ≥$1M for last 7 days
+    const { data: whaleRows } = await supabase
       .from("large_transactions")
-      .select("*", { count: "exact", head: true })
-      .gte("created_at", sinceIso);
+      .select("slug, amount, action, created_at")
+      .gte("created_at", sinceIso)
+      .gte("amount", 1000000)
+      .order("amount", { ascending: false });
+
+    const whaleData = whaleRows ?? [];
+    const whale: WhaleStats = {
+      count: whaleData.length,
+      totalVolume: whaleData.reduce((s, r) => s + Number(r.amount), 0),
+      top3: whaleData.slice(0, 3),
+    };
 
     // Group history by slug
     const bySlug: Record<string, number[]> = {};
@@ -335,7 +377,7 @@ export async function POST(request: Request) {
     });
 
     const marketScore = Math.round(totalStability / slugs.length);
-    const html = buildHtml(coins, whaleCount ?? 0, weekOf, marketScore);
+    const html = buildHtml(coins, whale, weekOf, marketScore);
 
     const depegList = coins.filter(c => c.status === "Depeg").map(c => c.name);
     const subjectSuffix = depegList.length > 0
@@ -354,7 +396,8 @@ export async function POST(request: Request) {
       sentTo: to,
       marketScore,
       coinsWithData: coins.filter(c => c.dataPoints > 0).length,
-      whaleTransfers: whaleCount ?? 0,
+      whaleTransfers: whale.count,
+      whaleTotalVolume: whale.totalVolume,
     });
 
   } catch (err) {
