@@ -324,7 +324,7 @@ export default function AlertsPage() {
               Get a professional stablecoin risk report every Monday — 19 coins, whale activity, market scoring
             </div>
             <a
-              href="mailto:mat@fintechcheck.uk?subject=Weekly%20Report%20Trial&body=I'd%20like%20to%20try%20the%20free%20weekly%20report"
+              href="mailto:matsblocknode1957@gmail.com?subject=Weekly%20Report%20Trial&body=I'd%20like%20to%20try%20the%20free%20weekly%20report"
               style={{ display: "inline-block", padding: "8px 16px", borderRadius: "7px", background: dark ? "#0d1f38" : "#eff6ff", color: "#1a56db", fontSize: "12px", fontWeight: "700", textDecoration: "none", border: "1px solid " + (dark ? "#1e3a5f" : "#bfdbfe") }}
             >
               Get 4 Weeks Free →
