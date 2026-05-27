@@ -176,15 +176,15 @@ export default function DocsPage() {
         ]}
       />
 
-      {/* Endpoint 5 */}
+      {/* Endpoint 5 — Register webhook */}
       <EndpointSection
         method="POST"
-        path="/api/v1/webhooks/register"
+        path="/api/v1/webhooks"
         title="Register a webhook"
-        description="PegCheck will POST to your URL whenever a coin crosses the threshold you specify."
+        description="Subscribe your endpoint to depeg, caution, and/or recovery events. PegCheck will POST a JSON payload to your URL on each trigger."
         request={[
           { color: "blue", text: "fetch" },
-          { color: "white", text: '("https://pegcheck.uk/api/v1/webhooks/register", {' },
+          { color: "white", text: '("https://pegcheck.uk/api/v1/webhooks", {' },
           { color: "white", text: '  method: "POST",' },
           { color: "white", text: '  headers: {' },
           { color: "yellow", text: '    Authorization', after: ': "Bearer YOUR_API_KEY",' },
@@ -192,29 +192,116 @@ export default function DocsPage() {
           { color: "white", text: '  },' },
           { color: "white", text: '  body: JSON.stringify({' },
           { color: "white", text: '    url: "https://your-app.com/webhook",' },
-          { color: "white", text: '    threshold: 1.5,' },
-          { color: "white", text: '    coins: ["usdt", "usdc"],' },
-          { color: "white", text: '    api_key: "YOUR_API_KEY"' },
+          { color: "white", text: '    events: ["depeg", "recovery"]' },
           { color: "white", text: '  })' },
           { color: "white", text: "})" },
         ]}
         response={`{
-  "message": "Webhook registered successfully",
   "webhook": {
     "id": 42,
     "url": "https://your-app.com/webhook",
-    "threshold": 1.5,
-    "coins": "usdt,usdc",
-    "api_key": "YOUR_API_KEY"
+    "events": ["depeg", "recovery"],
+    "active": true,
+    "fail_count": 0,
+    "last_fired": null,
+    "created_at": "2026-01-15T10:30:00Z"
   }
 }`}
         bodyFields={[
-          { name: "url", required: true, type: "string", desc: "HTTPS URL to receive POST notifications" },
-          { name: "threshold", required: false, type: "number", desc: "Deviation % that triggers a call (default: 1.0)" },
-          { name: "coins", required: false, type: "string[]", desc: 'Array of slugs to watch (omit for "all")' },
-          { name: "api_key", required: true, type: "string", desc: "Your API key — used to identify the webhook owner" },
+          { name: "url", required: true, type: "string", desc: "HTTPS URL to receive POST payloads" },
+          { name: "events", required: false, type: "string[]", desc: 'Events to subscribe to — default: ["depeg","caution","recovery"]' },
         ]}
       />
+
+      {/* Endpoint 6 — List webhooks */}
+      <EndpointSection
+        method="GET"
+        path="/api/v1/webhooks"
+        title="List webhooks"
+        description="Returns all webhooks registered under your API key."
+        request={[
+          { color: "blue", text: "fetch" },
+          { color: "white", text: '("https://pegcheck.uk/api/v1/webhooks", {' },
+          { color: "white", text: '  headers: {' },
+          { color: "yellow", text: '    Authorization', after: ': "Bearer YOUR_API_KEY"' },
+          { color: "white", text: "  }" },
+          { color: "white", text: "})" },
+        ]}
+        response={`{
+  "webhooks": [
+    {
+      "id": 42,
+      "url": "https://your-app.com/webhook",
+      "events": ["depeg", "recovery"],
+      "active": true,
+      "fail_count": 0,
+      "last_fired": "2026-01-15T10:30:00Z",
+      "created_at": "2026-01-10T08:00:00Z"
+    }
+  ]
+}`}
+        fields={[
+          { name: "active", type: "boolean", desc: "False after 3 consecutive delivery failures — re-register to resume" },
+          { name: "fail_count", type: "number", desc: "Consecutive failed deliveries; resets to 0 on success" },
+          { name: "last_fired", type: "string", desc: "ISO 8601 timestamp of the last successful delivery" },
+        ]}
+      />
+
+      {/* Endpoint 7 — Delete webhook */}
+      <EndpointSection
+        method="DELETE"
+        path="/api/v1/webhooks?id=X"
+        title="Delete a webhook"
+        description="Permanently removes a webhook. Only webhooks belonging to your API key can be deleted."
+        params={[
+          { name: "id", required: true, desc: "The numeric webhook ID returned when it was registered" },
+        ]}
+        request={[
+          { color: "blue", text: "fetch" },
+          { color: "white", text: '("https://pegcheck.uk/api/v1/webhooks?id=42", {' },
+          { color: "white", text: '  method: "DELETE",' },
+          { color: "white", text: '  headers: {' },
+          { color: "yellow", text: '    Authorization', after: ': "Bearer YOUR_API_KEY"' },
+          { color: "white", text: "  }" },
+          { color: "white", text: "})" },
+        ]}
+        response={`{
+  "message": "Webhook deleted"
+}`}
+      />
+
+      {/* Webhook payload */}
+      <div className="bg-[#161b22] rounded-2xl p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-1">Webhook payload</h2>
+        <p className="text-gray-400 text-sm mb-4">
+          PegCheck sends a POST request with this JSON body. Respond with any 2xx status to acknowledge.
+          After 3 failed deliveries the webhook is automatically deactivated.
+        </p>
+        <ResponseBlock json={`{
+  "event": "depeg",
+  "coin": "usdc",
+  "price": 0.9610,
+  "peg": 1.0,
+  "deviation_pct": -3.9,
+  "triggered_at": "2026-01-15T10:30:00Z"
+}`} />
+        <div className="mt-4 space-y-2">
+          {[
+            { name: "event", type: "string", desc: '"depeg" (≥2.5% off peg) | "caution" (1–2.5%) | "recovery" (returned to within 2.5%)' },
+            { name: "coin", type: "string", desc: "Stablecoin slug — e.g. usdc, usdt" },
+            { name: "price", type: "number", desc: "Median price at time of trigger" },
+            { name: "peg", type: "number", desc: "Target peg value (1.0 for USD-pegged; EUR/USD rate for EURC)" },
+            { name: "deviation_pct", type: "number", desc: "Percentage deviation from peg; negative = below peg" },
+            { name: "triggered_at", type: "string", desc: "ISO 8601 UTC timestamp" },
+          ].map((f) => (
+            <div key={f.name} className="flex gap-3 text-sm">
+              <span className="font-mono text-blue-400 w-28 shrink-0">{f.name}</span>
+              <span className="font-mono text-gray-500 text-xs mt-0.5 w-14 shrink-0">{f.type}</span>
+              <span className="text-gray-400">{f.desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Error codes */}
       <div className="bg-[#161b22] rounded-2xl p-6 mb-6">
@@ -295,7 +382,7 @@ function EndpointSection({
   fields,
   bodyFields,
 }: {
-  method: "GET" | "POST";
+  method: "GET" | "POST" | "DELETE";
   path: string;
   title: string;
   description: string;
@@ -305,7 +392,7 @@ function EndpointSection({
   fields?: Field[];
   bodyFields?: BodyField[];
 }) {
-  const methodColor = method === "GET" ? "text-green-400" : "text-blue-400";
+  const methodColor = method === "GET" ? "text-green-400" : method === "DELETE" ? "text-red-400" : "text-blue-400";
   return (
     <div className="bg-[#161b22] rounded-2xl p-6 mb-6">
       <div className="flex items-center gap-3 mb-1">

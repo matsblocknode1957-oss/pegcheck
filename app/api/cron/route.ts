@@ -295,6 +295,62 @@ export async function GET() {
       alertableSlugs.has(slug) && !EXCLUDED_FROM_ALERTS.includes(slug)
     );
 
+    // Recovery detection — was depegged last cycle, now back above 2.5% threshold
+    const recoveryResults = await Promise.all(
+      Object.entries(prices)
+        .filter(([slug, price]) => price >= effectivePeg(slug) * 0.975)
+        .map(async ([slug]) => {
+          const { data } = await supabase
+            .from("price_history")
+            .select("price")
+            .eq("slug", slug)
+            .order("created_at", { ascending: false })
+            .limit(2);
+          if (!data || data.length < 2) return null;
+          const prevPrice = Number(data[1].price);
+          if (prevPrice >= effectivePeg(slug) * 0.975) return null;
+          return [slug, prices[slug]] as [string, number];
+        })
+    );
+    const recovered = recoveryResults.filter(Boolean) as [string, number][];
+
+    // Caution detection — newly entered the 1–2.5% below-peg zone
+    const cautionResults = await Promise.all(
+      Object.entries(prices)
+        .filter(([slug, price]) => {
+          const peg = effectivePeg(slug);
+          return price >= peg * 0.975 && price < peg * 0.99;
+        })
+        .map(async ([slug]) => {
+          const { data } = await supabase
+            .from("price_history")
+            .select("price")
+            .eq("slug", slug)
+            .order("created_at", { ascending: false })
+            .limit(2);
+          if (!data || data.length < 2) return null;
+          const prevPrice = Number(data[1].price);
+          const peg = effectivePeg(slug);
+          if (prevPrice >= peg * 0.975 && prevPrice < peg * 0.99) return null;
+          if (EXCLUDED_FROM_ALERTS.includes(slug)) return null;
+          return [slug, prices[slug]] as [string, number];
+        })
+    );
+    const cautioned = cautionResults.filter(Boolean) as [string, number][];
+
+    // Fire webhooks for all event types (runs regardless of email eligibility)
+    await Promise.allSettled([
+      ...depegged.map(([slug, price]) =>
+        fireWebhooks(supabase, "depeg", slug, price, effectivePeg(slug))
+      ),
+      ...cautioned.map(([slug, price]) =>
+        fireWebhooks(supabase, "caution", slug, price, effectivePeg(slug))
+      ),
+      ...recovered.map(([slug, price]) =>
+        fireWebhooks(supabase, "recovery", slug, price, effectivePeg(slug))
+      ),
+    ]);
+
     // Log confirmed depegs on-chain via Sepolia smart contract
     if (depegged.length > 0) {
       const sepoliaRpc = process.env.SEPOLIA_RPC_URL ?? "";
@@ -377,4 +433,65 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json({ error: "Cron job failed" }, { status: 500 });
   }
+}
+
+// ─── Webhook helpers ──────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fireWebhooks(
+  db: any,
+  event: "depeg" | "caution" | "recovery",
+  slug: string,
+  price: number,
+  peg: number
+): Promise<void> {
+  const { data: hooks } = await db
+    .from("webhooks")
+    .select("id, url")
+    .eq("active", true)
+    .contains("events", [event]);
+
+  if (!hooks || hooks.length === 0) return;
+
+  const payload = {
+    event,
+    coin: slug,
+    price,
+    peg,
+    deviation_pct: parseFloat((((price - peg) / peg) * 100).toFixed(4)),
+    triggered_at: new Date().toISOString(),
+  };
+
+  await Promise.allSettled(
+    hooks.map(async (wh: { id: number; url: string }) => {
+      try {
+        const res = await fetch(wh.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (res.ok) {
+          await db
+            .from("webhooks")
+            .update({ last_fired: new Date().toISOString(), fail_count: 0 })
+            .eq("id", wh.id);
+        } else {
+          await incrementFailCount(db, wh.id);
+        }
+      } catch {
+        await incrementFailCount(db, wh.id);
+      }
+    })
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function incrementFailCount(db: any, id: number): Promise<void> {
+  const { data } = await db.from("webhooks").select("fail_count").eq("id", id).single();
+  const newCount = (data?.fail_count ?? 0) + 1;
+  await db
+    .from("webhooks")
+    .update({ fail_count: newCount, ...(newCount >= 3 ? { active: false } : {}) })
+    .eq("id", id);
 }
