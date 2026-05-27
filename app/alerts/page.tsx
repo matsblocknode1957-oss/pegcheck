@@ -309,6 +309,31 @@ export default function AlertsPage() {
         </button>
       </div>
 
+      {/* Weekly Report promo */}
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "16px 18px", border: `1px solid ${dark ? "#1e3a5f" : "#bfdbfe"}` }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+          <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: dark ? "#0d1f38" : "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a56db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "3px" }}>Weekly Risk Report</div>
+            <div style={{ fontSize: "12px", color: textSecondary, lineHeight: "1.5", marginBottom: "12px" }}>
+              Get a professional stablecoin risk report every Monday — 19 coins, whale activity, market scoring
+            </div>
+            <a
+              href="mailto:mat@fintechcheck.uk?subject=Weekly%20Report%20Trial&body=I'd%20like%20to%20try%20the%20free%20weekly%20report"
+              style={{ display: "inline-block", padding: "8px 16px", borderRadius: "7px", background: dark ? "#0d1f38" : "#eff6ff", color: "#1a56db", fontSize: "12px", fontWeight: "700", textDecoration: "none", border: "1px solid " + (dark ? "#1e3a5f" : "#bfdbfe") }}
+            >
+              Get 4 Weeks Free →
+            </a>
+            <div style={{ marginTop: "8px", fontSize: "11px", color: textSecondary }}>£49/month after trial · Cancel anytime</div>
+          </div>
+        </div>
+      </div>
+
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "13px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Premium Features ⚡</div>
         {["Instant alerts when any coin drops below $0.975", "Email notification within seconds of detection", "Be first to know before the market reacts", "Cancel anytime"].map((feature) => (
