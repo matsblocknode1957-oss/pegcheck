@@ -43,12 +43,12 @@ export default function ReportsAdminPage() {
         <section style={{ background: "#1e293b", borderRadius: "10px", padding: "24px", marginBottom: "20px", border: "1px solid #334155" }}>
           <h2 style={{ fontSize: "14px", fontWeight: 600, color: "#e2e8f0", marginBottom: "12px" }}>Test Report</h2>
           <p style={{ fontSize: "12px", color: "#64748b", marginBottom: "16px" }}>
-            Sends to <span style={{ color: "#94a3b8" }}>mat@fintechcheck.uk</span>
+            Sends to <span style={{ color: "#94a3b8" }}>matsblocknode1957@gmail.com</span>
           </p>
           <button
             disabled={sending}
             onClick={() =>
-              sendReport("mat@fintechcheck.uk", setSending, () => setSent("mat@fintechcheck.uk"))
+              sendReport("matsblocknode1957@gmail.com", setSending, () => setSent("matsblocknode1957@gmail.com"))
             }
             style={{
               background: sending ? "#334155" : "#2563eb",
