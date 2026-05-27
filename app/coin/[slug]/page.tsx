@@ -385,6 +385,25 @@ export default function CoinDetailPage() {
   const currentPrice = price ?? 1.0;
   const status = getStatus(currentPrice);
 
+  // Stability metrics derived from 7-day price history (proxy for reserve health)
+  const cutoff7d = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const sevenDayHistory = priceHistory.filter(h => new Date(h.created_at).getTime() >= cutoff7d);
+  const avgDevBps = sevenDayHistory.length > 0
+    ? sevenDayHistory.reduce((sum, h) => sum + Math.abs(h.price - coinPeg) / coinPeg * 10000, 0) / sevenDayHistory.length
+    : null;
+  const halfIdx = Math.floor(sevenDayHistory.length / 2);
+  const avgFirst = halfIdx > 0
+    ? sevenDayHistory.slice(0, halfIdx).reduce((s, h) => s + Math.abs(h.price - coinPeg), 0) / halfIdx
+    : 0;
+  const avgSecond = sevenDayHistory.length - halfIdx > 0
+    ? sevenDayHistory.slice(halfIdx).reduce((s, h) => s + Math.abs(h.price - coinPeg), 0) / (sevenDayHistory.length - halfIdx)
+    : 0;
+  const stabilityTrend = sevenDayHistory.length < 4
+    ? null
+    : avgSecond < avgFirst * 0.9 ? "improving"
+    : avgSecond > avgFirst * 1.1 ? "worsening"
+    : "stable";
+
   const minPrice = Math.min(...priceHistory.map(h => h.price), currentPrice);
   const maxPrice = Math.max(...priceHistory.map(h => h.price), currentPrice);
   const priceRange = maxPrice - minPrice || 0.001;
@@ -601,6 +620,38 @@ export default function CoinDetailPage() {
           <div style={{ height: "100%", width: `${Math.min(parseFloat(coin.collateralRatio) || 0, 150) / 150 * 100}%`, background: "linear-gradient(90deg, #1a56db, #10b981)", borderRadius: "4px" }}></div>
         </div>
         <div style={{ fontSize: "12px", color: textSecondary }}>{coin.collateral}</div>
+        {sevenDayHistory.length >= 4 && (
+          <div style={{ borderTop: `1px solid ${headerBorder}`, paddingTop: "12px", marginTop: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <span style={{ fontSize: "12px", color: textSecondary }}>7-day peg stability</span>
+              <span style={{ fontSize: "12px", fontWeight: "700", color: stabilityTrend === "improving" ? "#10b981" : stabilityTrend === "worsening" ? "#ef4444" : textSecondary }}>
+                {stabilityTrend === "improving" ? "↓ Improving" : stabilityTrend === "worsening" ? "↑ Worsening" : "→ Stable"}
+              </span>
+            </div>
+            {(() => {
+              const sparkMin = Math.min(...sevenDayHistory.map(h => h.price));
+              const sparkMax = Math.max(...sevenDayHistory.map(h => h.price));
+              const sparkRange = sparkMax - sparkMin || 0.001;
+              const W = 200, H = 36;
+              const pts = sevenDayHistory.map((h, i) => {
+                const x = (i / Math.max(sevenDayHistory.length - 1, 1)) * W;
+                const y = H - ((h.price - sparkMin) / sparkRange) * H;
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+              }).join(" ");
+              const lineColor = stabilityTrend === "worsening" ? "#ef4444" : stabilityTrend === "improving" ? "#10b981" : "#1a56db";
+              return (
+                <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: "block", marginBottom: "8px" }} preserveAspectRatio="none">
+                  <polyline points={pts} fill="none" stroke={lineColor} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+                </svg>
+              );
+            })()}
+            {avgDevBps !== null && (
+              <div style={{ fontSize: "11px", color: textSecondary }}>
+                Avg deviation from peg: <span style={{ color: textPrimary, fontWeight: "600" }}>{avgDevBps.toFixed(1)} bps</span> (7d)
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
