@@ -122,7 +122,7 @@ export default function DevelopersPage() {
         <ul className="space-y-3 text-gray-300 text-sm">
           <li className="flex items-start gap-3">
             <span className="text-green-400 mt-0.5">✓</span>
-            Real-time prices across 8 major stablecoins
+            Real-time prices across 19 stablecoins
           </li>
           <li className="flex items-start gap-3">
             <span className="text-green-400 mt-0.5">✓</span>
@@ -177,7 +177,7 @@ export default function DevelopersPage() {
             </div>
             <ul className="text-gray-300 text-sm space-y-2 mb-5">
               <li className="flex items-center gap-2"><span className="text-green-400">✓</span> 10,000 API calls/month</li>
-              <li className="flex items-center gap-2"><span className="text-green-400">✓</span> All 8 stablecoins</li>
+              <li className="flex items-center gap-2"><span className="text-green-400">✓</span> All 19 stablecoins</li>
               <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Price history</li>
               <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Email support</li>
             </ul>
@@ -207,7 +207,7 @@ export default function DevelopersPage() {
             </div>
             <ul className="text-gray-300 text-sm space-y-2 mb-5">
               <li className="flex items-center gap-2"><span className="text-green-400">✓</span> 100,000 API calls/month</li>
-              <li className="flex items-center gap-2"><span className="text-green-400">✓</span> All 8 stablecoins</li>
+              <li className="flex items-center gap-2"><span className="text-green-400">✓</span> All 19 stablecoins</li>
               <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Price history</li>
               <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Webhook alerts</li>
               <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Priority support</li>

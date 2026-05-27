@@ -393,7 +393,7 @@ export default function Home() {
           <div style={{ width: "38px", height: "38px", flexShrink: 0, background: "linear-gradient(135deg, #1a56db, #0e3fa8)", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "15px" }}>P✓</div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: "20px", fontWeight: "700", color: textPrimary, lineHeight: "1.2" }}>PegCheck</div>
-            <div style={{ fontSize: "12px", color: textSecondary, marginTop: "3px" }}>Prices from 6 independent sources</div>
+            <div style={{ fontSize: "12px", color: textSecondary, marginTop: "3px" }}>Prices from 7 independent sources</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "PegCheck — Real-time Stablecoin Health Monitor",
-  description: "Real-time stablecoin depeg monitoring powered by Chainlink. Median pricing across 1,500+ data points. Instant alerts for USDT, USDC, USDS, PYUSD, FDUSD, RLUSD, TUSD and Ethena.",
+  description: "Real-time depeg monitoring for 19 stablecoins using 7 independent sources. Median-of-medians pricing, instant alerts, and reserve health tracking for USDT, USDC, USDS, EURC and more.",
 };
 
 export default function RootLayout({

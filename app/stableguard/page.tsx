@@ -134,6 +134,7 @@ export default function StableGuardPage() {
             PROTECTION ACTIVE
           </span>
         </div>
+        <div style={{ marginTop: "10px", fontSize: "11px", color: "#6b7280" }}>Smart contracts deployed on Sepolia testnet — mainnet ready</div>
       </div>
 
       {/* Confidence Score Gauge */}
@@ -221,7 +222,7 @@ export default function StableGuardPage() {
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "14px" }}>Chainlink Services</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-          {["Price Feeds", "CCIP", "Automation", "Data Streams", "CRE"].map((svc) => (
+          {["Price Feeds", "CCIP", "Automation", "Data Streams"].map((svc) => (
             <div key={svc} style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "7px 12px", borderRadius: "8px", background: dark ? "rgba(22,163,74,0.1)" : "#f0fdf4", border: `1px solid ${dark ? "#166534" : "#bbf7d0"}` }}>
               <span style={{ fontSize: "12px" }}>✅</span>
               <span style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#d1fae5" : "#166534" }}>{svc}</span>
@@ -230,12 +231,9 @@ export default function StableGuardPage() {
         </div>
       </div>
 
-      {/* Footer / Hackathon info */}
+      {/* Contract links */}
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
-        <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "6px" }}>Built for ETHGlobal Async Hackathon</div>
-        <div style={{ fontSize: "12px", color: textSecondary, lineHeight: "1.6", marginBottom: "14px" }}>
-          StableGuard Monitor v3 — autonomous depeg detection and cross-chain alert protocol using Chainlink CCIP, Automation, Data Streams and CRE. September 2026.
-        </div>
+        <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Contract</div>
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "14px" }}>
           <a href={`https://sepolia.etherscan.io/address/${CONTRACT}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Contract ↗</a>
           <a href={`https://sepolia.etherscan.io/address/${CONTRACT}#events`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
