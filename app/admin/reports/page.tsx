@@ -6,6 +6,7 @@ export default function ReportsAdminPage() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastResponse, setLastResponse] = useState<Record<string, unknown> | null>(null);
   const [customEmail, setCustomEmail] = useState("");
   const [sendingCustom, setSendingCustom] = useState(false);
   const [sentCustom, setSentCustom] = useState(false);
@@ -13,6 +14,7 @@ export default function ReportsAdminPage() {
   async function sendReport(to: string, setLoading: (v: boolean) => void, onDone: () => void) {
     setLoading(true);
     setError(null);
+    setLastResponse(null);
     try {
       const res = await fetch("/api/reports/weekly", {
         method: "POST",
@@ -20,6 +22,7 @@ export default function ReportsAdminPage() {
         body: JSON.stringify({ to }),
       });
       const data = await res.json();
+      setLastResponse(data);
       if (!res.ok) throw new Error(data.error ?? "Unknown error");
       onDone();
     } catch (e) {
@@ -122,6 +125,15 @@ export default function ReportsAdminPage() {
           <p style={{ fontSize: "13px", color: "#f87171", marginTop: "8px" }}>
             Error: {error}
           </p>
+        )}
+
+        {lastResponse && (
+          <section style={{ background: "#1e293b", borderRadius: "10px", padding: "16px", border: "1px solid #334155" }}>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "8px" }}>API Response</div>
+            <pre style={{ margin: 0, fontSize: "11px", color: "#94a3b8", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+              {JSON.stringify(lastResponse, null, 2)}
+            </pre>
+          </section>
         )}
       </div>
     </main>

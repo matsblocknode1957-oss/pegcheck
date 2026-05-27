@@ -317,13 +317,24 @@ export async function POST(request: Request) {
       .gte("created_at", sinceIso)
       .order("created_at", { ascending: true });
 
-    // Fetch whale transfers ≥$1M for last 7 days
-    const { data: whaleRows } = await supabase
+    // Fetch whale transfers ≥$1M for last 7 days using service role to bypass RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    );
+
+    const { data: whaleRows, error: whaleError } = await supabaseAdmin
       .from("large_transactions")
-      .select("slug, amount, action, created_at")
+      .select("slug, amount, action, created_at, tx_hash, wallet")
       .gte("created_at", sinceIso)
       .gte("amount", 1000000)
       .order("amount", { ascending: false });
+
+    if (whaleError) {
+      console.error("Whale query error:", JSON.stringify(whaleError));
+    }
+    console.log("Whale rows returned:", whaleRows?.length ?? 0, whaleError ? `error: ${whaleError.message}` : "");
 
     const whaleData = whaleRows ?? [];
     const whale: WhaleStats = {
@@ -398,6 +409,7 @@ export async function POST(request: Request) {
       coinsWithData: coins.filter(c => c.dataPoints > 0).length,
       whaleTransfers: whale.count,
       whaleTotalVolume: whale.totalVolume,
+      ...(whaleError ? { whaleQueryError: whaleError.message } : {}),
     });
 
   } catch (err) {
