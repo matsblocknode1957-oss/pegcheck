@@ -295,6 +295,7 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}));
     const to: string = body.to ?? "mat@fintechcheck.uk";
+    const sendType: string = body.type ?? "manual";
 
     if (!to.includes("@")) {
       return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
@@ -402,6 +403,12 @@ export async function POST(request: Request) {
       html,
     });
 
+    // Log send to report_sends table
+    const { error: logError } = await supabaseAdmin
+      .from("report_sends")
+      .insert({ email: to, report_date: new Date().toISOString().split("T")[0], type: sendType });
+    if (logError) console.error("report_sends log error:", logError.message);
+
     return NextResponse.json({
       success: true,
       sentTo: to,
@@ -415,5 +422,26 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("Weekly report error:", err);
     return NextResponse.json({ error: "Failed to generate or send report" }, { status: 500 });
+  }
+}
+
+export async function GET() {
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    );
+    const { data, error } = await supabase
+      .from("report_sends")
+      .select("email, report_date, type, created_at")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (error) return NextResponse.json({ sends: [], error: error.message });
+    return NextResponse.json({ sends: data ?? [] });
+  } catch (err) {
+    console.error("report_sends GET error:", err);
+    return NextResponse.json({ sends: [], error: "Failed to fetch sends" });
   }
 }
