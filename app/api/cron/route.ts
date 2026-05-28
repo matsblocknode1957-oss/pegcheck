@@ -268,7 +268,11 @@ export async function GET() {
     };
 
     // Save Price Snapshot
-    const snapshots = Object.entries(prices).map(([slug, price]) => ({ slug, price }));
+    const snapshots = Object.entries(prices).map(([slug, price]) => ({
+      slug,
+      price,
+      deviation_bps: Math.round((price - effectivePeg(slug)) / effectivePeg(slug) * 10000),
+    }));
     const { error: priceError } = await supabase.from("price_history").insert(snapshots);
     if (priceError) console.error("Price history insert error:", priceError);
     else console.log("Price history saved:", snapshots.length, "rows");
