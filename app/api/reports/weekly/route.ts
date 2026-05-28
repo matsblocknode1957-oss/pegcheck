@@ -80,7 +80,7 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, weekOf: string, market
   const depegCoins   = coins.filter(c => c.status === "Depeg");
   const riskCoins    = coins.filter(c => c.status !== "Healthy").sort((a, b) => a.stabilityPct - b.stabilityPct);
 
-  const marketHealth = marketScore >= 85 ? "Strong" : marketScore >= 65 ? "Moderate" : "Elevated Risk";
+  const marketHealth = marketScore >= 80 ? "Healthy" : marketScore >= 65 ? "Moderate" : "Elevated Risk";
   const marketColor  = marketScore >= 85 ? "#10b981" : marketScore >= 65 ? "#f59e0b" : "#ef4444";
 
   const coinRows = coins.map(c => {
