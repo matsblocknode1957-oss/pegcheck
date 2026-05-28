@@ -330,7 +330,8 @@ export async function POST(request: Request) {
       .select("slug, amount, action, created_at, tx_hash, wallet")
       .gte("created_at", sinceIso)
       .gte("amount", 1000000)
-      .order("amount", { ascending: false });
+      .order("amount", { ascending: false })
+      .limit(10000);
 
     if (whaleError) {
       console.error("Whale query error:", JSON.stringify(whaleError));
