@@ -9,6 +9,13 @@ interface ReportSend {
   created_at: string;
 }
 
+interface Subscriber {
+  email: string;
+  tier: string;
+  weekly_report: boolean;
+  created_at: string;
+}
+
 export default function ReportsAdminPage() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
@@ -19,6 +26,9 @@ export default function ReportsAdminPage() {
   const [sentCustom, setSentCustom] = useState(false);
   const [recentSends, setRecentSends] = useState<ReportSend[]>([]);
   const [loadingSends, setLoadingSends] = useState(true);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [loadingSubscribers, setLoadingSubscribers] = useState(true);
+  const [togglingEmail, setTogglingEmail] = useState<string | null>(null);
 
   const fetchRecentSends = useCallback(async () => {
     try {
@@ -32,7 +42,22 @@ export default function ReportsAdminPage() {
     }
   }, []);
 
-  useEffect(() => { fetchRecentSends(); }, [fetchRecentSends]);
+  const fetchSubscribers = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/subscribers");
+      const data = await res.json();
+      setSubscribers(data.subscribers ?? []);
+    } catch {
+      // silently ignore
+    } finally {
+      setLoadingSubscribers(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRecentSends();
+    fetchSubscribers();
+  }, [fetchRecentSends, fetchSubscribers]);
 
   async function sendReport(to: string, setLoading: (v: boolean) => void, onDone: () => void) {
     setLoading(true);
@@ -56,9 +81,29 @@ export default function ReportsAdminPage() {
     }
   }
 
+  async function toggleWeeklyReport(email: string, current: boolean) {
+    setTogglingEmail(email);
+    try {
+      const res = await fetch("/api/admin/subscribers", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, weekly_report: !current }),
+      });
+      if (res.ok) {
+        setSubscribers(prev =>
+          prev.map(s => s.email === email ? { ...s, weekly_report: !current } : s)
+        );
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setTogglingEmail(null);
+    }
+  }
+
   return (
     <main style={{ minHeight: "100vh", background: "#0f172a", color: "#f1f5f9", fontFamily: "monospace", padding: "48px 24px" }}>
-      <div style={{ maxWidth: 600, margin: "0 auto" }}>
+      <div style={{ maxWidth: 700, margin: "0 auto" }}>
         <h1 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "8px", color: "#f8fafc" }}>
           Weekly Report Admin
         </h1>
@@ -159,6 +204,82 @@ export default function ReportsAdminPage() {
             </pre>
           </section>
         )}
+
+        {/* Subscribers */}
+        <section style={{ background: "#1e293b", borderRadius: "10px", padding: "24px", marginBottom: "20px", border: "1px solid #334155" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <div>
+              <h2 style={{ fontSize: "14px", fontWeight: 600, color: "#e2e8f0", margin: "0 0 4px" }}>Subscribers</h2>
+              <p style={{ fontSize: "11px", color: "#4b5563", margin: 0 }}>
+                Toggle weekly report for each subscriber. Requires <code style={{ color: "#94a3b8" }}>weekly_report</code> column on subscribers table.
+              </p>
+            </div>
+            <button
+              onClick={fetchSubscribers}
+              style={{ fontSize: "11px", color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              Refresh
+            </button>
+          </div>
+
+          {loadingSubscribers ? (
+            <p style={{ fontSize: "12px", color: "#4b5563", margin: 0 }}>Loading…</p>
+          ) : subscribers.length === 0 ? (
+            <p style={{ fontSize: "12px", color: "#4b5563", margin: 0 }}>No subscribers found.</p>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  {["Email", "Tier", "Weekly Report", "Joined"].map(h => (
+                    <th key={h} style={{ textAlign: "left", fontSize: "10px", fontWeight: 700, color: "#4b5563", letterSpacing: "1px", textTransform: "uppercase", paddingBottom: "8px", borderBottom: "1px solid #334155" }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {subscribers.map((s, i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid #1e293b" }}>
+                    <td style={{ padding: "10px 0", fontSize: "12px", color: "#cbd5e1", paddingRight: "12px" }}>{s.email}</td>
+                    <td style={{ padding: "10px 0", paddingRight: "12px" }}>
+                      <span style={{
+                        fontSize: "10px", fontWeight: 700, padding: "2px 7px", borderRadius: "4px",
+                        background: s.tier === "premium" ? "#1e3a5f" : "#1e293b",
+                        color: s.tier === "premium" ? "#60a5fa" : "#94a3b8",
+                        border: `1px solid ${s.tier === "premium" ? "rgba(96,165,250,.3)" : "#334155"}`,
+                      }}>
+                        {(s.tier ?? "free").toUpperCase()}
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px 0", paddingRight: "12px" }}>
+                      <button
+                        disabled={togglingEmail === s.email}
+                        onClick={() => toggleWeeklyReport(s.email, s.weekly_report)}
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          padding: "4px 10px",
+                          borderRadius: "5px",
+                          border: "none",
+                          cursor: togglingEmail === s.email ? "not-allowed" : "pointer",
+                          background: s.weekly_report ? "#052e16" : "#1e293b",
+                          color: s.weekly_report ? "#4ade80" : "#6b7280",
+                          outline: `1px solid ${s.weekly_report ? "rgba(74,222,128,.3)" : "#334155"}`,
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        {togglingEmail === s.email ? "…" : s.weekly_report ? "ON" : "OFF"}
+                      </button>
+                    </td>
+                    <td style={{ padding: "10px 0", fontSize: "11px", color: "#4b5563", fontVariantNumeric: "tabular-nums" }}>
+                      {new Date(s.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
 
         {/* Recent Sends */}
         <section style={{ background: "#1e293b", borderRadius: "10px", padding: "24px", border: "1px solid #334155" }}>
