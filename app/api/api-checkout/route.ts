@@ -1,22 +1,10 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
 
-const TIERS: Record<string, { amount: number; name: string; description: string }> = {
-  starter: {
-    amount: 9900,
-    name: "PegCheck Starter",
-    description: "10,000 API calls/month — all 8 stablecoins, price history, email support",
-  },
-  pro: {
-    amount: 24900,
-    name: "PegCheck Pro",
-    description: "100,000 API calls/month — webhook alerts, priority support",
-  },
-  enterprise: {
-    amount: 49900,
-    name: "PegCheck Enterprise",
-    description: "Unlimited API calls — 99.9% SLA, custom coins, dedicated support",
-  },
+const TIER_PRICE_IDS: Record<string, string | undefined> = {
+  starter:    process.env.STRIPE_STARTER_PRICE_ID,
+  pro:        process.env.STRIPE_PRO_PRICE_ID,
+  enterprise: process.env.STRIPE_ENTERPRISE_PRICE_ID,
 };
 
 export async function POST(request: Request) {
@@ -31,8 +19,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid email" }, { status: 400 });
     }
 
-    const tierConfig = TIERS[tier];
-    if (!tierConfig) {
+    const priceId = TIER_PRICE_IDS[tier];
+    if (!priceId) {
       return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
     }
 
@@ -47,15 +35,7 @@ export async function POST(request: Request) {
       },
       line_items: [
         {
-          price_data: {
-            currency: "gbp",
-            product_data: {
-              name: tierConfig.name,
-              description: tierConfig.description,
-            },
-            unit_amount: tierConfig.amount,
-            recurring: { interval: "month" },
-          },
+          price: priceId,
           quantity: 1,
         },
       ],
