@@ -309,6 +309,20 @@ export default function AlertsPage() {
         </button>
       </div>
 
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
+        <div style={{ fontSize: "13px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Premium Features ⚡</div>
+        {["Email notification within seconds of detection", "Be first to know before the market reacts", "All 19 stablecoins monitored 24/7", "Cancel anytime"].map((feature) => (
+          <div key={feature} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+            <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: dark ? "#1e3a5f" : "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a56db" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </div>
+            <span style={{ fontSize: "13px", color: dark ? "#d1d5db" : "#374151" }}>{feature}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Weekly Report promo */}
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "16px 18px", border: `1px solid ${dark ? "#1e3a5f" : "#bfdbfe"}` }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
@@ -325,27 +339,13 @@ export default function AlertsPage() {
             </div>
             <a
               href="mailto:matsblocknode1957@gmail.com?subject=Weekly%20Report%20Trial&body=I'd%20like%20to%20try%20the%20free%20weekly%20report"
-              style={{ display: "inline-block", padding: "8px 16px", borderRadius: "7px", background: dark ? "#0d1f38" : "#eff6ff", color: "#1a56db", fontSize: "12px", fontWeight: "700", textDecoration: "none", border: "1px solid " + (dark ? "#1e3a5f" : "#bfdbfe") }}
+              style={{ display: "inline-block", padding: "10px 18px", borderRadius: "8px", background: "#16a34a", color: "#ffffff", fontSize: "13px", fontWeight: "700", textDecoration: "none", border: "none" }}
             >
               Get 4 Weeks Free →
             </a>
             <div style={{ marginTop: "8px", fontSize: "11px", color: textSecondary }}>£49/month after trial · Cancel anytime</div>
           </div>
         </div>
-      </div>
-
-      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
-        <div style={{ fontSize: "13px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Premium Features ⚡</div>
-        {["Instant alerts when any coin drops below $0.975", "Email notification within seconds of detection", "Be first to know before the market reacts", "Cancel anytime"].map((feature) => (
-          <div key={feature} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-            <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: dark ? "#1e3a5f" : "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a56db" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-              </svg>
-            </div>
-            <span style={{ fontSize: "13px", color: dark ? "#d1d5db" : "#374151" }}>{feature}</span>
-          </div>
-        ))}
       </div>
 
       <div style={{ padding: "16px 20px", textAlign: "center" }}>
