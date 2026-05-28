@@ -95,7 +95,55 @@ export default function HistoryContent({ summaryResults, depegEvents }: Props) {
         </button>
       </div>
 
-      {/* ── Hall of Fame ── */}
+      {/* ── Most Stable ── */}
+      {mostStable.length > 0 && (
+        <>
+          <div style={{ padding: "20px 20px 12px" }}>
+            <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px" }}>Most Stable</div>
+            <div style={{ fontSize: "12px", color: textSecondary, marginTop: "4px" }}>Top 5 coins by lowest average deviation from peg across all recorded history.</div>
+          </div>
+
+          <div style={{ background: tableHeaderBg, borderTop: `1px solid ${divider}`, borderBottom: `1px solid ${divider}` }}>
+            <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 100px 80px", padding: "8px 20px", columnGap: "8px" }}>
+              {["#", "Coin", "Avg Deviation", "Rating"].map((h) => (
+                <span key={h} style={{ fontSize: "10px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px" }}>{h}</span>
+              ))}
+            </div>
+          </div>
+
+          {mostStable.map((coin, i) => {
+            const pctDev = coin.avgDev * 100;
+            const devColor = pctDev < 0.02 ? "#16a34a" : pctDev < 0.1 ? "#d97706" : "#dc2626";
+            const rating = pctDev < 0.02 ? "Excellent" : pctDev < 0.1 ? "Good" : "Fair";
+            const ratingBg = pctDev < 0.02 ? (dark ? "#052e16" : "#f0fdf4") : pctDev < 0.1 ? (dark ? "#451a03" : "#fffbeb") : (dark ? "#450a0a" : "#fef2f2");
+            return (
+              <div key={coin.slug} style={{ display: "grid", gridTemplateColumns: "28px 1fr 100px 80px", padding: "11px 20px", borderBottom: `1px solid ${cardBorder}`, background: cardBg, alignItems: "center", columnGap: "8px" }}>
+                <span style={{ fontSize: "12px", fontWeight: "700", color: rankColors[i] ?? textSecondary, fontFamily: "monospace" }}>{i + 1}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0 }}>
+                  <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                    <img src={coin.icon} alt={coin.name} width={14} height={14} style={{ objectFit: "contain" }} />
+                  </div>
+                  <span style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{coin.name}</span>
+                </div>
+                <span style={{ fontSize: "13px", fontFamily: "monospace", fontWeight: "700", color: devColor }}>{pctDev.toFixed(4)}%</span>
+                <span style={{ fontSize: "10px", fontWeight: "700", padding: "2px 8px", borderRadius: "20px", background: ratingBg, color: devColor, display: "inline-block", whiteSpace: "nowrap" }}>{rating}</span>
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      <div style={{ height: "1px", background: divider, margin: "0 20px" }} />
+
+      {/* ── Price History Chart ── */}
+      <div style={{ padding: "20px" }}>
+        <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "14px" }}>Price History</div>
+        <HistoryChart coins={summaryResults.map((c) => ({ slug: c.slug, name: c.name }))} dark={dark} />
+      </div>
+
+      <div style={{ height: "1px", background: divider, margin: "0 20px" }} />
+
+      {/* ── Stability Rankings ── */}
       <div style={{ padding: "20px 20px 12px" }}>
         <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px" }}>Stability Rankings</div>
         <div style={{ fontSize: "12px", color: textSecondary, marginTop: "4px" }}>Coins ranked by all-time low — #1 never dropped far from peg, worst at the bottom.</div>
@@ -133,45 +181,6 @@ export default function HistoryContent({ summaryResults, depegEvents }: Props) {
         );
       })}
 
-      {/* ── Most Stable ── */}
-      {mostStable.length > 0 && (
-        <>
-          <div style={{ height: "1px", background: divider }} />
-          <div style={{ padding: "20px 20px 12px" }}>
-            <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px" }}>Most Stable</div>
-            <div style={{ fontSize: "12px", color: textSecondary, marginTop: "4px" }}>Top 5 coins by lowest average deviation from peg across all recorded history.</div>
-          </div>
-
-          <div style={{ background: tableHeaderBg, borderTop: `1px solid ${divider}`, borderBottom: `1px solid ${divider}` }}>
-            <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 100px 80px", padding: "8px 20px", columnGap: "8px" }}>
-              {["#", "Coin", "Avg Deviation", "Rating"].map((h) => (
-                <span key={h} style={{ fontSize: "10px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px" }}>{h}</span>
-              ))}
-            </div>
-          </div>
-
-          {mostStable.map((coin, i) => {
-            const pctDev = coin.avgDev * 100;
-            const devColor = pctDev < 0.02 ? "#16a34a" : pctDev < 0.1 ? "#d97706" : "#dc2626";
-            const rating = pctDev < 0.02 ? "Excellent" : pctDev < 0.1 ? "Good" : "Fair";
-            const ratingBg = pctDev < 0.02 ? (dark ? "#052e16" : "#f0fdf4") : pctDev < 0.1 ? (dark ? "#451a03" : "#fffbeb") : (dark ? "#450a0a" : "#fef2f2");
-            return (
-              <div key={coin.slug} style={{ display: "grid", gridTemplateColumns: "28px 1fr 100px 80px", padding: "11px 20px", borderBottom: `1px solid ${cardBorder}`, background: cardBg, alignItems: "center", columnGap: "8px" }}>
-                <span style={{ fontSize: "12px", fontWeight: "700", color: rankColors[i] ?? textSecondary, fontFamily: "monospace" }}>{i + 1}</span>
-                <div style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0 }}>
-                  <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: coin.bgColor, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                    <img src={coin.icon} alt={coin.name} width={14} height={14} style={{ objectFit: "contain" }} />
-                  </div>
-                  <span style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{coin.name}</span>
-                </div>
-                <span style={{ fontSize: "13px", fontFamily: "monospace", fontWeight: "700", color: devColor }}>{pctDev.toFixed(4)}%</span>
-                <span style={{ fontSize: "10px", fontWeight: "700", padding: "2px 8px", borderRadius: "20px", background: ratingBg, color: devColor, display: "inline-block", whiteSpace: "nowrap" }}>{rating}</span>
-              </div>
-            );
-          })}
-        </>
-      )}
-
       <div style={{ height: "1px", background: divider }} />
 
       {/* ── All-Time Lows Cards ── */}
@@ -202,14 +211,6 @@ export default function HistoryContent({ summaryResults, depegEvents }: Props) {
             </div>
           );
         })}
-      </div>
-
-      <div style={{ height: "1px", background: divider, margin: "0 20px" }} />
-
-      {/* ── Price History Chart ── */}
-      <div style={{ padding: "20px" }}>
-        <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "14px" }}>Price History</div>
-        <HistoryChart coins={summaryResults.map((c) => ({ slug: c.slug, name: c.name }))} dark={dark} />
       </div>
 
       <div style={{ height: "1px", background: divider, margin: "0 20px" }} />
