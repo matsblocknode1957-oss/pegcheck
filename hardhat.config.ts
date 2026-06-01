@@ -2,7 +2,7 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-ethers";
 import * as dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ path: ".env.local" });
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -14,9 +14,9 @@ const config: HardhatUserConfig = {
 
   networks: {
     sepolia: {
-      url: process.env.ALCHEMY_RPC_URL || "",
+      url: process.env.SEPOLIA_RPC_URL || process.env.ALCHEMY_RPC_URL || "",
       accounts: process.env.DEPLOYER_PRIVATE_KEY
-        ? [process.env.DEPLOYER_PRIVATE_KEY]
+        ? [`0x${process.env.DEPLOYER_PRIVATE_KEY.replace(/^0x/, "").replace(/^[^0-9a-fA-F]+/, "")}`]
         : [],
       chainId: 11155111,
     },
