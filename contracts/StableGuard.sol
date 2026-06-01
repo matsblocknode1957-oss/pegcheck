@@ -109,7 +109,7 @@ contract StableGuard is AutomationCompatibleInterface {
     //
     // Price Feeds — verify at:
     // https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum&page=1#sepolia-testnet
-    address public constant USDC_USD_FEED = 0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270B;
+    address public constant USDC_USD_FEED = 0xA2f78Ab2355fe2F984D808b5CeE7FD0a93d5270b;
     // DAI/USD replaces USDT/USD — Chainlink does not publish a USDT/USD feed on Sepolia.
     // DAI is a USD-pegged stablecoin and a valid second confidence source.
     address public constant DAI_USD_FEED  = 0x14866185B1962B63C3Ea9E03Bc1da838bab34C19;
