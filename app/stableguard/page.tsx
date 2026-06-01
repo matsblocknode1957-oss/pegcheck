@@ -149,7 +149,6 @@ export default function StableGuardPage() {
             <div style={{ fontSize: "11px", fontWeight: "700", color: scoreColor, textTransform: "uppercase", letterSpacing: "0.5px", marginTop: "4px" }}>{scoreLabel}</div>
           </div>
         </div>
-        <div style={{ textAlign: "center", fontSize: "11px", color: textSecondary, marginBottom: "16px" }}>Last verified May 2026</div>
         {/* Bar */}
         <div style={{ display: "flex", gap: "6px", marginBottom: "18px" }}>
           {[1,2,3,4,5].map((i) => (
