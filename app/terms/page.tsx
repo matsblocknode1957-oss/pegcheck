@@ -81,7 +81,7 @@ export default function TermsPage() {
       </div>
 
       <div style={{ padding: "20px", textAlign: "center" }}>
-        <span style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", fontFamily: "monospace" }}>© 2026 FintechCheck. All rights reserved.</span>
+        <span style={{ fontSize: "10px", color: dark ? "#374151" : "#d1d5db", fontFamily: "monospace" }}>© 2026 PegCheck. All rights reserved.</span>
       </div>
 
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: navBg, borderTop: `1px solid ${navBorder}`, display: "flex", padding: "8px 0", zIndex: 100, transition: "background 0.2s ease" }}>
