@@ -322,12 +322,15 @@ export async function POST(request: Request) {
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } }
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { headers: { 'Prefer': 'count=exact' } },
+      }
     );
 
-    const { data: whaleRows, error: whaleError } = await supabaseAdmin
+    const { data: whaleRows, count: whaleCount, error: whaleError } = await supabaseAdmin
       .from("large_transactions")
-      .select("slug, amount, action, created_at, tx_hash, wallet")
+      .select("slug, amount, action, created_at, tx_hash, wallet", { count: 'exact' })
       .gte("created_at", sinceIso)
       .gte("amount", 1000000)
       .order("amount", { ascending: false })
@@ -336,11 +339,11 @@ export async function POST(request: Request) {
     if (whaleError) {
       console.error("Whale query error:", JSON.stringify(whaleError));
     }
-    console.log("Whale rows returned:", whaleRows?.length ?? 0, whaleError ? `error: ${whaleError.message}` : "");
+    console.log("Whale rows returned:", whaleRows?.length ?? 0, "exact count:", whaleCount, whaleError ? `error: ${whaleError.message}` : "");
 
     const whaleData = whaleRows ?? [];
     const whale: WhaleStats = {
-      count: whaleData.length,
+      count: whaleCount ?? whaleData.length,
       totalVolume: whaleData.reduce((s, r) => s + Number(r.amount), 0),
       top3: whaleData.slice(0, 3),
     };
