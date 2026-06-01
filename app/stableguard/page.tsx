@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-const CONTRACT = "0xc30093c695bb9e757170fe568f6248e7c13eef8f";
+const CONTRACT = "0x44930ef915b30CbA75C0B94d62cE516d7900d27C";
 
 export default function StableGuardPage() {
   const pathname = usePathname();
@@ -184,7 +184,7 @@ export default function StableGuardPage() {
         <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
           <div style={{ fontSize: "52px", fontWeight: "800", fontFamily: "monospace", color: "#1a56db", lineHeight: 1 }}>27+</div>
           <div style={{ fontSize: "13px", color: textSecondary, marginTop: "6px" }}>Cross-Chain Messages Fired</div>
-          <a href="https://sepolia.etherscan.io/address/0xc30093c695bb9e757170fe568f6248e7c13eef8f#events" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: "10px", fontSize: "12px", fontWeight: "600", color: "#1a56db", textDecoration: "none" }}>
+          <a href="https://sepolia.etherscan.io/address/0x44930ef915b30CbA75C0B94d62cE516d7900d27C#events" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: "10px", fontSize: "12px", fontWeight: "600", color: "#1a56db", textDecoration: "none" }}>
             Verified on Sepolia Etherscan ↗
           </a>
         </div>
