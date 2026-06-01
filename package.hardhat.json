@@ -1,0 +1,20 @@
+{
+  "name": "pegcheck-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hardhat dev dependencies for StableGuard contract compilation and deployment. Not used by Netlify — kept separate to avoid build conflicts with Next.js.",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy:sepolia": "hardhat run scripts/deploy-stableguard.ts --network sepolia"
+  },
+  "ts-node": {
+    "project": "tsconfig.hardhat.json"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "dotenv": "^16.4.0",
+    "hardhat": "^2.22.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5"
+  }
+}
