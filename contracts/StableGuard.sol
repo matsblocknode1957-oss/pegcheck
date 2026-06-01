@@ -110,8 +110,9 @@ contract StableGuard is AutomationCompatibleInterface {
     // Price Feeds — verify at:
     // https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum&page=1#sepolia-testnet
     address public constant USDC_USD_FEED = 0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270B;
-    // NOTE: confirm USDT/USD Sepolia address at the URL above before deploying
-    address public constant USDT_USD_FEED = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
+    // DAI/USD replaces USDT/USD — Chainlink does not publish a USDT/USD feed on Sepolia.
+    // DAI is a USD-pegged stablecoin and a valid second confidence source.
+    address public constant DAI_USD_FEED  = 0x14866185B1962B63C3Ea9E03Bc1da838bab34C19;
 
     // CCIP Router (Sepolia v1.2) — verify at:
     // https://docs.chain.link/ccip/supported-networks/v1_2_0/testnet#ethereum-testnet-sepolia
@@ -288,12 +289,12 @@ contract StableGuard is AutomationCompatibleInterface {
             }
         }
 
-        // ── Check USDT ────────────────────────────────────────
+        // ── Check DAI ─────────────────────────────────────────
         {
-            (int256 p, bool fresh) = _getChainlinkPrice(USDT_USD_FEED);
+            (int256 p, bool fresh) = _getChainlinkPrice(DAI_USD_FEED);
             if (fresh && _isPriceDepegged(p)) {
                 score   = 3;
-                symbol  = "USDT";
+                symbol  = "DAI";
                 clPrice = p;
 
                 (uint256 uniP, bool uniOk) = _getUniswapPrice();
