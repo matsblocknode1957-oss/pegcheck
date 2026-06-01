@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
+import { ethers } from "ethers";
 
 export const revalidate = 0;
 
-const CONTRACT = "0xc30093c695bb9e757170fe568f6248e7c13eef8f";
+const CONTRACT = "0x44930ef915b30CbA75C0B94d62cE516d7900d27C";
+
+// Filter specifically for CCIPAlertSent events — only real cross-chain dispatches
+const CCIP_ALERT_TOPIC = ethers.id("CCIPAlertSent(bytes32,uint64,string,uint8)");
 
 async function rpc(url: string, method: string, params: unknown[]) {
   const res = await fetch(url, {
@@ -19,35 +23,24 @@ export async function GET() {
   if (!rpcUrl) return NextResponse.json({ error: "RPC not configured" }, { status: 500 });
 
   try {
-    // Get all logs from contract — no topic filter, all events
-    let logs: { blockNumber: string; transactionHash: string }[] = [];
+    // Scan from latest - 200000 blocks (~1 month). The contract is newly deployed
+    // so all events fall within this window. Avoids a full chain scan.
+    const blockResult = await rpc(rpcUrl, "eth_blockNumber", []);
+    const latestBlock = Number(BigInt(blockResult.result ?? "0x0"));
+    const fromBlock   = "0x" + Math.max(0, latestBlock - 200000).toString(16);
+
+    let ccipCount = 0;
     try {
       const logsResult = await rpc(rpcUrl, "eth_getLogs", [{
-        address: CONTRACT,
-        fromBlock: "0x" + (10900000).toString(16),
-        toBlock: "latest",
+        address:   CONTRACT,
+        topics:    [CCIP_ALERT_TOPIC],
+        fromBlock,
+        toBlock:   "latest",
       }]);
-      if (Array.isArray(logsResult.result)) logs = logsResult.result;
+      if (Array.isArray(logsResult.result)) ccipCount = logsResult.result.length;
     } catch {}
 
-    // Fetch block timestamps for the 5 most recent events
-    const recentRaw = [...logs].reverse().slice(0, 5);
-    const recentEvents = await Promise.all(
-      recentRaw.map(async (log) => {
-        let timestamp: number | null = null;
-        try {
-          const b = await rpc(rpcUrl, "eth_getBlockByNumber", [log.blockNumber, false]);
-          if (b.result?.timestamp) timestamp = Number(BigInt(b.result.timestamp));
-        } catch {}
-        return {
-          blockNumber: Number(BigInt(log.blockNumber)),
-          txHash: log.transactionHash as string,
-          timestamp,
-        };
-      })
-    );
-
-    return NextResponse.json({ totalEvents: logs.length, recentEvents });
+    return NextResponse.json({ ccipCount });
   } catch {
     return NextResponse.json({ error: "Failed to query contract" }, { status: 500 });
   }

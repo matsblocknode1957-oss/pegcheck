@@ -9,6 +9,7 @@ export default function StableGuardPage() {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState("Loading...");
+  const [ccipCount, setCcipCount] = useState<number | null>(null);
   const [dark, setDark] = useState(() => {
     if (typeof window !== "undefined") return localStorage.getItem("pegcheck-dark") === "true";
     return false;
@@ -22,8 +23,12 @@ export default function StableGuardPage() {
 
   const fetchAll = async () => {
     try {
-      const pd = await fetch("/api/prices").then((r) => r.json());
+      const [pd, sg] = await Promise.all([
+        fetch("/api/prices").then((r) => r.json()),
+        fetch("/api/stableguard").then((r) => r.json()),
+      ]);
       if (pd.prices) setPrices(pd.prices);
+      if (typeof sg.ccipCount === "number") setCcipCount(sg.ccipCount);
       setLastUpdated(new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
     } catch {}
     setLoading(false);
@@ -182,8 +187,12 @@ export default function StableGuardPage() {
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "16px" }}>Cross-Chain Messages</div>
         <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
-          <div style={{ fontSize: "52px", fontWeight: "800", fontFamily: "monospace", color: "#1a56db", lineHeight: 1 }}>27+</div>
-          <div style={{ fontSize: "13px", color: textSecondary, marginTop: "6px" }}>Cross-Chain Messages Fired</div>
+          <div style={{ fontSize: "52px", fontWeight: "800", fontFamily: "monospace", color: "#1a56db", lineHeight: 1 }}>
+            {ccipCount === null ? "…" : ccipCount === 0 ? "Live" : `${ccipCount}+`}
+          </div>
+          <div style={{ fontSize: "13px", color: textSecondary, marginTop: "6px" }}>
+            {ccipCount === null ? "Fetching from chain…" : ccipCount === 0 ? "Monitoring — no depeg events yet" : "Cross-Chain Messages Fired"}
+          </div>
           <a href="https://sepolia.etherscan.io/address/0x44930ef915b30CbA75C0B94d62cE516d7900d27C#events" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: "10px", fontSize: "12px", fontWeight: "600", color: "#1a56db", textDecoration: "none" }}>
             Verified on Sepolia Etherscan ↗
           </a>
