@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-const CONTRACT = "0x44930ef915b30CbA75C0B94d62cE516d7900d27C";
+const CONTRACT  = "0x44930ef915b30CbA75C0B94d62cE516d7900d27C";
+const RECEIVER  = "0x55b1Bd1BB21B1e258Dd616929225d21E96553D05";
 
 export default function StableGuardPage() {
   const pathname = usePathname();
@@ -241,14 +242,30 @@ export default function StableGuardPage() {
 
       {/* Contract links */}
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
-        <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Contract</div>
-        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "14px" }}>
-          <a href={`https://sepolia.etherscan.io/address/${CONTRACT}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Contract ↗</a>
-          <a href={`https://sepolia.etherscan.io/address/${CONTRACT}#events`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
+        <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Contracts</div>
+
+        {/* StableGuard */}
+        <div style={{ marginBottom: "10px" }}>
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
+            <a href={`https://sepolia.etherscan.io/address/${CONTRACT}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View StableGuard ↗</a>
+            <a href={`https://sepolia.etherscan.io/address/${CONTRACT}#events`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
+          </div>
+          <div style={{ padding: "10px 12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
+            <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>StableGuard (Sepolia)</div>
+            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>{CONTRACT}</div>
+          </div>
         </div>
-        <div style={{ padding: "10px 12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
-          <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Contract (Sepolia)</div>
-          <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>{CONTRACT}</div>
+
+        {/* StableGuardReceiver */}
+        <div>
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
+            <a href={`https://sepolia.etherscan.io/address/${RECEIVER}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Receiver ↗</a>
+            <a href={`https://sepolia.etherscan.io/address/${RECEIVER}#events`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
+          </div>
+          <div style={{ padding: "10px 12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
+            <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>StableGuardReceiver (Sepolia)</div>
+            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>{RECEIVER}</div>
+          </div>
         </div>
       </div>
 
