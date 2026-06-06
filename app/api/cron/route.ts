@@ -3,7 +3,7 @@ import { COIN_PEGS } from "@/lib/coinPegs";
 import { fetchEurUsd } from "@/lib/fetchEurUsd";
 
 // Temporarily excluded from alerts — persistent depeg, remove when recovered
-const EXCLUDED_FROM_ALERTS = ["frax", "dola", "alusd"];
+const EXCLUDED_FROM_ALERTS = ["frax", "dola"];
 
 function median(values: number[]): number {
   const sorted = values.filter(v => v > 0.5 && v < 1.5).sort((a, b) => a - b);
