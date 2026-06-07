@@ -9,6 +9,7 @@ const supabase = createClient(
 const COINGECKO_IDS: Record<string, string> = {
   usdt:   "tether",
   usdc:   "usd-coin",
+  dai:    "dai",
   usds:   "dai",
   ethena: "ethena-usde",
   pyusd:  "paypal-usd",
@@ -26,6 +27,28 @@ const COINGECKO_IDS: Record<string, string> = {
   dola:   "dola-usd",
   alusd:  "alchemix-usd",
   bold:   "bold",
+};
+
+// CoinMarketCap IDs — used as an optional third source when CMC_API_KEY is set
+const CMC_IDS: Record<string, number> = {
+  usdt:   825,
+  usdc:   3408,
+  dai:    4943,
+  usds:   4943,
+  ethena: 29470,
+  pyusd:  27772,
+  fdusd:  26081,
+  rlusd:  35394,
+  tusd:   2563,
+  frax:   6952,
+  gho:    23508,
+  crvusd: 23121,
+  lusd:   15024,
+  usdp:   3330,
+  usdd:   19891,
+  eurc:   20641,
+  dola:   18153,
+  alusd:  9694,
 };
 
 function deviationBps(price: number): number {
@@ -60,48 +83,66 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const cmcId = CMC_IDS[slug];
+  const cmcApiKey = process.env.CMC_API_KEY;
+
   try {
-    const [supabaseResult, cgResult] = await Promise.allSettled([
+    const fetches: Promise<unknown>[] = [
       supabase
         .from("price_history")
         .select("price, created_at")
         .eq("slug", slug)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single(),
+        .single() as unknown as Promise<unknown>,
       fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd`,
         { next: { revalidate: 60 } }
       ).then((r) => r.json()),
-    ]);
+    ];
+
+    if (cmcId && cmcApiKey) {
+      fetches.push(
+        fetch(
+          `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=${cmcId}&convert=USD`,
+          { headers: { "X-CMC_PRO_API_KEY": cmcApiKey }, next: { revalidate: 60 } }
+        ).then((r) => r.json())
+      );
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results = await Promise.allSettled(fetches) as PromiseSettledResult<any>[];
+    const [supabaseResult, cgResult, cmcResult] = results;
 
     let pegcheckSource: { price: number; deviation_bps: number; source: string } | null = null;
-    if (
-      supabaseResult.status === "fulfilled" &&
-      !supabaseResult.value.error &&
-      supabaseResult.value.data
-    ) {
+    if (supabaseResult.status === "fulfilled" && !supabaseResult.value.error && supabaseResult.value.data) {
       const price = Number(supabaseResult.value.data.price);
       pegcheckSource = { price, deviation_bps: deviationBps(price), source: "Chainlink" };
     }
 
     let coingeckoSource: { price: number; deviation_bps: number; source: string } | null = null;
-    if (
-      cgResult.status === "fulfilled" &&
-      cgResult.value?.[cgId]?.usd != null
-    ) {
+    if (cgResult.status === "fulfilled" && cgResult.value?.[cgId]?.usd != null) {
       const price = Number(cgResult.value[cgId].usd);
       coingeckoSource = { price, deviation_bps: deviationBps(price), source: "CoinGecko" };
     }
 
-    if (!pegcheckSource && !coingeckoSource) {
+    let cmcSource: { price: number; deviation_bps: number; source: string } | null = null;
+    if (cmcResult?.status === "fulfilled" && cmcId) {
+      const cmcPrice = cmcResult.value?.data?.[String(cmcId)]?.quote?.USD?.price;
+      if (cmcPrice != null) {
+        const price = Number(cmcPrice);
+        cmcSource = { price, deviation_bps: deviationBps(price), source: "CoinMarketCap" };
+      }
+    }
+
+    if (!pegcheckSource && !coingeckoSource && !cmcSource) {
       return NextResponse.json(
         { error: "No price data available for this coin" },
         { status: 503 }
       );
     }
 
-    const availablePrices = [pegcheckSource?.price, coingeckoSource?.price].filter(
+    const availablePrices = [pegcheckSource?.price, coingeckoSource?.price, cmcSource?.price].filter(
       (p): p is number => p !== undefined
     );
     const consensusPrice = parseFloat(
@@ -110,16 +151,16 @@ export async function GET(request: NextRequest) {
     const consensusDeviationBps = deviationBps(consensusPrice);
     const sourcesConfirmed = availablePrices.length;
 
-    // HIGH only when both sources are present and prices agree within 10 bps
-    const priceDiffBps =
-      pegcheckSource && coingeckoSource
-        ? Math.round(Math.abs(pegcheckSource.price - coingeckoSource.price) * 10000)
-        : null;
-    const confidence = sourcesConfirmed === 2 && priceDiffBps! <= 10 ? "HIGH" : "LOW";
+    // HIGH only when ≥2 sources are present and all prices agree within 10 bps of consensus
+    const maxDiffBps = availablePrices.length >= 2
+      ? Math.max(...availablePrices.map((p) => Math.round(Math.abs(p - consensusPrice) * 10000)))
+      : null;
+    const confidence = sourcesConfirmed >= 2 && maxDiffBps! <= 10 ? "HIGH" : "LOW";
 
     const sources: Record<string, { price: number; deviation_bps: number; source: string }> = {};
     if (pegcheckSource) sources.pegcheck = pegcheckSource;
     if (coingeckoSource) sources.coingecko = coingeckoSource;
+    if (cmcSource) sources.coinmarketcap = cmcSource;
 
     return NextResponse.json({
       coin: coin.toUpperCase(),
