@@ -277,11 +277,30 @@ export async function GET() {
     if (priceError) console.error("Price history insert error:", priceError);
     else console.log("Price history saved:", snapshots.length, "rows");
 
+    // Build set of seasoned slugs — coins with ≥ 30 days of price history
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const seasoningResults = await Promise.all(
+      Object.keys(prices).map(async (slug) => {
+        const { data } = await supabase
+          .from("price_history")
+          .select("created_at")
+          .eq("slug", slug)
+          .order("created_at", { ascending: true })
+          .limit(1);
+        const firstRecord = data?.[0]?.created_at;
+        return { slug, seasoned: !!firstRecord && firstRecord < thirtyDaysAgo };
+      })
+    );
+    const seasonedSlugs = new Set(
+      seasoningResults.filter(c => c.seasoned).map(c => c.slug)
+    );
+
     // Check for Depegs — only alert if coin has ≥2 history records AND wasn't already depegged last cycle
     const currentlyDepegged = Object.entries(prices).filter(([slug, price]) => price < effectivePeg(slug) * 0.975);
 
     const depegChecks = await Promise.all(
       currentlyDepegged.map(async ([slug]) => {
+        if (!seasonedSlugs.has(slug)) return null; // < 30 days of history — skip
         const { data } = await supabase
           .from("price_history")
           .select("price")
@@ -304,6 +323,7 @@ export async function GET() {
       Object.entries(prices)
         .filter(([slug, price]) => price >= effectivePeg(slug) * 0.975)
         .map(async ([slug]) => {
+          if (!seasonedSlugs.has(slug)) return null; // < 30 days of history — skip
           const { data } = await supabase
             .from("price_history")
             .select("price")
@@ -326,6 +346,7 @@ export async function GET() {
           return price >= peg * 0.975 && price < peg * 0.99;
         })
         .map(async ([slug]) => {
+          if (!seasonedSlugs.has(slug)) return null; // < 30 days of history — skip
           const { data } = await supabase
             .from("price_history")
             .select("price")
