@@ -80,8 +80,16 @@ export default function Home() {
     { name: "BOLD",   issuer: "Liquity V2",      peg: 1.0,   icon: "/icons/bold.svg",   slug: "bold",   bgColor: "#0f766e" },
   ];
 
+  type FearGreedData = {
+    score: number;
+    classification: string;
+    yesterdayScore: number | null;
+    yesterdayClassification: string;
+  };
+
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [eurUsd, setEurUsd] = useState(1.13);
+  const [fearGreed, setFearGreed] = useState<FearGreedData | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>("Loading...");
   const [hoveredCoin, setHoveredCoin] = useState<string | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -285,6 +293,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    fetch("/api/fear-greed")
+      .then((r) => r.json())
+      .then((data) => { if (data.score != null) setFearGreed(data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -425,6 +440,35 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Fear & Greed widget */}
+      {fearGreed && (() => {
+        const fgColor = fearGreed.score <= 24 ? "#dc2626"
+          : fearGreed.score <= 49 ? "#ea580c"
+          : fearGreed.score <= 55 ? "#6b7280"
+          : fearGreed.score <= 74 ? "#16a34a"
+          : "#15803d";
+        const fgBg = dark
+          ? (fearGreed.score <= 24 ? "#450a0a" : fearGreed.score <= 49 ? "#431407" : fearGreed.score <= 55 ? "#111827" : "#052e16")
+          : (fearGreed.score <= 24 ? "#fef2f2" : fearGreed.score <= 49 ? "#fff7ed" : fearGreed.score <= 55 ? "#f9fafb" : "#f0fdf4");
+        const diff = fearGreed.yesterdayScore !== null ? fearGreed.score - fearGreed.yesterdayScore : 0;
+        const arrow = diff > 0 ? "↑" : diff < 0 ? "↓" : "→";
+        const arrowColor = diff > 0 ? "#16a34a" : diff < 0 ? "#dc2626" : textSecondary;
+        return (
+          <div style={{ padding: "10px 20px", background: headerBg, borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+            <span style={{ fontSize: "11px", fontWeight: "600", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", flexShrink: 0 }}>Fear &amp; Greed</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 12px", borderRadius: "20px", background: fgBg }}>
+              <span style={{ fontSize: "18px", fontWeight: "800", fontFamily: "monospace", color: fgColor, lineHeight: "1" }}>{fearGreed.score}</span>
+              <span style={{ fontSize: "11px", fontWeight: "600", color: fgColor }}>{fearGreed.classification}</span>
+            </div>
+            {fearGreed.yesterdayScore !== null && (
+              <span style={{ fontSize: "11px", color: textSecondary, flexShrink: 0 }}>
+                <span style={{ color: arrowColor, fontWeight: "700" }}>{arrow} {Math.abs(diff)}</span> vs yesterday
+              </span>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Table header */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px", padding: "8px 20px", background: tableHeaderBg, borderBottom: `1px solid ${headerBorder}` }}>
