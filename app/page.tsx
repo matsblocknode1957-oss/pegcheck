@@ -452,7 +452,7 @@ export default function Home() {
           if (bps < 200) return 25;
           return 0;
         });
-        const pegScore = pegScores.reduce((a, b) => a + b, 0) / pegScores.length;
+        const pegScore = pegScores.reduce<number>((a, b) => a + b, 0) / pegScores.length;
         const healthIndex = fearGreed
           ? Math.round(0.5 * pegScore + 0.5 * fearGreed.score)
           : Math.round(pegScore);
