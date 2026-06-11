@@ -441,6 +441,46 @@ export default function Home() {
         )}
       </div>
 
+      {/* Stablecoin Health Index */}
+      {Object.keys(prices).length > 0 && (() => {
+        const pegScores = stablecoins.map((coin) => {
+          const price = getLivePrice(coin.slug, coin.peg);
+          const peg = getEffectivePeg(coin.slug);
+          const bps = (Math.abs(price - peg) / peg) * 10000;
+          if (bps < 20) return 100;
+          if (bps < 50) return 75;
+          if (bps < 200) return 25;
+          return 0;
+        });
+        const pegScore = pegScores.reduce((a, b) => a + b, 0) / pegScores.length;
+        const healthIndex = fearGreed
+          ? Math.round(0.5 * pegScore + 0.5 * fearGreed.score)
+          : Math.round(pegScore);
+        const band = healthIndex >= 80 ? "Healthy"
+          : healthIndex >= 60 ? "Caution"
+          : healthIndex >= 40 ? "Elevated Risk"
+          : healthIndex >= 20 ? "High Risk"
+          : "Critical";
+        const hiColor = healthIndex >= 80 ? "#16a34a"
+          : healthIndex >= 60 ? "#d97706"
+          : healthIndex >= 40 ? "#ea580c"
+          : healthIndex >= 20 ? "#dc2626"
+          : "#991b1b";
+        const hiBg = dark
+          ? (healthIndex >= 80 ? "#052e16" : healthIndex >= 60 ? "#451a03" : healthIndex >= 40 ? "#431407" : healthIndex >= 20 ? "#450a0a" : "#3b0000")
+          : (healthIndex >= 80 ? "#f0fdf4" : healthIndex >= 60 ? "#fffbeb" : healthIndex >= 40 ? "#fff7ed" : healthIndex >= 20 ? "#fef2f2" : "#fee2e2");
+        return (
+          <div style={{ padding: "10px 20px", background: headerBg, borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+            <span style={{ fontSize: "11px", fontWeight: "600", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", flexShrink: 0 }}>Health Index</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 12px", borderRadius: "20px", background: hiBg }}>
+              <span style={{ fontSize: "18px", fontWeight: "800", fontFamily: "monospace", color: hiColor, lineHeight: "1" }}>{healthIndex}</span>
+              <span style={{ fontSize: "11px", fontWeight: "600", color: hiColor }}>/ 100</span>
+            </div>
+            <span style={{ fontSize: "11px", fontWeight: "600", color: hiColor, flexShrink: 0 }}>{band}</span>
+          </div>
+        );
+      })()}
+
       {/* Fear & Greed widget */}
       {fearGreed && (() => {
         const fgColor = fearGreed.score <= 24 ? "#dc2626"
