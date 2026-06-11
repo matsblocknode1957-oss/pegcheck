@@ -36,7 +36,7 @@ export async function GET() {
     if (bps < 200) return 25;
     return 0;
   });
-  const pegScore = Math.round(coinScores.reduce((a, b) => a + b, 0) / coinScores.length);
+  const pegScore = Math.round(coinScores.reduce<number>((total, score) => total + score, 0) / coinScores.length);
 
   let fearGreedScore: number | null = null;
   if (fgRes.status === "fulfilled" && fgRes.value.ok) {
