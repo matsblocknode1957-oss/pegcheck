@@ -80,8 +80,8 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, weekOf: string, market
   const depegCoins   = coins.filter(c => c.status === "Depeg");
   const riskCoins    = coins.filter(c => c.status !== "Healthy").sort((a, b) => a.stabilityPct - b.stabilityPct);
 
-  const marketHealth = marketScore >= 80 ? "Healthy" : marketScore >= 65 ? "Moderate" : "Elevated Risk";
-  const marketColor  = marketScore >= 85 ? "#10b981" : marketScore >= 65 ? "#f59e0b" : "#ef4444";
+  const marketHealth = marketScore >= 80 ? "Healthy" : marketScore >= 60 ? "Caution" : marketScore >= 40 ? "Elevated Risk" : "High Risk";
+  const marketColor  = marketScore >= 80 ? "#10b981" : marketScore >= 60 ? "#f59e0b" : "#ef4444";
 
   const coinRows = coins.map(c => {
     const devBps = Math.round(((c.currentPrice - c.peg) / c.peg) * 10000);
@@ -151,7 +151,7 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, weekOf: string, market
       <tr>
         <td width="33%" style="text-align:center;padding:16px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
           <div style="font-size:32px;font-weight:800;color:${marketColor};font-family:monospace">${marketScore}</div>
-          <div style="font-size:10px;color:#6b7280;margin-top:4px;text-transform:uppercase;letter-spacing:1px">Market Score</div>
+          <div style="font-size:10px;color:#6b7280;margin-top:4px;text-transform:uppercase;letter-spacing:1px">Health Index</div>
           <div style="font-size:12px;font-weight:700;color:${marketColor};margin-top:2px">${marketHealth}</div>
         </td>
         <td width="4%"></td>
@@ -357,7 +357,6 @@ export async function POST(request: Request) {
 
     const weekOf = weekLabel();
     const slugs = Object.keys(COIN_NAMES);
-    let totalStability = 0;
 
     const coins: CoinStats[] = slugs.map(slug => {
       const prices  = bySlug[slug] ?? [];
@@ -368,7 +367,7 @@ export async function POST(request: Request) {
       const high7d  = prices.length > 0 ? Math.max(...prices) : peg;
       const low7d   = prices.length > 0 ? Math.min(...prices) : peg;
 
-      // Stability: % of readings within healthy band
+      // Stability: % of readings within healthy band (used for per-coin STAB column)
       const stabilityPct = prices.length > 0
         ? (prices.filter(p => Math.abs(p - peg) / peg <= healthy).length / prices.length) * 100
         : 100;
@@ -383,7 +382,6 @@ export async function POST(request: Request) {
         else if (recent > early * 1.1) trend = "down";
       }
 
-      totalStability += stabilityPct;
       return {
         slug, peg, currentPrice, high7d, low7d, stabilityPct, trend,
         name: COIN_NAMES[slug], issuer: COIN_ISSUERS[slug],
@@ -392,7 +390,27 @@ export async function POST(request: Request) {
       };
     });
 
-    const marketScore = Math.round(totalStability / slugs.length);
+    // Health Index — same formula as /api/health-index: bps bands → peg score, blended with Fear & Greed
+    const pegScore = Math.round(
+      coins.reduce((sum, c) => {
+        const bps = (Math.abs(c.currentPrice - c.peg) / c.peg) * 10000;
+        return sum + (bps < 20 ? 100 : bps < 50 ? 75 : bps < 200 ? 25 : 0);
+      }, 0) / coins.length
+    );
+
+    let fearGreedScore: number | null = null;
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? new URL(request.url).origin;
+      const fgRes = await fetch(`${baseUrl}/api/fear-greed`);
+      if (fgRes.ok) {
+        const fgData = await fgRes.json();
+        if (typeof fgData.score === "number") fearGreedScore = fgData.score;
+      }
+    } catch {}
+
+    const marketScore = fearGreedScore !== null
+      ? Math.round(0.5 * pegScore + 0.5 * fearGreedScore)
+      : pegScore;
     const html = buildHtml(coins, whale, weekOf, marketScore);
 
     const depegList = coins.filter(c => c.status === "Depeg").map(c => c.name);
