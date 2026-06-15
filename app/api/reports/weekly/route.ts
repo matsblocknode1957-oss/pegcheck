@@ -74,7 +74,7 @@ function fmtVolume(n: number): string {
   return `$${n.toLocaleString()}`;
 }
 
-function buildHtml(coins: CoinStats[], whale: WhaleStats, weekOf: string, marketScore: number): string {
+function buildHtml(coins: CoinStats[], whale: WhaleStats, weekOf: string, marketScore: number, unsubscribeUrl: string): string {
   const healthyCoins = coins.filter(c => c.status === "Healthy");
   const cautionCoins = coins.filter(c => c.status === "Caution");
   const depegCoins   = coins.filter(c => c.status === "Depeg");
@@ -275,7 +275,7 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, weekOf: string, market
         </td>
         <td align="right" style="vertical-align:top">
           <div style="font-size:10px;color:#374151;margin-bottom:4px">Not financial advice</div>
-          <a href="https://pegcheck.uk" style="font-size:11px;color:#4b5563;text-decoration:underline">Unsubscribe</a>
+          <a href="${unsubscribeUrl}" style="font-size:11px;color:#4b5563;text-decoration:underline">Unsubscribe</a>
         </td>
       </tr>
     </table>
@@ -296,6 +296,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const to: string = body.to ?? "mat@fintechcheck.uk";
     const sendType: string = body.type ?? "manual";
+    const unsubscribeToken: string | null = body.unsubscribeToken ?? null;
 
     if (!to.includes("@")) {
       return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
@@ -411,7 +412,12 @@ export async function POST(request: Request) {
     const marketScore = fearGreedScore !== null
       ? Math.round(0.5 * pegScore + 0.5 * fearGreedScore)
       : pegScore;
-    const html = buildHtml(coins, whale, weekOf, marketScore);
+
+    const baseUrlForLinks = process.env.NEXT_PUBLIC_BASE_URL ?? "https://pegcheck.uk";
+    const unsubscribeUrl = unsubscribeToken
+      ? `${baseUrlForLinks}/api/unsubscribe?token=${unsubscribeToken}`
+      : `${baseUrlForLinks}/api/unsubscribe`;
+    const html = buildHtml(coins, whale, weekOf, marketScore, unsubscribeUrl);
 
     const depegList = coins.filter(c => c.status === "Depeg").map(c => c.name);
     const subjectSuffix = depegList.length > 0
@@ -423,6 +429,10 @@ export async function POST(request: Request) {
       to,
       subject: `FintechCheck Weekly Report · ${weekOf}${subjectSuffix}`,
       html,
+      headers: {
+        "List-Unsubscribe": `<${unsubscribeUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
     });
 
     // Log send to report_sends table

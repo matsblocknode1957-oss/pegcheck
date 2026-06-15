@@ -414,16 +414,23 @@ export async function GET() {
 
     const { data: subscribers, error: subError } = await supabase
       .from("subscribers")
-      .select("email")
-      .eq("tier", "premium");
+      .select("email, unsubscribe_token")
+      .eq("tier", "premium")
+      .eq("alerts_enabled", true);
 
     if (subError || !subscribers || subscribers.length === 0) {
       return NextResponse.json({ message: "No premium subscribers to alert" });
     }
 
     const depegList = depegged.map(([slug, price]) => `<li><strong>${coinNames[slug]}</strong> — $${price.toFixed(4)}</li>`).join("");
+    const alertBaseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://pegcheck.uk";
 
-    const emailHtml = `
+    for (const subscriber of subscribers) {
+      const unsubscribeUrl = subscriber.unsubscribe_token
+        ? `${alertBaseUrl}/api/unsubscribe?token=${subscriber.unsubscribe_token}`
+        : `${alertBaseUrl}/api/unsubscribe`;
+
+      const emailHtml = `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 500px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #1a56db, #0e3fa8); padding: 24px; border-radius: 12px 12px 0 0;">
           <h2 style="color: white; margin: 0; font-size: 20px;">PegCheck — Stablecoin Alert</h2>
@@ -434,17 +441,20 @@ export async function GET() {
             ${depegList}
           </ul>
           <a href="https://pegcheck.uk" style="display: inline-block; background: linear-gradient(135deg, #1a56db, #0e3fa8); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; margin-top: 8px;">View Live Data →</a>
-          <p style="color: #9ca3af; font-size: 12px; margin-top: 24px; margin-bottom: 0;">PegCheck premium alert. Not financial advice. <a href="https://pegcheck.uk" style="color: #9ca3af;">Manage subscription</a></p>
+          <p style="color: #9ca3af; font-size: 12px; margin-top: 24px; margin-bottom: 0;">PegCheck premium alert. Not financial advice. <a href="${unsubscribeUrl}" style="color: #9ca3af;">Unsubscribe</a></p>
         </div>
       </div>
     `;
 
-    for (const subscriber of subscribers) {
       await resend.emails.send({
         from: "PegCheck <alerts@fintechcheck.uk>",
         to: subscriber.email,
         subject: `PegCheck — Stablecoin price alert`,
         html: emailHtml,
+        headers: {
+          "List-Unsubscribe": `<${unsubscribeUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
     }
 

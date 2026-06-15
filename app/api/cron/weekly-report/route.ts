@@ -11,7 +11,7 @@ export async function GET() {
 
     const { data: subscribers, error } = await supabase
       .from("subscribers")
-      .select("email")
+      .select("email, unsubscribe_token")
       .eq("weekly_report", true);
 
     if (error) {
@@ -30,7 +30,7 @@ export async function GET() {
         fetch(`${baseUrl}/api/reports/weekly`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to: sub.email, type: "automated" }),
+          body: JSON.stringify({ to: sub.email, type: "automated", unsubscribeToken: sub.unsubscribe_token }),
         })
       )
     );
