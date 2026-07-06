@@ -105,18 +105,10 @@ interface IAny2EVMMessageReceiver {
 // ================================================================
 contract StableGuard is AutomationCompatibleInterface {
 
-    // ── Sepolia contract addresses ───────────────────────────
-    //
-    // Price Feeds — verify at:
-    // https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum&page=1#sepolia-testnet
-    address public constant USDC_USD_FEED = 0xA2f78Ab2355fe2F984D808b5CeE7FD0a93d5270b;
-    // DAI/USD replaces USDT/USD — Chainlink does not publish a USDT/USD feed on Sepolia.
-    // DAI is a USD-pegged stablecoin and a valid second confidence source.
-    address public constant DAI_USD_FEED  = 0x14866185B1962B63C3Ea9E03Bc1da838bab34C19;
-
-    // CCIP Router (Sepolia v1.2) — verify at:
-    // https://docs.chain.link/ccip/supported-networks/v1_2_0/testnet#ethereum-testnet-sepolia
-    address public constant CCIP_ROUTER = 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59;
+    // ── Network addresses (set in constructor — chain-agnostic) ──
+    address public ccipRouter;
+    address public usdcUsdFeed;
+    address public daiUsdFeed;
 
     // ── Configurable destinations (set in constructor) ────────
     // Destination chain selector for CCIP alerts.
@@ -175,15 +167,24 @@ contract StableGuard is AutomationCompatibleInterface {
     }
 
     // ── Constructor ───────────────────────────────────────────
+    /// @param _ccipRouter                CCIP Router address on this chain
+    /// @param _usdcUsdFeed               Chainlink USDC/USD price feed on this chain
+    /// @param _daiUsdFeed                Chainlink DAI/USD price feed on this chain
     /// @param _destinationChainSelector  CCIP chain selector for alert destination
     /// @param _ccipReceiver              StableGuardReceiver address on destination chain
-    /// @param _uniswapPool               USDC/USDT V3 pool on Sepolia; pass address(0) to skip
+    /// @param _uniswapPool               USDC/USDT V3 pool; pass address(0) to skip DEX check
     constructor(
+        address _ccipRouter,
+        address _usdcUsdFeed,
+        address _daiUsdFeed,
         uint64  _destinationChainSelector,
         address _ccipReceiver,
         address _uniswapPool
     ) {
         owner                    = msg.sender;
+        ccipRouter               = _ccipRouter;
+        usdcUsdFeed              = _usdcUsdFeed;
+        daiUsdFeed               = _daiUsdFeed;
         destinationChainSelector = _destinationChainSelector;
         ccipReceiver             = _ccipReceiver;
         uniswapPool              = _uniswapPool;
@@ -274,7 +275,7 @@ contract StableGuard is AutomationCompatibleInterface {
     {
         // ── Check USDC ────────────────────────────────────────
         {
-            (int256 p, bool fresh) = _getChainlinkPrice(USDC_USD_FEED);
+            (int256 p, bool fresh) = _getChainlinkPrice(usdcUsdFeed);
             if (fresh && _isPriceDepegged(p)) {
                 score   = 3;          // +3: Chainlink confirms depeg
                 symbol  = "USDC";
@@ -291,7 +292,7 @@ contract StableGuard is AutomationCompatibleInterface {
 
         // ── Check DAI ─────────────────────────────────────────
         {
-            (int256 p, bool fresh) = _getChainlinkPrice(DAI_USD_FEED);
+            (int256 p, bool fresh) = _getChainlinkPrice(daiUsdFeed);
             if (fresh && _isPriceDepegged(p)) {
                 score   = 3;
                 symbol  = "DAI";
@@ -399,10 +400,10 @@ contract StableGuard is AutomationCompatibleInterface {
             extraArgs:    ""                         // default gas limit
         });
 
-        uint256 fee = IRouterClient(CCIP_ROUTER).getFee(destinationChainSelector, message);
+        uint256 fee = IRouterClient(ccipRouter).getFee(destinationChainSelector, message);
         require(address(this).balance >= fee, "Insufficient ETH for CCIP fee");
 
-        bytes32 messageId = IRouterClient(CCIP_ROUTER).ccipSend{value: fee}(
+        bytes32 messageId = IRouterClient(ccipRouter).ccipSend{value: fee}(
             destinationChainSelector,
             message
         );

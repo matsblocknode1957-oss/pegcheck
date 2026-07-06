@@ -1,5 +1,12 @@
 import { ethers } from "hardhat";
 
+// ── Sepolia network addresses ─────────────────────────────────────────────────
+// CCIP Router (Sepolia v1.2): https://docs.chain.link/ccip/supported-networks/v1_2_0/testnet#ethereum-testnet-sepolia
+const CCIP_ROUTER    = "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59";
+// Price feeds: https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum&page=1#sepolia-testnet
+const USDC_USD_FEED  = "0xA2f78Ab2355fe2F984D808b5CeE7FD0a93d5270b";
+const DAI_USD_FEED   = "0x14866185B1962B63C3Ea9E03Bc1da838bab34C19";
+
 // ── CCIP destination chain selector ───────────────────────────────────────────
 // Default: Avalanche Fuji (14767482510784806043) — a reliable CCIP testnet target.
 // Override by setting DESTINATION_CHAIN_SELECTOR in .env.
@@ -29,6 +36,9 @@ async function main() {
   console.log("─".repeat(60));
   console.log("Deployer:              ", deployer.address);
   console.log("Balance:               ", ethers.formatEther(balance), "ETH");
+  console.log("CCIP Router:           ", CCIP_ROUTER);
+  console.log("USDC/USD feed:         ", USDC_USD_FEED);
+  console.log("DAI/USD feed:          ", DAI_USD_FEED);
   console.log("Destination selector:  ", DESTINATION_CHAIN_SELECTOR.toString());
   console.log("CCIP receiver:         ", CCIP_RECEIVER);
   console.log("Uniswap pool:          ", UNISWAP_POOL);
@@ -36,6 +46,9 @@ async function main() {
 
   const StableGuard = await ethers.getContractFactory("StableGuard");
   const stableGuard = await StableGuard.deploy(
+    CCIP_ROUTER,
+    USDC_USD_FEED,
+    DAI_USD_FEED,
     DESTINATION_CHAIN_SELECTOR,
     CCIP_RECEIVER,
     UNISWAP_POOL,
