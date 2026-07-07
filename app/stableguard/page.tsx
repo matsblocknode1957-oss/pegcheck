@@ -269,6 +269,36 @@ export default function StableGuardPage() {
         </div>
       </div>
 
+      {/* Arbitrum Sepolia deployment */}
+      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
+        <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "4px" }}>Contracts — Arbitrum Sepolia</div>
+        <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "12px" }}>Sending CCIP alerts → Ethereum Sepolia receiver</div>
+
+        {/* StableGuard on Arbitrum Sepolia */}
+        <div style={{ marginBottom: "10px" }}>
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
+            <a href="https://sepolia.arbiscan.io/address/0xff0ed8AC27dF988F2f1efbCb2719f503C9455e11" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View StableGuard ↗</a>
+            <a href="https://sepolia.arbiscan.io/address/0xff0ed8AC27dF988F2f1efbCb2719f503C9455e11#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
+          </div>
+          <div style={{ padding: "10px 12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
+            <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>StableGuard (Arbitrum Sepolia)</div>
+            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0xff0ed8AC27dF988F2f1efbCb2719f503C9455e11</div>
+          </div>
+        </div>
+
+        {/* StableGuardReceiver on Ethereum Sepolia */}
+        <div>
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
+            <a href="https://sepolia.etherscan.io/address/0x4E22DcAa7abc7701144b737827613A99343beD3d" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Receiver ↗</a>
+            <a href="https://sepolia.etherscan.io/address/0x4E22DcAa7abc7701144b737827613A99343beD3d#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
+          </div>
+          <div style={{ padding: "10px 12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
+            <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>StableGuardReceiver (Ethereum Sepolia)</div>
+            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0x4E22DcAa7abc7701144b737827613A99343beD3d</div>
+          </div>
+        </div>
+      </div>
+
       <div style={{ padding: "16px 20px", textAlign: "center" }}>
         <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af" }}>Not financial advice</div>
       </div>
