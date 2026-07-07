@@ -231,12 +231,24 @@ export default function StableGuardPage() {
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "14px" }}>Chainlink Services</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-          {["Price Feeds", "CCIP", "Automation", "Data Streams"].map((svc) => (
-            <div key={svc} style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "7px 12px", borderRadius: "8px", background: dark ? "rgba(22,163,74,0.1)" : "#f0fdf4", border: `1px solid ${dark ? "#166534" : "#bbf7d0"}` }}>
-              <span style={{ fontSize: "12px" }}>✅</span>
-              <span style={{ fontSize: "12px", fontWeight: "600", color: dark ? "#d1fae5" : "#166534" }}>{svc}</span>
+          {[
+            { label: "Price Feeds",   badge: "✅", status: "active"  },
+            { label: "CCIP",          badge: "✅", status: "active"  },
+            { label: "Automation",    badge: "⏳", status: "pending", note: "CRE migration" },
+            { label: "Data Streams",  badge: "🔲", status: "planned" },
+          ].map(({ label, badge, status, note }) => {
+            const styles = status === "active"
+              ? { bg: dark ? "rgba(22,163,74,0.1)"  : "#f0fdf4", border: dark ? "#166534" : "#bbf7d0", color: dark ? "#d1fae5" : "#166534" }
+              : status === "pending"
+              ? { bg: dark ? "rgba(180,83,9,0.12)"  : "#fffbeb", border: dark ? "#92400e" : "#fcd34d", color: dark ? "#fde68a" : "#92400e" }
+              : { bg: dark ? "rgba(75,85,99,0.15)"  : "#f9fafb", border: dark ? "#374151" : "#d1d5db", color: dark ? "#9ca3af" : "#6b7280" };
+            return (
+            <div key={label} style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "7px 12px", borderRadius: "8px", background: styles.bg, border: `1px solid ${styles.border}` }}>
+              <span style={{ fontSize: "12px" }}>{badge}</span>
+              <span style={{ fontSize: "12px", fontWeight: "600", color: styles.color }}>{label}{note ? <span style={{ fontWeight: "400", fontSize: "11px" }}> ({note})</span> : null}</span>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
