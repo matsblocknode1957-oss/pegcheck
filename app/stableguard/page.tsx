@@ -192,19 +192,19 @@ export default function StableGuardPage() {
         </div>
 
         {/* Test run entry */}
-        <div style={{ background: isDark ? "#0f172a" : "#f8fafc", borderRadius: "10px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
+        <div style={{ background: dark ? "#0f172a" : "#f8fafc", borderRadius: "10px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
           {/* Header row */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", flexShrink: 0 }} />
-              <span style={{ fontSize: "13px", fontWeight: "700", color: isDark ? "#f1f5f9" : "#0f172a" }}>USDC Depeg Alert → Ethereum Sepolia</span>
+              <span style={{ fontSize: "13px", fontWeight: "700", color: dark ? "#f1f5f9" : "#0f172a" }}>USDC Depeg Alert → Ethereum Sepolia</span>
             </div>
             <span style={{ fontSize: "11px", color: textSecondary }}>Jul 8, 2026</span>
           </div>
 
           {/* Trigger */}
           <div style={{ fontSize: "12px", color: textSecondary, marginBottom: "12px" }}>
-            Triggered at <span style={{ fontWeight: "600", color: isDark ? "#e2e8f0" : "#1e293b" }}>$0.94</span> — 6% below peg &nbsp;·&nbsp; Score: <span style={{ fontWeight: "600", color: isDark ? "#e2e8f0" : "#1e293b" }}>3</span> (Chainlink only) &nbsp;·&nbsp; Delivery: <span style={{ fontWeight: "600", color: "#10b981" }}>16 min 43 sec</span>
+            Triggered at <span style={{ fontWeight: "600", color: dark ? "#e2e8f0" : "#1e293b" }}>$0.94</span> — 6% below peg &nbsp;·&nbsp; Score: <span style={{ fontWeight: "600", color: dark ? "#e2e8f0" : "#1e293b" }}>3</span> (Chainlink only) &nbsp;·&nbsp; Delivery: <span style={{ fontWeight: "600", color: "#10b981" }}>16 min 43 sec</span>
           </div>
 
           {/* Tx links */}
