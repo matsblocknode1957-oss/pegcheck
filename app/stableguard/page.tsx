@@ -184,19 +184,69 @@ export default function StableGuardPage() {
         </div>
       </div>
 
-      {/* CCIP Messages Counter */}
+      {/* CCIP Messages — Verified Test Run */}
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
-        <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "16px" }}>Cross-Chain Messages</div>
-        <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
-          <div style={{ fontSize: "52px", fontWeight: "800", fontFamily: "monospace", color: "#1a56db", lineHeight: 1 }}>
-            {ccipCount === null ? "…" : ccipCount === 0 ? "Live" : `${ccipCount}+`}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px" }}>Cross-Chain Messages</div>
+          <div style={{ fontSize: "10px", fontWeight: "700", color: "#d97706", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "6px", padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.4px" }}>Verified Test Run</div>
+        </div>
+
+        {/* Test run entry */}
+        <div style={{ background: isDark ? "#0f172a" : "#f8fafc", borderRadius: "10px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
+          {/* Header row */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", flexShrink: 0 }} />
+              <span style={{ fontSize: "13px", fontWeight: "700", color: isDark ? "#f1f5f9" : "#0f172a" }}>USDC Depeg Alert → Ethereum Sepolia</span>
+            </div>
+            <span style={{ fontSize: "11px", color: textSecondary }}>Jul 8, 2026</span>
           </div>
-          <div style={{ fontSize: "13px", color: textSecondary, marginTop: "6px" }}>
-            {ccipCount === null ? "Fetching from chain…" : ccipCount === 0 ? "Monitoring — no depeg events yet" : "Cross-Chain Messages Fired"}
+
+          {/* Trigger */}
+          <div style={{ fontSize: "12px", color: textSecondary, marginBottom: "12px" }}>
+            Triggered at <span style={{ fontWeight: "600", color: isDark ? "#e2e8f0" : "#1e293b" }}>$0.94</span> — 6% below peg &nbsp;·&nbsp; Score: <span style={{ fontWeight: "600", color: isDark ? "#e2e8f0" : "#1e293b" }}>3</span> (Chainlink only) &nbsp;·&nbsp; Delivery: <span style={{ fontWeight: "600", color: "#10b981" }}>16 min 43 sec</span>
           </div>
-          <a href="https://sepolia.etherscan.io/address/0x44930ef915b30CbA75C0B94d62cE516d7900d27C#events" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: "10px", fontSize: "12px", fontWeight: "600", color: "#1a56db", textDecoration: "none" }}>
-            Verified on Sepolia Etherscan ↗
-          </a>
+
+          {/* Tx links */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "11px", fontWeight: "600", color: textSecondary, width: "90px", flexShrink: 0 }}>Source tx</span>
+              <a
+                href="https://sepolia.arbiscan.io/tx/0xc1faa4caeb59040e9d58e1a6d0c3cb60230c9e001f7294631091fb9b2080f8e2"
+                target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: "11px", fontFamily: "monospace", color: "#1a56db", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                0xc1faa4ca…80f8e2 ↗
+              </a>
+              <span style={{ fontSize: "11px", color: textSecondary, flexShrink: 0 }}>Arbitrum Sepolia</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "11px", fontWeight: "600", color: textSecondary, width: "90px", flexShrink: 0 }}>Destination tx</span>
+              <a
+                href="https://sepolia.etherscan.io/tx/0x9caf790fce776d83616372de188ca177b019e8efd0395f18b592c8b1a54c71e2"
+                target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: "11px", fontFamily: "monospace", color: "#1a56db", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                0x9caf790f…c71e2 ↗
+              </a>
+              <span style={{ fontSize: "11px", color: textSecondary, flexShrink: 0 }}>Ethereum Sepolia</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "11px", fontWeight: "600", color: textSecondary, width: "90px", flexShrink: 0 }}>CCIP message</span>
+              <a
+                href="https://ccip.chain.link/tx/0xc1faa4caeb59040e9d58e1a6d0c3cb60230c9e001f7294631091fb9b2080f8e2"
+                target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: "11px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}
+              >
+                View on CCIP Explorer ↗
+              </a>
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: `1px solid ${cardBorder}`, fontSize: "11px", color: textSecondary, fontStyle: "italic" }}>
+            Controlled test run using a mock price feed — not live market data.
+          </div>
         </div>
       </div>
 
