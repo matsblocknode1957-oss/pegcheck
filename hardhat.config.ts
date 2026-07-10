@@ -27,6 +27,13 @@ const config: HardhatUserConfig = {
         : [],
       chainId: 421614,
     },
+    robinhoodChain: {
+      url: process.env.ROBINHOOD_RPC_URL || "https://rpc.testnet.chain.robinhood.com",
+      accounts: process.env.DEPLOYER_PRIVATE_KEY
+        ? [`0x${process.env.DEPLOYER_PRIVATE_KEY.replace(/^0x/, "").replace(/^[^0-9a-fA-F]+/, "")}`]
+        : [],
+      chainId: 46630, // 0xb626 — confirmed via eth_chainId against https://rpc.testnet.chain.robinhood.com
+    },
   },
 
   paths: {

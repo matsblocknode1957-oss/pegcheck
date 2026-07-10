@@ -7,20 +7,6 @@ const CCIP_ROUTER    = "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59";
 const USDC_USD_FEED  = "0xA2f78Ab2355fe2F984D808b5CeE7FD0a93d5270b";
 const DAI_USD_FEED   = "0x14866185B1962B63C3Ea9E03Bc1da838bab34C19";
 
-// ── CCIP destination chain selector ───────────────────────────────────────────
-// Default: Avalanche Fuji (14767482510784806043) — a reliable CCIP testnet target.
-// Override by setting DESTINATION_CHAIN_SELECTOR in .env.
-// Full selector list: https://docs.chain.link/ccip/supported-networks
-const DESTINATION_CHAIN_SELECTOR: bigint = process.env.DESTINATION_CHAIN_SELECTOR
-  ? BigInt(process.env.DESTINATION_CHAIN_SELECTOR)
-  : 14767482510784806043n;
-
-// Address of StableGuardReceiver on the destination chain.
-// Deploy that contract first, then set CCIP_RECEIVER_ADDRESS in .env.
-// Defaults to zero address so StableGuard can be deployed independently.
-const CCIP_RECEIVER: string =
-  process.env.CCIP_RECEIVER_ADDRESS ?? ethers.ZeroAddress;
-
 // Uniswap V3 USDC/USDT pool on Sepolia.
 // Set UNISWAP_POOL_ADDRESS in .env if a pool with liquidity exists.
 // Zero address disables the DEX cross-check (confidence cap = 3).
@@ -39,9 +25,8 @@ async function main() {
   console.log("CCIP Router:           ", CCIP_ROUTER);
   console.log("USDC/USD feed:         ", USDC_USD_FEED);
   console.log("DAI/USD feed:          ", DAI_USD_FEED);
-  console.log("Destination selector:  ", DESTINATION_CHAIN_SELECTOR.toString());
-  console.log("CCIP receiver:         ", CCIP_RECEIVER);
   console.log("Uniswap pool:          ", UNISWAP_POOL);
+  console.log("CCIP destinations:      added post-deploy via addDestination()");
   console.log("─".repeat(60));
 
   const StableGuard = await ethers.getContractFactory("StableGuard");
@@ -49,8 +34,6 @@ async function main() {
     CCIP_ROUTER,
     USDC_USD_FEED,
     DAI_USD_FEED,
-    DESTINATION_CHAIN_SELECTOR,
-    CCIP_RECEIVER,
     UNISWAP_POOL,
   );
 
@@ -65,10 +48,10 @@ async function main() {
   console.log("Next steps:");
   console.log("  1. Fund with ETH for CCIP fees:");
   console.log(`       cast send ${address} --value 0.1ether --rpc-url $ALCHEMY_RPC_URL --private-key $DEPLOYER_PRIVATE_KEY`);
-  console.log("  2. Register Automation upkeep:");
+  console.log("  2. Add CCIP destinations via addDestination(chainSelector, receiver):");
+  console.log(`       cast send ${address} "addDestination(uint64,address)" <chainSelector> <receiver> --rpc-url $ALCHEMY_RPC_URL --private-key $DEPLOYER_PRIVATE_KEY`);
+  console.log("  3. Register Automation upkeep:");
   console.log("       https://automation.chain.link (use contract address above)");
-  console.log("  3. Deploy StableGuardReceiver on the destination chain,");
-  console.log("     then call setReceiver(<receiverAddress>) on this contract.");
 }
 
 main().catch((error) => {

@@ -110,17 +110,15 @@ contract StableGuard is AutomationCompatibleInterface {
     address public usdcUsdFeed;
     address public daiUsdFeed;
 
-    // ── Configurable destinations (set in constructor) ────────
-    // Destination chain selector for CCIP alerts.
-    // Common testnet selectors:
-    //   Avalanche Fuji:  14767482510784806043
-    //   Base Sepolia:    10344971235874465080
-    //   Optimism Sepolia: 5224473277236331295
-    // Full list: https://docs.chain.link/ccip/supported-networks
-    uint64 public destinationChainSelector;
-
-    // Address of StableGuardReceiver deployed on the destination chain
-    address public ccipReceiver;
+    // ── CCIP destinations ─────────────────────────────────────
+    struct Destination {
+        uint64  chainSelector;
+        address receiver;
+    }
+    // Destinations to which depeg alerts are broadcast via CCIP.
+    // Manage with addDestination() / removeDestination().
+    // Full selector list: https://docs.chain.link/ccip/supported-networks
+    Destination[] public destinations;
 
     // Uniswap V3 USDC/USDT pool on Sepolia.
     // Set to address(0) to skip the DEX cross-check (e.g. when no pool has liquidity).
@@ -152,6 +150,12 @@ contract StableGuard is AutomationCompatibleInterface {
         uint8           confidenceScore
     );
 
+    event CCIPAlertFailed(
+        uint64  destinationChainSelector,
+        string  symbol,
+        uint8   confidenceScore
+    );
+
     event ProtectionTriggered(
         string  symbol,
         uint8   confidenceScore,
@@ -167,27 +171,21 @@ contract StableGuard is AutomationCompatibleInterface {
     }
 
     // ── Constructor ───────────────────────────────────────────
-    /// @param _ccipRouter                CCIP Router address on this chain
-    /// @param _usdcUsdFeed               Chainlink USDC/USD price feed on this chain
-    /// @param _daiUsdFeed                Chainlink DAI/USD price feed on this chain
-    /// @param _destinationChainSelector  CCIP chain selector for alert destination
-    /// @param _ccipReceiver              StableGuardReceiver address on destination chain
-    /// @param _uniswapPool               USDC/USDT V3 pool; pass address(0) to skip DEX check
+    /// @param _ccipRouter   CCIP Router address on this chain
+    /// @param _usdcUsdFeed  Chainlink USDC/USD price feed on this chain (address(0) to disable)
+    /// @param _daiUsdFeed   Chainlink DAI/USD price feed on this chain (address(0) to disable)
+    /// @param _uniswapPool  USDC/USDT V3 pool; address(0) to skip DEX check
     constructor(
         address _ccipRouter,
         address _usdcUsdFeed,
         address _daiUsdFeed,
-        uint64  _destinationChainSelector,
-        address _ccipReceiver,
         address _uniswapPool
     ) {
-        owner                    = msg.sender;
-        ccipRouter               = _ccipRouter;
-        usdcUsdFeed              = _usdcUsdFeed;
-        daiUsdFeed               = _daiUsdFeed;
-        destinationChainSelector = _destinationChainSelector;
-        ccipReceiver             = _ccipReceiver;
-        uniswapPool              = _uniswapPool;
+        owner       = msg.sender;
+        ccipRouter  = _ccipRouter;
+        usdcUsdFeed = _usdcUsdFeed;
+        daiUsdFeed  = _daiUsdFeed;
+        uniswapPool = _uniswapPool;
     }
 
     /// @dev Allows contract to receive ETH to cover CCIP fees
@@ -383,32 +381,41 @@ contract StableGuard is AutomationCompatibleInterface {
     //  SECTION 5 — CHAINLINK CCIP
     // ================================================================
 
-    /// @notice Encodes a depeg alert payload and dispatches it cross-chain via CCIP.
-    ///         Fee is paid in native ETH — ensure this contract holds enough ETH.
-    ///         Fund with: `cast send <address> --value 0.1ether`
-    ///
-    ///         The receiver is StableGuardReceiver deployed on the destination chain.
+    /// @notice Encodes a depeg alert payload and dispatches it to all configured destinations
+    ///         via CCIP. Fee is paid in native ETH per destination — ensure this contract
+    ///         holds enough ETH. Fund with: `cast send <address> --value 0.1ether`
     function _sendCCIPAlert(string memory symbol, uint8 score) internal {
-        // Payload decoded by StableGuardReceiver.ccipReceive()
+        if (destinations.length == 0) return;
+
         bytes memory payload = abi.encode(symbol, score, block.timestamp);
 
-        EVM2AnyMessage memory message = EVM2AnyMessage({
-            receiver:     abi.encode(ccipReceiver),
-            data:         payload,
-            tokenAmounts: new CCIPTokenAmount[](0), // no token transfer
-            feeToken:     address(0),               // pay in native ETH
-            extraArgs:    ""                         // default gas limit
-        });
+        for (uint256 i = 0; i < destinations.length; i++) {
+            Destination memory dest = destinations[i];
 
-        uint256 fee = IRouterClient(ccipRouter).getFee(destinationChainSelector, message);
-        require(address(this).balance >= fee, "Insufficient ETH for CCIP fee");
+            EVM2AnyMessage memory message = EVM2AnyMessage({
+                receiver:     abi.encode(dest.receiver),
+                data:         payload,
+                tokenAmounts: new CCIPTokenAmount[](0),
+                feeToken:     address(0),
+                extraArgs:    ""
+            });
 
-        bytes32 messageId = IRouterClient(ccipRouter).ccipSend{value: fee}(
-            destinationChainSelector,
-            message
-        );
-
-        emit CCIPAlertSent(messageId, destinationChainSelector, symbol, score);
+            try IRouterClient(ccipRouter).getFee(dest.chainSelector, message) returns (uint256 fee) {
+                if (address(this).balance < fee) {
+                    emit CCIPAlertFailed(dest.chainSelector, symbol, score);
+                    continue;
+                }
+                try IRouterClient(ccipRouter).ccipSend{value: fee}(dest.chainSelector, message)
+                    returns (bytes32 messageId)
+                {
+                    emit CCIPAlertSent(messageId, dest.chainSelector, symbol, score);
+                } catch {
+                    emit CCIPAlertFailed(dest.chainSelector, symbol, score);
+                }
+            } catch {
+                emit CCIPAlertFailed(dest.chainSelector, symbol, score);
+            }
+        }
     }
 
 
@@ -472,19 +479,37 @@ contract StableGuard is AutomationCompatibleInterface {
     //  ADMIN
     // ================================================================
 
-    /// @notice Update the CCIP receiver address (e.g. after redeploying receiver)
-    function setReceiver(address _receiver) external onlyOwner {
-        ccipReceiver = _receiver;
+    /// @notice Add a CCIP destination to broadcast alerts to
+    function addDestination(uint64 _chainSelector, address _receiver) external onlyOwner {
+        destinations.push(Destination({ chainSelector: _chainSelector, receiver: _receiver }));
     }
 
-    /// @notice Swap the CCIP destination chain
-    function setDestinationChain(uint64 _selector) external onlyOwner {
-        destinationChainSelector = _selector;
+    /// @notice Remove a CCIP destination by chain selector (swap-and-pop)
+    function removeDestination(uint64 _chainSelector) external onlyOwner {
+        uint256 n = destinations.length;
+        for (uint256 i = 0; i < n; i++) {
+            if (destinations[i].chainSelector == _chainSelector) {
+                destinations[i] = destinations[n - 1];
+                destinations.pop();
+                return;
+            }
+        }
+        revert("Destination not found");
     }
 
     /// @notice Set or clear the Uniswap V3 pool for DEX cross-check
     function setUniswapPool(address _pool) external onlyOwner {
         uniswapPool = _pool;
+    }
+
+    /// @notice Update the USDC/USD Chainlink price feed (pass address(0) to disable)
+    function setUsdcFeed(address _feed) external onlyOwner {
+        usdcUsdFeed = _feed;
+    }
+
+    /// @notice Update the DAI/USD Chainlink price feed (pass address(0) to disable)
+    function setDaiFeed(address _feed) external onlyOwner {
+        daiUsdFeed = _feed;
     }
 
     /// @notice Withdraw accumulated ETH (e.g. unused CCIP fee balance)
@@ -516,12 +541,15 @@ contract StableGuardReceiver is IAny2EVMMessageReceiver {
 
     address public owner;
 
-    // The StableGuard contract address on Sepolia — only accept messages from it
+    // The StableGuard contract address on the source chain — only accept messages from it
     address public trustedSender;
 
-    // CCIP chain selector for Ethereum Sepolia (source chain)
-    // https://docs.chain.link/ccip/supported-networks/v1_2_0/testnet#ethereum-testnet-sepolia
-    uint64 public constant SEPOLIA_CHAIN_SELECTOR = 16015286601757825753;
+    // CCIP chain selector for the source chain (set in constructor)
+    // Common testnet selectors:
+    //   Ethereum Sepolia:  16015286601757825753
+    //   Arbitrum Sepolia:   3478487238524512106
+    // Full list: https://docs.chain.link/ccip/supported-networks
+    uint64 public immutable sourceChainSelector;
 
     event AlertReceived(
         bytes32 indexed messageId,
@@ -547,20 +575,21 @@ contract StableGuardReceiver is IAny2EVMMessageReceiver {
         _;
     }
 
-    constructor(address _ccipRouter, address _trustedSender) {
-        ccipRouter     = _ccipRouter;
-        trustedSender  = _trustedSender;
-        owner          = msg.sender;
+    constructor(address _ccipRouter, address _trustedSender, uint64 _sourceChainSelector) {
+        ccipRouter           = _ccipRouter;
+        trustedSender        = _trustedSender;
+        sourceChainSelector  = _sourceChainSelector;
+        owner                = msg.sender;
     }
 
     /// @notice Called by the CCIP router when a cross-chain message arrives.
-    ///         Only accepts messages from StableGuard on Sepolia.
+    ///         Only accepts messages from the trusted StableGuard on the configured source chain.
     function ccipReceive(Any2EVMMessage calldata message)
         external override onlyRouter
     {
         // Verify message originates from the correct source chain
         require(
-            message.sourceChainSelector == SEPOLIA_CHAIN_SELECTOR,
+            message.sourceChainSelector == sourceChainSelector,
             "Untrusted source chain"
         );
 
