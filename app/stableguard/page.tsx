@@ -184,16 +184,45 @@ export default function StableGuardPage() {
         </div>
       </div>
 
-      {/* CCIP Messages — Verified Test Run */}
+      {/* CCIP Messages — Verified Test Runs */}
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
           <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px" }}>Cross-Chain Messages</div>
-          <div style={{ fontSize: "10px", fontWeight: "700", color: "#d97706", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "6px", padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.4px" }}>Verified Test Run</div>
+          <div style={{ fontSize: "10px", fontWeight: "700", color: "#d97706", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "6px", padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.4px" }}>Verified Test Runs</div>
         </div>
 
-        {/* Test run entry */}
+        {/* Multi-destination test run — Jul 10 */}
+        <div style={{ background: dark ? "#0f172a" : "#f8fafc", borderRadius: "10px", border: `1px solid ${cardBorder}`, padding: "16px", marginBottom: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", flexShrink: 0 }} />
+              <span style={{ fontSize: "13px", fontWeight: "700", color: dark ? "#f1f5f9" : "#0f172a" }}>USDC Depeg Alert — Multi-Destination (2 chains)</span>
+            </div>
+            <span style={{ fontSize: "11px", color: textSecondary }}>Jul 10, 2026</span>
+          </div>
+
+          <div style={{ fontSize: "12px", color: textSecondary, marginBottom: "12px" }}>
+            Triggered at <span style={{ fontWeight: "600", color: dark ? "#e2e8f0" : "#1e293b" }}>$0.94</span> — 6% below peg &nbsp;·&nbsp; Score: <span style={{ fontWeight: "600", color: dark ? "#e2e8f0" : "#1e293b" }}>3</span> (Chainlink only) &nbsp;·&nbsp; 2 <span style={{ fontWeight: "600", color: "#10b981" }}>CCIPAlertSent</span>, 0 failed &nbsp;·&nbsp; Gas: <span style={{ fontWeight: "600", color: dark ? "#e2e8f0" : "#1e293b" }}>311,166</span> &nbsp;·&nbsp; Block: <span style={{ fontWeight: "600", color: dark ? "#e2e8f0" : "#1e293b" }}>286073814</span>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", flexShrink: 0 }} />
+              <span style={{ fontSize: "11px", color: textSecondary }}>Ethereum Sepolia — <span style={{ color: "#10b981", fontWeight: "600" }}>sent</span></span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", flexShrink: 0 }} />
+              <span style={{ fontSize: "11px", color: textSecondary }}>Avalanche Fuji — <span style={{ color: "#10b981", fontWeight: "600" }}>sent</span></span>
+            </div>
+          </div>
+
+          <div style={{ paddingTop: "12px", borderTop: `1px solid ${cardBorder}`, fontSize: "11px", color: textSecondary, fontStyle: "italic" }}>
+            Controlled test run using a mock price feed + ephemeral StableGuard — proves per-lane broadcast loop with graceful degradation.
+          </div>
+        </div>
+
+        {/* Original single-destination test run — Jul 8 */}
         <div style={{ background: dark ? "#0f172a" : "#f8fafc", borderRadius: "10px", border: `1px solid ${cardBorder}`, padding: "16px" }}>
-          {/* Header row */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", flexShrink: 0 }} />
@@ -202,12 +231,10 @@ export default function StableGuardPage() {
             <span style={{ fontSize: "11px", color: textSecondary }}>Jul 8, 2026</span>
           </div>
 
-          {/* Trigger */}
           <div style={{ fontSize: "12px", color: textSecondary, marginBottom: "12px" }}>
             Triggered at <span style={{ fontWeight: "600", color: dark ? "#e2e8f0" : "#1e293b" }}>$0.94</span> — 6% below peg &nbsp;·&nbsp; Score: <span style={{ fontWeight: "600", color: dark ? "#e2e8f0" : "#1e293b" }}>3</span> (Chainlink only) &nbsp;·&nbsp; Delivery: <span style={{ fontWeight: "600", color: "#10b981" }}>16 min 43 sec</span>
           </div>
 
-          {/* Tx links */}
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ fontSize: "11px", fontWeight: "600", color: textSecondary, width: "90px", flexShrink: 0 }}>Source tx</span>
@@ -243,7 +270,6 @@ export default function StableGuardPage() {
             </div>
           </div>
 
-          {/* Disclaimer */}
           <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: `1px solid ${cardBorder}`, fontSize: "11px", color: textSecondary, fontStyle: "italic" }}>
             Controlled test run using a mock price feed — not live market data.
           </div>
@@ -334,22 +360,22 @@ export default function StableGuardPage() {
       {/* Arbitrum Sepolia deployment */}
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "4px" }}>Contracts — Arbitrum Sepolia</div>
-        <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "12px" }}>Sending CCIP alerts → Ethereum Sepolia receiver</div>
+        <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "12px" }}>Broadcasts CCIP alerts to multiple destinations simultaneously — Ethereum Sepolia + Avalanche Fuji proven; Robinhood Chain deployed, pending CCIP lane</div>
 
         {/* StableGuard on Arbitrum Sepolia */}
         <div style={{ marginBottom: "10px" }}>
           <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
-            <a href="https://sepolia.arbiscan.io/address/0xff0ed8AC27dF988F2f1efbCb2719f503C9455e11" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View StableGuard ↗</a>
-            <a href="https://sepolia.arbiscan.io/address/0xff0ed8AC27dF988F2f1efbCb2719f503C9455e11#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
+            <a href="https://sepolia.arbiscan.io/address/0xb94af0F75ed9E431B32449980Ca4D57681c580e4" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View StableGuard ↗</a>
+            <a href="https://sepolia.arbiscan.io/address/0xb94af0F75ed9E431B32449980Ca4D57681c580e4#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
           </div>
           <div style={{ padding: "10px 12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
             <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>StableGuard (Arbitrum Sepolia)</div>
-            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0xff0ed8AC27dF988F2f1efbCb2719f503C9455e11</div>
+            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0xb94af0F75ed9E431B32449980Ca4D57681c580e4</div>
           </div>
         </div>
 
         {/* StableGuardReceiver on Ethereum Sepolia */}
-        <div>
+        <div style={{ marginBottom: "10px" }}>
           <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
             <a href="https://sepolia.etherscan.io/address/0x4E22DcAa7abc7701144b737827613A99343beD3d" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Receiver ↗</a>
             <a href="https://sepolia.etherscan.io/address/0x4E22DcAa7abc7701144b737827613A99343beD3d#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
@@ -357,6 +383,18 @@ export default function StableGuardPage() {
           <div style={{ padding: "10px 12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
             <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>StableGuardReceiver (Ethereum Sepolia)</div>
             <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0x4E22DcAa7abc7701144b737827613A99343beD3d</div>
+          </div>
+        </div>
+
+        {/* StableGuardReceiver on Robinhood Chain */}
+        <div>
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
+            <a href="https://explorer.testnet.chain.robinhood.com/address/0x6381383Ff70434A7681Bc329D89b3a7AC17129A8" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Receiver ↗</a>
+            <a href="https://explorer.testnet.chain.robinhood.com/address/0x6381383Ff70434A7681Bc329D89b3a7AC17129A8#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
+          </div>
+          <div style={{ padding: "10px 12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
+            <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>StableGuardReceiver (Robinhood Chain testnet)</div>
+            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0x6381383Ff70434A7681Bc329D89b3a7AC17129A8</div>
           </div>
         </div>
       </div>
