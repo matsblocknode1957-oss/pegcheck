@@ -8,7 +8,7 @@ Real-time stablecoin monitoring dashboard with live peg data, multi-source price
 - 5–6 source median price (CoinGecko, Coinbase, Binance.US, Kraken, DefiLlama, Chainlink on-chain feeds)
 - Deviation from peg in basis points stored to Supabase `price_history`
 - Email alerts (Resend) and webhooks for depeg, caution, and recovery events
-- On-chain depeg logging via Sepolia smart contract
+- On-chain depeg detection via StableGuard (Arbitrum Sepolia + Robinhood Chain testnet), broadcasting CCIP alerts to multiple destination chains in one tx
 - Chainlink Proof of Reserve feeds for TUSD
 - REST API: `/api/depeg-status?coin={symbol}` — multi-source real-time signal
 
@@ -59,6 +59,50 @@ Every confirmed reading already passes a 5-to-6 source median filter (CoinGecko,
 - `deviation_bps` = `(price − peg) / peg × 10,000` (signed; negative = below peg). EURC uses live EUR/USD as its peg reference.
 - Events are gap-clustered per coin with a 3-hour separation threshold.
 - "Confirmed" = event spanned ≥ 2 consecutive polling cycles (~1 hour apart).
+
+## StableGuard Contracts
+
+Autonomous cross-chain depeg protection powered by Chainlink Price Feeds, Automation, and CCIP. Each StableGuard instance monitors USDC and DAI prices, scores confidence across sources, and broadcasts alerts to all configured destination chains in a single `performUpkeep` tx.
+
+### Deployed Contracts
+
+#### StableGuard (monitors + sends alerts)
+
+| Network | Address | Explorer |
+|---------|---------|---------|
+| Arbitrum Sepolia | `0xb94af0F75ed9E431B32449980Ca4D57681c580e4` | [Arbiscan](https://sepolia.arbiscan.io/address/0xb94af0F75ed9E431B32449980Ca4D57681c580e4) |
+| Robinhood Chain testnet | `0xA00cbfF342F9009B23f08A0ED3c9918D2B5C86fa` | [Explorer](https://explorer.testnet.chain.robinhood.com/address/0xA00cbfF342F9009B23f08A0ED3c9918D2B5C86fa) |
+
+#### StableGuardReceiver (receives CCIP alerts)
+
+| Network | Address | Trusted sender |
+|---------|---------|---------------|
+| Ethereum Sepolia | `0x4E22DcAa7abc7701144b737827613A99343beD3d` | Arbitrum Sepolia StableGuard |
+| Robinhood Chain testnet | `0x6381383Ff70434A7681Bc329D89b3a7AC17129A8` | Arbitrum Sepolia StableGuard |
+
+### CCIP Destinations (Arbitrum Sepolia StableGuard)
+
+| Destination | Chain selector | Receiver |
+|-------------|---------------|---------|
+| Ethereum Sepolia | `16015286601757825753` | `0x4E22DcAa7abc7701144b737827613A99343beD3d` |
+| Robinhood Chain testnet | `2032988798112970440` | `0x6381383Ff70434A7681Bc329D89b3a7AC17129A8` |
+
+### Deploy & Wire
+
+```bash
+# Deploy StableGuard (4 constructor args — destinations added post-deploy)
+npx hardhat run scripts/deploy-arbitrum.js --network arbitrumSepolia
+npx hardhat run scripts/deploy-robinhood.js --network robinhoodChain
+
+# Deploy receiver on Robinhood Chain
+npx hardhat run scripts/deploy-receiver-robinhood.js --network robinhoodChain
+
+# Fund + addDestination x2 + setTrustedSender on both receivers in one run
+node scripts/wire-arbitrum-stableguard.js
+
+# Prove multi-destination alert fires (ephemeral StableGuard + mock feed)
+npx hardhat run scripts/trip-depeg.js --network arbitrumSepolia
+```
 
 ## API
 
