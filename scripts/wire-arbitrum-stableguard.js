@@ -8,7 +8,7 @@ const { ethers } = require("ethers");
 require("dotenv").config({ path: ".env.local" });
 
 // ── Addresses ─────────────────────────────────────────────────────────────────
-const STABLEGUARD        = "0xb94af0F75ed9E431B32449980Ca4D57681c580e4"; // Arbitrum Sepolia
+const STABLEGUARD        = "0xdD1B9120C26490C02EE6Cd1D7FdE47f7031201c6"; // Arbitrum Sepolia
 const SEPOLIA_RECEIVER   = "0x70b88C8877f7Ec11500b75ff9cad37312A739AFF"; // Ethereum Sepolia
 const ROBINHOOD_RECEIVER = "0x6381383Ff70434A7681Bc329D89b3a7AC17129A8"; // Robinhood Chain
 

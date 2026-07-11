@@ -365,12 +365,12 @@ export default function StableGuardPage() {
         {/* StableGuard on Arbitrum Sepolia */}
         <div style={{ marginBottom: "10px" }}>
           <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
-            <a href="https://sepolia.arbiscan.io/address/0xb94af0F75ed9E431B32449980Ca4D57681c580e4" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View StableGuard ↗</a>
-            <a href="https://sepolia.arbiscan.io/address/0xb94af0F75ed9E431B32449980Ca4D57681c580e4#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
+            <a href="https://sepolia.arbiscan.io/address/0xdD1B9120C26490C02EE6Cd1D7FdE47f7031201c6" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View StableGuard ↗</a>
+            <a href="https://sepolia.arbiscan.io/address/0xdD1B9120C26490C02EE6Cd1D7FdE47f7031201c6#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
           </div>
           <div style={{ padding: "10px 12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
             <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>StableGuard (Arbitrum Sepolia)</div>
-            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0xb94af0F75ed9E431B32449980Ca4D57681c580e4</div>
+            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0xdD1B9120C26490C02EE6Cd1D7FdE47f7031201c6</div>
           </div>
         </div>
 

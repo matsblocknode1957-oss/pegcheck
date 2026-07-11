@@ -70,7 +70,7 @@ Autonomous cross-chain depeg protection powered by Chainlink Price Feeds, Automa
 
 | Network | Address | Explorer |
 |---------|---------|---------|
-| Arbitrum Sepolia | `0xb94af0F75ed9E431B32449980Ca4D57681c580e4` | [Arbiscan](https://sepolia.arbiscan.io/address/0xb94af0F75ed9E431B32449980Ca4D57681c580e4) |
+| Arbitrum Sepolia | `0xdD1B9120C26490C02EE6Cd1D7FdE47f7031201c6` | [Arbiscan](https://sepolia.arbiscan.io/address/0xdD1B9120C26490C02EE6Cd1D7FdE47f7031201c6) |
 | Robinhood Chain testnet | `0xA00cbfF342F9009B23f08A0ED3c9918D2B5C86fa` | [Explorer](https://explorer.testnet.chain.robinhood.com/address/0xA00cbfF342F9009B23f08A0ED3c9918D2B5C86fa) |
 
 #### StableGuardReceiver (receives CCIP alerts)

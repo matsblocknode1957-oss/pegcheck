@@ -4,7 +4,7 @@
 const { ethers } = require("ethers");
 require("dotenv").config({ path: ".env.local" });
 
-const STABLEGUARD       = "0xb94af0F75ed9E431B32449980Ca4D57681c580e4";
+const STABLEGUARD       = "0xdD1B9120C26490C02EE6Cd1D7FdE47f7031201c6";
 const SEPOLIA_SELECTOR  = 16015286601757825753n;
 const OLD_RECEIVER      = "0x4E22DcAa7abc7701144b737827613A99343beD3d";
 const NEW_RECEIVER      = "0x70b88C8877f7Ec11500b75ff9cad37312A739AFF";

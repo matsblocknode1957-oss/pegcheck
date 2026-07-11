@@ -2,7 +2,7 @@ const { ethers } = require("hardhat");
 
 // ── Ethereum Sepolia constants ─────────────────────────────────────────────────
 const CCIP_ROUTER        = "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59";
-const TRUSTED_SENDER     = "0xb94af0F75ed9E431B32449980Ca4D57681c580e4"; // Arbitrum Sepolia StableGuard
+const TRUSTED_SENDER     = "0xdD1B9120C26490C02EE6Cd1D7FdE47f7031201c6"; // Arbitrum Sepolia StableGuard
 const SOURCE_SELECTOR    = 3478487238524512106n;                          // Arbitrum Sepolia
 const MOCK_VAULT         = "0x0B219D7045b879150b068EF86dDbDEAaBda6D1c4"; // Ethereum Sepolia MockVault
 
