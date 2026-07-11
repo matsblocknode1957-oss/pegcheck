@@ -340,23 +340,19 @@ contract StableGuard is AutomationCompatibleInterface {
     }
 
     /// @notice Executed on-chain by the Automation forwarder when checkUpkeep returns true.
-    ///         Re-validates live prices (performData may be stale by the time the tx lands).
+    ///         All values are derived from live feeds — performData is ignored to prevent
+    ///         a caller from supplying a crafted score or symbol.
     ///
     ///         Score 1–2 → DepegAlert event only
     ///         Score 3   → DepegAlert + CCIP cross-chain message
     ///         Score 5   → CCIP message + ProtectionTriggered event
-    ///
-    /// @param performData  abi-encoded (uint8 score, string symbol, int256 clPrice, uint256 uniPrice)
-    function performUpkeep(bytes calldata performData) external override {
+    function performUpkeep(bytes calldata /* performData */) external override {
         require(block.timestamp >= lastPerformTimestamp + COOLDOWN, "Cooldown active");
 
-        // Decode the data prepared by checkUpkeep
-        (uint8 score, string memory sym, int256 clPrice, uint256 uniPrice) =
-            abi.decode(performData, (uint8, string, int256, uint256));
-
-        // Re-run live score check — reject stale performData that no longer reflects reality
-        (uint8 liveScore,,,) = _computeScore();
-        require(liveScore > 0, "No active depeg");
+        // Derive all values from live feeds — performData is intentionally ignored to
+        // prevent a caller from supplying a crafted score or symbol.
+        (uint8 score, string memory sym, int256 clPrice, uint256 uniPrice) = _computeScore();
+        require(score > 0, "No active depeg");
 
         lastPerformTimestamp = block.timestamp;
 
