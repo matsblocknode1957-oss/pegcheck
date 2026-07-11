@@ -9,7 +9,7 @@ require("dotenv").config({ path: ".env.local" });
 
 // ── Addresses ─────────────────────────────────────────────────────────────────
 const STABLEGUARD        = "0xb94af0F75ed9E431B32449980Ca4D57681c580e4"; // Arbitrum Sepolia
-const SEPOLIA_RECEIVER   = "0x4E22DcAa7abc7701144b737827613A99343beD3d"; // Ethereum Sepolia
+const SEPOLIA_RECEIVER   = "0x70b88C8877f7Ec11500b75ff9cad37312A739AFF"; // Ethereum Sepolia
 const ROBINHOOD_RECEIVER = "0x6381383Ff70434A7681Bc329D89b3a7AC17129A8"; // Robinhood Chain
 
 const SEPOLIA_SELECTOR   = 16015286601757825753n;

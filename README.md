@@ -77,14 +77,23 @@ Autonomous cross-chain depeg protection powered by Chainlink Price Feeds, Automa
 
 | Network | Address | Trusted sender |
 |---------|---------|---------------|
-| Ethereum Sepolia | `0x4E22DcAa7abc7701144b737827613A99343beD3d` | Arbitrum Sepolia StableGuard |
+| Ethereum Sepolia | `0x70b88C8877f7Ec11500b75ff9cad37312A739AFF` | Arbitrum Sepolia StableGuard |
 | Robinhood Chain testnet | `0x6381383Ff70434A7681Bc329D89b3a7AC17129A8` | Arbitrum Sepolia StableGuard |
+
+#### MockUSDC & MockVault (Ethereum Sepolia)
+
+| Contract | Address | Explorer |
+|----------|---------|---------|
+| MockUSDC | `0xcc502cE476D999f79b27bD1D45b7BD42564B05E7` | [Etherscan](https://sepolia.etherscan.io/address/0xcc502cE476D999f79b27bD1D45b7BD42564B05E7) |
+| MockVault | `0x0B219D7045b879150b068EF86dDbDEAaBda6D1c4` | [Etherscan](https://sepolia.etherscan.io/address/0x0B219D7045b879150b068EF86dDbDEAaBda6D1c4) |
+
+MockVault pauser is set to the Ethereum Sepolia StableGuardReceiver — a CCIP depeg alert landing there can call `pause()` to block new deposits while withdrawals remain open.
 
 ### CCIP Destinations (Arbitrum Sepolia StableGuard)
 
 | Destination | Chain selector | Receiver |
 |-------------|---------------|---------|
-| Ethereum Sepolia | `16015286601757825753` | `0x4E22DcAa7abc7701144b737827613A99343beD3d` |
+| Ethereum Sepolia | `16015286601757825753` | `0x70b88C8877f7Ec11500b75ff9cad37312A739AFF` |
 | Robinhood Chain testnet | `2032988798112970440` | `0x6381383Ff70434A7681Bc329D89b3a7AC17129A8` |
 
 ### Deploy & Wire

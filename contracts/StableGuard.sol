@@ -525,6 +525,10 @@ contract StableGuard is AutomationCompatibleInterface {
 }
 
 
+interface IVault {
+    function pause() external;
+}
+
 // ================================================================
 //  STABLEGUARD RECEIVER — deploy on destination chain
 //
@@ -543,6 +547,8 @@ contract StableGuardReceiver is IAny2EVMMessageReceiver {
 
     // The StableGuard contract address on the source chain — only accept messages from it
     address public trustedSender;
+
+    IVault public vault;
 
     // CCIP chain selector for the source chain (set in constructor)
     // Common testnet selectors:
@@ -603,16 +609,18 @@ contract StableGuardReceiver is IAny2EVMMessageReceiver {
 
         emit AlertReceived(message.messageId, symbol, score, originalTs, block.timestamp);
 
-        // Score 5 = all sources agreed — activate full protection
-        if (score >= 5) {
+        // Score >= 3 = Chainlink confirmed — activate protection
+        if (score >= 3) {
             emit ProtectionActivated(symbol, score, block.timestamp);
-            // Insert protection logic here:
-            // e.g. IBridge(bridgeAddress).pause();
-            //      IVault(vaultAddress).freezeDeposits();
+            if (address(vault) != address(0)) vault.pause();
         }
     }
 
     // ── Admin ─────────────────────────────────────────────────
+    function setVault(address _vault) external onlyOwner {
+        vault = IVault(_vault);
+    }
+
     function setTrustedSender(address _sender) external onlyOwner {
         trustedSender = _sender;
     }

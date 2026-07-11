@@ -377,12 +377,12 @@ export default function StableGuardPage() {
         {/* StableGuardReceiver on Ethereum Sepolia */}
         <div style={{ marginBottom: "10px" }}>
           <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
-            <a href="https://sepolia.etherscan.io/address/0x4E22DcAa7abc7701144b737827613A99343beD3d" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Receiver ↗</a>
-            <a href="https://sepolia.etherscan.io/address/0x4E22DcAa7abc7701144b737827613A99343beD3d#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
+            <a href="https://sepolia.etherscan.io/address/0x70b88C8877f7Ec11500b75ff9cad37312A739AFF" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Receiver ↗</a>
+            <a href="https://sepolia.etherscan.io/address/0x70b88C8877f7Ec11500b75ff9cad37312A739AFF#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
           </div>
           <div style={{ padding: "10px 12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
             <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>StableGuardReceiver (Ethereum Sepolia)</div>
-            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0x4E22DcAa7abc7701144b737827613A99343beD3d</div>
+            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0x70b88C8877f7Ec11500b75ff9cad37312A739AFF</div>
           </div>
         </div>
 
