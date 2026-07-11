@@ -393,7 +393,7 @@ contract StableGuard is AutomationCompatibleInterface {
                 data:         payload,
                 tokenAmounts: new CCIPTokenAmount[](0),
                 feeToken:     address(0),
-                extraArgs:    ""
+                extraArgs:    abi.encodeWithSelector(bytes4(0x97a657c9), uint256(300_000))
             });
 
             try IRouterClient(ccipRouter).getFee(dest.chainSelector, message) returns (uint256 fee) {

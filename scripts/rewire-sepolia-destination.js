@@ -7,7 +7,7 @@ require("dotenv").config({ path: ".env.local" });
 const STABLEGUARD       = "0xdD1B9120C26490C02EE6Cd1D7FdE47f7031201c6";
 const SEPOLIA_SELECTOR  = 16015286601757825753n;
 const OLD_RECEIVER      = "0x4E22DcAa7abc7701144b737827613A99343beD3d";
-const NEW_RECEIVER      = "0x70b88C8877f7Ec11500b75ff9cad37312A739AFF";
+const NEW_RECEIVER      = "0x874E3b367142Fce7855D6BD1F2E9176ed42f5F3B";
 
 const ABI = [
   "function removeDestination(uint64 chainSelector) external",

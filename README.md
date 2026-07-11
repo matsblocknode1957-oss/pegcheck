@@ -77,7 +77,7 @@ Autonomous cross-chain depeg protection powered by Chainlink Price Feeds, Automa
 
 | Network | Address | Trusted sender |
 |---------|---------|---------------|
-| Ethereum Sepolia | `0x70b88C8877f7Ec11500b75ff9cad37312A739AFF` | Arbitrum Sepolia StableGuard |
+| Ethereum Sepolia | `0x235f049C2F38952CE228058b2a2A8B34AfD87Cb9` | Arbitrum Sepolia StableGuard |
 | Robinhood Chain testnet | `0x6381383Ff70434A7681Bc329D89b3a7AC17129A8` | Arbitrum Sepolia StableGuard |
 
 #### MockUSDC & MockVault (Ethereum Sepolia)
@@ -93,7 +93,7 @@ MockVault pauser is set to the Ethereum Sepolia StableGuardReceiver — a CCIP d
 
 | Destination | Chain selector | Receiver |
 |-------------|---------------|---------|
-| Ethereum Sepolia | `16015286601757825753` | `0x70b88C8877f7Ec11500b75ff9cad37312A739AFF` |
+| Ethereum Sepolia | `16015286601757825753` | `0x235f049C2F38952CE228058b2a2A8B34AfD87Cb9` |
 | Robinhood Chain testnet | `2032988798112970440` | `0x6381383Ff70434A7681Bc329D89b3a7AC17129A8` |
 
 ### Deploy & Wire

@@ -360,7 +360,7 @@ export default function StableGuardPage() {
       {/* Arbitrum Sepolia deployment */}
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "4px" }}>Contracts — Arbitrum Sepolia</div>
-        <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "12px" }}>Broadcasts CCIP alerts to multiple destinations simultaneously — Ethereum Sepolia + Avalanche Fuji proven; Robinhood Chain deployed, pending CCIP lane</div>
+        <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "12px" }}>Deployed and wired on Arbitrum Sepolia, broadcasting CCIP alerts to multiple chains — Ethereum Sepolia delivery proven end-to-end; Robinhood Chain testnet deployment complete, CCIP lane pending Chainlink rollout</div>
 
         {/* StableGuard on Arbitrum Sepolia */}
         <div style={{ marginBottom: "10px" }}>
@@ -377,12 +377,12 @@ export default function StableGuardPage() {
         {/* StableGuardReceiver on Ethereum Sepolia */}
         <div style={{ marginBottom: "10px" }}>
           <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
-            <a href="https://sepolia.etherscan.io/address/0x70b88C8877f7Ec11500b75ff9cad37312A739AFF" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Receiver ↗</a>
-            <a href="https://sepolia.etherscan.io/address/0x70b88C8877f7Ec11500b75ff9cad37312A739AFF#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
+            <a href="https://sepolia.etherscan.io/address/0x235f049C2F38952CE228058b2a2A8B34AfD87Cb9" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Receiver ↗</a>
+            <a href="https://sepolia.etherscan.io/address/0x235f049C2F38952CE228058b2a2A8B34AfD87Cb9#events" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>View Events ↗</a>
           </div>
           <div style={{ padding: "10px 12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
             <div style={{ fontSize: "10px", color: textSecondary, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>StableGuardReceiver (Ethereum Sepolia)</div>
-            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0x70b88C8877f7Ec11500b75ff9cad37312A739AFF</div>
+            <div style={{ fontFamily: "monospace", fontSize: "11px", color: textPrimary, wordBreak: "break-all" }}>0x235f049C2F38952CE228058b2a2A8B34AfD87Cb9</div>
           </div>
         </div>
 
