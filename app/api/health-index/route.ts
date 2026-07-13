@@ -11,6 +11,7 @@ function scoreBand(score: number): string {
 }
 
 export async function GET() {
+  try {
   const headersList = await headers();
   const host = headersList.get("host") ?? "localhost:3000";
   const protocol = host.startsWith("localhost") ? "http" : "https";
@@ -55,4 +56,7 @@ export async function GET() {
     fearGreedScore,
     timestamp: new Date().toISOString(),
   });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to compute health index" }, { status: 500 });
+  }
 }

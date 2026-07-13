@@ -200,6 +200,7 @@ export async function GET(request: NextRequest) {
     ? [slugParam.toLowerCase()].filter(s => BACKTEST_SLUGS.includes(s))
     : BACKTEST_SLUGS;
 
+  try {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -234,5 +235,11 @@ export async function GET(request: NextRequest) {
     coins: meta,
   };
 
-  return NextResponse.json({ summary, events: allRows });
+  return NextResponse.json({
+    summary,
+    events: Object.fromEntries(allRows.map((r, i) => [String(i), r])),
+  });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to run backtest" }, { status: 500 });
+  }
 }

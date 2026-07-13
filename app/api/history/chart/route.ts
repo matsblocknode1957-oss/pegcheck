@@ -8,6 +8,7 @@ export async function GET(request: Request) {
 
   if (!slug) return NextResponse.json({ error: "Missing slug" }, { status: 400 });
 
+  try {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -42,5 +43,8 @@ export async function GET(request: Request) {
     .map(([time, { sum, count }]) => ({ time, price: parseFloat((sum / count).toFixed(6)) }))
     .sort((a, b) => a.time.localeCompare(b.time));
 
-  return NextResponse.json({ data: chartData });
+  return NextResponse.json({ data: Object.fromEntries(chartData.map((p, i) => [String(i), p])) });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch chart data" }, { status: 500 });
+  }
 }

@@ -8,12 +8,18 @@ const TIER_LIMITS: Record<string, number | null> = {
 };
 
 export async function POST(request: Request) {
-  const { email } = await request.json();
+  let email: string;
+  try {
+    ({ email } = await request.json());
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
   if (!email || !email.includes("@")) {
     return NextResponse.json({ error: "Invalid email" }, { status: 400 });
   }
 
+  try {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -49,4 +55,7 @@ export async function POST(request: Request) {
     calls_remaining: limit !== null ? Math.max(0, limit - used) : null,
     created_at: data.created_at,
   });
+  } catch (error) {
+    return NextResponse.json({ error: "Dashboard lookup failed" }, { status: 500 });
+  }
 }

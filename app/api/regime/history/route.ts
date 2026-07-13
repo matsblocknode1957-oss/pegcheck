@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: `Unknown symbol: ${symbol.toUpperCase()}` }, { status: 400 });
   }
 
+  try {
   const days = parseDays(range);
   const peg = COIN_PEGS[slug];
 
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!data || data.length < 5) return NextResponse.json({ symbol: symbol.toUpperCase(), slug, range, classifications: [] });
+  if (!data || data.length < 5) return NextResponse.json({ symbol: symbol.toUpperCase(), slug, range, classifications: {} });
 
   const records: PricePoint[] = data.map(r => ({
     created_at: r.created_at,
@@ -80,5 +81,13 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  return NextResponse.json({ symbol: symbol.toUpperCase(), slug, range, classifications });
+  return NextResponse.json({
+    symbol: symbol.toUpperCase(),
+    slug,
+    range,
+    classifications: Object.fromEntries(classifications.map((c, i) => [String(i), c])),
+  });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch regime history" }, { status: 500 });
+  }
 }

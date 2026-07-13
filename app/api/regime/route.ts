@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: `Unknown symbol: ${symbol.toUpperCase()}` }, { status: 400 });
   }
 
+  try {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -53,4 +54,7 @@ export async function GET(request: NextRequest) {
     timestamp: result.timestamp,
     features: result.features,
   });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch regime data" }, { status: 500 });
+  }
 }

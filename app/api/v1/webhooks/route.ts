@@ -38,32 +38,41 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const supabase = db();
-  const { data, error } = await supabase
-    .from("webhooks")
-    .insert({ api_key: apiKey, url: body.url, events })
-    .select()
-    .single();
+  try {
+    const supabase = db();
+    const { data, error } = await supabase
+      .from("webhooks")
+      .insert({ api_key: apiKey, url: body.url, events })
+      .select()
+      .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ webhook: data }, { status: 201 });
+    return NextResponse.json({ webhook: data }, { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to register webhook" }, { status: 500 });
+  }
 }
 
 export async function GET(req: NextRequest) {
   const apiKey = getApiKey(req);
   if (!apiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = db();
-  const { data, error } = await supabase
-    .from("webhooks")
-    .select("id, created_at, url, events, active, last_fired, fail_count")
-    .eq("api_key", apiKey)
-    .order("created_at", { ascending: false });
+  try {
+    const supabase = db();
+    const { data, error } = await supabase
+      .from("webhooks")
+      .select("id, created_at, url, events, active, last_fired, fail_count")
+      .eq("api_key", apiKey)
+      .order("created_at", { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ webhooks: data ?? [] });
+    const rows = data ?? [];
+    return NextResponse.json({ webhooks: Object.fromEntries(rows.map((w) => [String(w.id), w])) });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch webhooks" }, { status: 500 });
+  }
 }
 
 export async function DELETE(req: NextRequest) {
@@ -76,14 +85,18 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "id query parameter required" }, { status: 400 });
   }
 
-  const supabase = db();
-  const { error } = await supabase
-    .from("webhooks")
-    .delete()
-    .eq("id", id)
-    .eq("api_key", apiKey);
+  try {
+    const supabase = db();
+    const { error } = await supabase
+      .from("webhooks")
+      .delete()
+      .eq("id", id)
+      .eq("api_key", apiKey);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ message: "Webhook deleted" });
+    return NextResponse.json({ message: "Webhook deleted" });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to delete webhook" }, { status: 500 });
+  }
 }

@@ -39,23 +39,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "RPC not configured" }, { status: 500 });
   }
 
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
-  const balances: Record<string, { balance: string; decimals: number }> = {};
+  try {
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const balances: Record<string, { balance: string; decimals: number }> = {};
 
-  await Promise.all(
-    Object.entries(TOKENS).map(async ([slug, tokenAddress]) => {
-      try {
-        const contract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
-        const [balance, decimals] = await Promise.all([
-          contract.balanceOf(address) as Promise<bigint>,
-          contract.decimals() as Promise<bigint>,
-        ]);
-        balances[slug] = { balance: balance.toString(), decimals: Number(decimals) };
-      } catch {
-        balances[slug] = { balance: "0", decimals: 18 };
-      }
-    })
-  );
+    await Promise.all(
+      Object.entries(TOKENS).map(async ([slug, tokenAddress]) => {
+        try {
+          const contract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+          const [balance, decimals] = await Promise.all([
+            contract.balanceOf(address) as Promise<bigint>,
+            contract.decimals() as Promise<bigint>,
+          ]);
+          balances[slug] = { balance: balance.toString(), decimals: Number(decimals) };
+        } catch {
+          balances[slug] = { balance: "0", decimals: 18 };
+        }
+      })
+    );
 
-  return NextResponse.json({ balances });
+    return NextResponse.json({ balances });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch balances" }, { status: 500 });
+  }
 }

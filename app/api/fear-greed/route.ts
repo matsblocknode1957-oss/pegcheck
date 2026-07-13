@@ -9,6 +9,7 @@ function classify(score: number): string {
 }
 
 export async function GET() {
+  try {
   const apiKey = process.env.CMC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "CMC_API_KEY not set" }, { status: 500 });
@@ -58,4 +59,7 @@ export async function GET() {
     yesterdayScore,
     yesterdayClassification: yesterdayClassification || (yesterdayScore !== null ? classify(yesterdayScore) : ""),
   });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch Fear & Greed data" }, { status: 502 });
+  }
 }

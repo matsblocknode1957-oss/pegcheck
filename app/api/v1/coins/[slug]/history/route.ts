@@ -63,7 +63,7 @@ export async function GET(
       slug,
       interval,
       history,
-      depeg_events: depegEvents,
+      depeg_events: Object.fromEntries(depegEvents.map((h, i) => [String(i), h])),
       total: history.length,
     });
 

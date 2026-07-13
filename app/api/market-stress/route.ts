@@ -7,6 +7,7 @@ import type { PricePoint } from "@/lib/regime/types";
 const ALL_SLUGS = Object.keys(COIN_PEGS);
 
 export async function GET() {
+  try {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -64,7 +65,10 @@ export async function GET() {
     timestamp: new Date().toISOString(),
     stress_level,
     stressed_coin_count: stressed.length,
-    stressed_coins: stressed,
-    all_regimes: coinRegimes,
+    stressed_coins: Object.fromEntries(stressed.map((c) => [c.slug, c])),
+    all_regimes: Object.fromEntries(coinRegimes.map((c) => [c.slug, c])),
   });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to compute market stress" }, { status: 500 });
+  }
 }
