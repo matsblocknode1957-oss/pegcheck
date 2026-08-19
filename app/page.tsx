@@ -88,7 +88,7 @@ export default function Home() {
   };
 
   const [prices, setPrices] = useState<Record<string, number>>({});
-  const [eurUsd, setEurUsd] = useState(1.13);
+  const [eurUsd, setEurUsd] = useState(1.16);
   const [fearGreed, setFearGreed] = useState<FearGreedData | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>("Loading...");
   const [hoveredCoin, setHoveredCoin] = useState<string | null>(null);

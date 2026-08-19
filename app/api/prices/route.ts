@@ -86,12 +86,12 @@ export async function GET() {
         `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd`,
         { next: { revalidate: 60 } }
       ),
-      fetch("https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=eur").catch(() => null),
+      fetch("https://api.coingecko.com/api/v3/simple/price?ids=euro-coin&vs_currencies=usd").catch(() => null),
     ]);
     const cgData = await cgRes.json();
     const eurUsdRaw = eurUsdRes ? await eurUsdRes.json().catch(() => null) : null;
-    const eurPerUsd = eurUsdRaw?.usd?.eur;
-    const eurUsd = (eurPerUsd && eurPerUsd > 0.5 && eurPerUsd < 2.0) ? 1 / eurPerUsd : 1.13;
+    const eurUsdLive = eurUsdRaw?.["euro-coin"]?.usd;
+    const eurUsd = (eurUsdLive && eurUsdLive > 0.5 && eurUsdLive < 2.0) ? eurUsdLive : 1.16;
 
     // Source 2 — Coinbase
     const cbSlugs = ["USDT-USD","USDC-USD","DAI-USD","PYUSD-USD","TUSD-USD"];

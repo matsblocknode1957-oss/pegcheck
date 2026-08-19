@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { fetchEurUsd } from "@/lib/fetchEurUsd";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -51,8 +52,8 @@ const CMC_IDS: Record<string, number> = {
   alusd:  9694,
 };
 
-function deviationBps(price: number): number {
-  return Math.round(Math.abs(price - 1.0) * 10000);
+function deviationBps(price: number, peg = 1.0): number {
+  return Math.round(Math.abs(price - peg) * 10000);
 }
 
 function signal(bps: number): string {
@@ -85,6 +86,7 @@ export async function GET(request: NextRequest) {
 
   const cmcId = CMC_IDS[slug];
   const cmcApiKey = process.env.CMC_API_KEY;
+  const peg = slug === "eurc" ? await fetchEurUsd() : 1.0;
 
   try {
     const fetches: Promise<unknown>[] = [
@@ -117,13 +119,13 @@ export async function GET(request: NextRequest) {
     let pegcheckSource: { price: number; deviation_bps: number; source: string } | null = null;
     if (supabaseResult.status === "fulfilled" && !supabaseResult.value.error && supabaseResult.value.data) {
       const price = Number(supabaseResult.value.data.price);
-      pegcheckSource = { price, deviation_bps: deviationBps(price), source: "Chainlink" };
+      pegcheckSource = { price, deviation_bps: deviationBps(price, peg), source: "Chainlink" };
     }
 
     let coingeckoSource: { price: number; deviation_bps: number; source: string } | null = null;
     if (cgResult.status === "fulfilled" && cgResult.value?.[cgId]?.usd != null) {
       const price = Number(cgResult.value[cgId].usd);
-      coingeckoSource = { price, deviation_bps: deviationBps(price), source: "CoinGecko" };
+      coingeckoSource = { price, deviation_bps: deviationBps(price, peg), source: "CoinGecko" };
     }
 
     let cmcSource: { price: number; deviation_bps: number; source: string } | null = null;
@@ -131,7 +133,7 @@ export async function GET(request: NextRequest) {
       const cmcPrice = cmcResult.value?.data?.[String(cmcId)]?.quote?.USD?.price;
       if (cmcPrice != null) {
         const price = Number(cmcPrice);
-        cmcSource = { price, deviation_bps: deviationBps(price), source: "CoinMarketCap" };
+        cmcSource = { price, deviation_bps: deviationBps(price, peg), source: "CoinMarketCap" };
       }
     }
 
@@ -148,7 +150,7 @@ export async function GET(request: NextRequest) {
     const consensusPrice = parseFloat(
       (availablePrices.reduce((a, b) => a + b, 0) / availablePrices.length).toFixed(4)
     );
-    const consensusDeviationBps = deviationBps(consensusPrice);
+    const consensusDeviationBps = deviationBps(consensusPrice, peg);
     const sourcesConfirmed = availablePrices.length;
 
     // HIGH only when ≥2 sources are present and all prices agree within 10 bps of consensus
