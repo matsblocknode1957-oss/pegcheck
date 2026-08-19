@@ -88,6 +88,7 @@ export default function Home() {
   };
 
   const [prices, setPrices] = useState<Record<string, number>>({});
+  const [coinSources, setCoinSources] = useState<Record<string, Record<string, number>>>({});
   const [eurUsd, setEurUsd] = useState(1.16);
   const [fearGreed, setFearGreed] = useState<FearGreedData | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>("Loading...");
@@ -279,6 +280,7 @@ export default function Home() {
         const data = await res.json();
         if (data.prices) {
           setPrices(data.prices);
+          if (data.sources) setCoinSources(data.sources);
           if (data.eurUsd) setEurUsd(data.eurUsd);
           const now = new Date();
           setLastUpdated(now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
@@ -322,6 +324,11 @@ export default function Home() {
 
   const getLivePrice = (slug: string, fallback: number) => prices[slug] ?? fallback;
   const getEffectivePeg = (slug: string) => slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
+  const getSourceCount = (slug: string): number | null => {
+    const s = coinSources[slug];
+    if (!s) return null;
+    return Object.values(s).filter((v) => v > 0).length;
+  };
 
   const getStatus = (price: number, peg: number, slug = '') => {
     const { healthy, caution } = getThresholds(slug);
@@ -408,7 +415,7 @@ export default function Home() {
           <div style={{ width: "38px", height: "38px", flexShrink: 0, background: "linear-gradient(135deg, #1a56db, #0e3fa8)", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "15px" }}>P✓</div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: "20px", fontWeight: "700", color: textPrimary, lineHeight: "1.2" }}>PegCheck</div>
-            <div style={{ fontSize: "12px", color: textSecondary, marginTop: "3px" }}>Prices from 7 independent sources</div>
+            <div style={{ fontSize: "12px", color: textSecondary, marginTop: "3px" }}>Up to 6 independent sources per coin</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -522,6 +529,7 @@ export default function Home() {
         {stablecoins.map((coin) => {
           const livePrice = getLivePrice(coin.slug, coin.peg);
           const liveStatus = getStatus(livePrice, getEffectivePeg(coin.slug), coin.slug);
+          const sourceCount = getSourceCount(coin.slug);
           return (
             <Link
               key={coin.name}
@@ -549,7 +557,9 @@ export default function Home() {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <span style={{ fontSize: "14px", fontWeight: "700", color: textPrimary }}>{coin.name}</span>
-                  <span style={{ fontSize: "11px", color: textSecondary }}>{coin.issuer}</span>
+                  <span style={{ fontSize: "11px", color: textSecondary }}>
+                    {coin.issuer}{sourceCount !== null ? ` · ${sourceCount} sources` : ""}
+                  </span>
                 </div>
               </div>
               <div style={{ fontFamily: "monospace", fontSize: "13px", fontWeight: "500", color: livePrice < 0.995 ? statusColor(liveStatus) : (dark ? "#d1d5db" : "#374151"), textAlign: "center" }}>
