@@ -43,7 +43,7 @@ export default function DocsPage() {
         method="GET"
         path="/api/v1/coins"
         title="List all coins"
-        description="Returns the latest price, deviation, and depeg status for all 8 stablecoins."
+        description="Returns the latest price, deviation, and depeg status for all 19 stablecoins."
         request={[
           { color: "blue", text: "fetch" },
           { color: "white", text: '("https://pegcheck.uk/api/v1/coins", {' },
