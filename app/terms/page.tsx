@@ -57,7 +57,7 @@ export default function TermsPage() {
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "15px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>3. Premium Subscription</div>
-        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>Premium subscriptions are billed at £4.99 per month via Stripe. You may cancel at any time. Cancellation takes effect at the end of the current billing period. Refunds are not provided for partial months. FintechCheck reserves the right to change pricing with 30 days notice.</p>
+        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>Premium subscriptions are billed at £1.99 per month via Stripe. You may cancel at any time. Cancellation takes effect at the end of the current billing period. Refunds are not provided for partial months. FintechCheck reserves the right to change pricing with 30 days notice.</p>
       </div>
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>

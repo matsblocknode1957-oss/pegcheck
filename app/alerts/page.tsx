@@ -305,7 +305,7 @@ export default function AlertsPage() {
           onClick={handleUpgrade}
           style={{ width: "100%", padding: "12px", borderRadius: "8px", background: "#16a34a", color: "#ffffff", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer" }}
         >
-          {upgrading ? "Redirecting to checkout..." : "Upgrade to Premium — £4.99/month ⚡"}
+          {upgrading ? "Redirecting to checkout..." : "Upgrade to Premium — £1.99/month ⚡"}
         </button>
       </div>
 
@@ -343,7 +343,7 @@ export default function AlertsPage() {
             >
               Get 4 Weeks Free →
             </a>
-            <div style={{ marginTop: "8px", fontSize: "11px", color: textSecondary }}>£49/month after trial · Cancel anytime</div>
+            <div style={{ marginTop: "8px", fontSize: "11px", color: textSecondary }}>£19.99/month after trial · Cancel anytime</div>
           </div>
         </div>
       </div>

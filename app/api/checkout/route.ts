@@ -21,7 +21,7 @@ export async function POST(request: Request) {
               name: "PegCheck Premium",
               description: "Instant depeg alerts when stablecoins drop below $0.975",
             },
-            unit_amount: 499,
+            unit_amount: 199,
             recurring: {
               interval: "month",
             },
