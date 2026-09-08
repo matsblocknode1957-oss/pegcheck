@@ -40,6 +40,13 @@ interface WhaleStats {
   top3: WhaleRow[];
 }
 
+interface CoinWhaleStats {
+  slug: string;
+  name: string;
+  count: number;
+  totalVolume: number;
+}
+
 function getStatus(price: number, slug: string): "Healthy" | "Caution" | "Depeg" {
   const peg = COIN_PEGS[slug] ?? 1.0;
   const { healthy, caution } = getThresholds(slug);
@@ -74,7 +81,7 @@ function fmtVolume(n: number): string {
   return `$${n.toLocaleString()}`;
 }
 
-function buildHtml(coins: CoinStats[], whale: WhaleStats, weekOf: string, marketScore: number, unsubscribeUrl: string): string {
+function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: CoinWhaleStats[], weekOf: string, marketScore: number, unsubscribeUrl: string): string {
   const healthyCoins = coins.filter(c => c.status === "Healthy");
   const cautionCoins = coins.filter(c => c.status === "Caution");
   const depegCoins   = coins.filter(c => c.status === "Depeg");
@@ -260,6 +267,33 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, weekOf: string, market
     }
   </td></tr>
 
+  <!-- Top 10 Coins by Large Transaction Volume -->
+  <tr><td style="background:#0d1628;padding:20px 32px;border-left:1px solid #1e2a40;border-right:1px solid #1e2a40;border-top:1px solid #1e2a40">
+    <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">Top 10 Coins by Large Transaction Volume</div>
+    ${topCoinsByVolume.length === 0
+      ? `<p style="color:#6b7280;font-size:13px;margin:0">No large transfers recorded this week.</p>`
+      : `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+          <thead>
+            <tr style="border-bottom:1px solid #1e2a40">
+              <th style="text-align:left;padding:6px 12px;font-size:9px;color:#4b5563;font-weight:700;letter-spacing:1px;text-transform:uppercase">COIN</th>
+              <th style="text-align:right;padding:6px 12px;font-size:9px;color:#4b5563;font-weight:700;letter-spacing:1px;text-transform:uppercase">TRANSFERS</th>
+              <th style="text-align:right;padding:6px 12px;font-size:9px;color:#4b5563;font-weight:700;letter-spacing:1px;text-transform:uppercase">TOTAL VOLUME</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${topCoinsByVolume.map((c, i) => `
+              <tr style="border-bottom:1px solid #1e2a40">
+                <td style="padding:9px 12px;font-size:13px;font-weight:700;color:#f9fafb">
+                  <span style="color:#4b5563;font-family:monospace;font-size:11px;margin-right:8px">${i + 1}</span>${c.name}
+                </td>
+                <td style="padding:9px 12px;text-align:right;font-family:monospace;font-size:12px;color:#9ca3af">${c.count.toLocaleString()}</td>
+                <td style="padding:9px 12px;text-align:right;font-family:monospace;font-size:13px;font-weight:700;color:#8b5cf6">${fmtVolume(c.totalVolume)}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>`
+    }
+  </td></tr>
+
   <!-- Footer -->
   <tr><td style="background:#080c16;border:1px solid #1e2a40;border-top:none;border-radius:0 0 12px 12px;padding:20px 32px">
     <table width="100%" cellpadding="0" cellspacing="0">
@@ -349,6 +383,17 @@ export async function POST(request: Request) {
       top3: whaleData.slice(0, 3),
     };
 
+    const coinWhaleMap: Record<string, { count: number; totalVolume: number }> = {};
+    for (const row of whaleData) {
+      if (!coinWhaleMap[row.slug]) coinWhaleMap[row.slug] = { count: 0, totalVolume: 0 };
+      coinWhaleMap[row.slug].count++;
+      coinWhaleMap[row.slug].totalVolume += Number(row.amount);
+    }
+    const topCoinsByVolume: CoinWhaleStats[] = Object.entries(coinWhaleMap)
+      .map(([slug, stats]) => ({ slug, name: COIN_NAMES[slug] ?? slug.toUpperCase(), ...stats }))
+      .sort((a, b) => b.totalVolume - a.totalVolume)
+      .slice(0, 10);
+
     // Group history by slug
     const bySlug: Record<string, number[]> = {};
     for (const row of history ?? []) {
@@ -417,7 +462,7 @@ export async function POST(request: Request) {
     const unsubscribeUrl = unsubscribeToken
       ? `${baseUrlForLinks}/api/unsubscribe?token=${unsubscribeToken}`
       : `${baseUrlForLinks}/api/unsubscribe`;
-    const html = buildHtml(coins, whale, weekOf, marketScore, unsubscribeUrl);
+    const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, marketScore, unsubscribeUrl);
 
     const depegList = coins.filter(c => c.status === "Depeg").map(c => c.name);
     const subjectSuffix = depegList.length > 0
