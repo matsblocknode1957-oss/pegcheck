@@ -39,7 +39,7 @@ const COIN_DATA: Record<string, {
     auditDate: "Real-time",
     auditScore: 92,
     description: "USDS (formerly DAI) is a decentralised stablecoin maintained by MakerDAO. It is over-collateralised with a mix of crypto assets and real-world assets, with all collateral verifiable on-chain.",
-    contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
+    contractAddress: "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
   },
   ethena: {
     name: "Ethena (USDe)", issuer: "Ethena Labs", icon: "/icons/ethena.png", bgColor: "#1a1a2e",

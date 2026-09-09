@@ -171,7 +171,7 @@ export async function GET() {
     const contracts: { slug: string; address: string; decimals: number }[] = [
       { slug: "usdt", address: "0xdac17f958d2ee523a2206206994597c13d831ec7", decimals: 6 },
       { slug: "usdc", address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals: 6 },
-      { slug: "usds", address: "0x6b175474e89094c44da98b954eedeac495271d0f", decimals: 18 },
+      { slug: "usds", address: "0xdc035d45d973e3ec169d2276ddab16f1e407384f", decimals: 18 },
       { slug: "ethena", address: "0x4c9edd5852cd905f086c759e8383e09bff1e68b3", decimals: 18 },
       { slug: "pyusd", address: "0x6c3ea9036406852006290770bedfcaba0e23a0e8", decimals: 6 },
       { slug: "fdusd", address: "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409", decimals: 18 },
