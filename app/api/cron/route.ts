@@ -70,8 +70,16 @@ async function fetchChainlinkPoR(
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const secret = process.env.CRON_SECRET;
+    if (secret) {
+      const auth = request.headers.get("authorization") ?? "";
+      if (auth !== `Bearer ${secret}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     const { Resend } = await import("resend");
     const { createClient } = await import("@supabase/supabase-js");
 
