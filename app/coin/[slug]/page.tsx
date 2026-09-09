@@ -149,7 +149,7 @@ const COIN_DATA: Record<string, {
     auditDate: "Real-time",
     auditScore: 50,
     description: "USDD is a decentralised stablecoin managed by the TRON DAO Reserve, backed by a basket of BTC, ETH, and TRX. It has experienced significant depegging events and carries elevated counterparty risk.",
-    contractAddress: "0x0C10bF8FcB7Bf5412187A595ab97a3609160b5c9",
+    contractAddress: "0x0C10bF8FcB7Bf5412187A595ab97a3609160b5c6",
   },
   mkusd: {
     name: "mkUSD", issuer: "Prisma Finance", icon: "/icons/mkusd.png", bgColor: "#6b21a8",
@@ -199,7 +199,7 @@ const COIN_DATA: Record<string, {
     auditDate: "Real-time",
     auditScore: 85,
     description: "BOLD is the stablecoin of Liquity V2, supporting ETH and major liquid staking tokens as collateral. Like V1, the protocol is immutable and governance-free, while enabling multi-collateral positions.",
-    contractAddress: "0x6440f144b7e50D3567575d8a5Dc73e046a8f6f54",
+    contractAddress: "0x6440f144b7e50d6a8439336510312d2f54beb01d",
   },
 };
 
