@@ -32,13 +32,13 @@ const COIN_DATA: Record<string, {
     contractAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
   },
   usds: {
-    name: "USDS", issuer: "MakerDAO", icon: "/icons/usds.png", bgColor: "#f4b731",
+    name: "USDS", issuer: "Sky", icon: "/icons/usds.png", bgColor: "#f4b731",
     collateral: "Crypto-collateralised (ETH, BTC, RWA)",
     collateralRatio: "147%",
     reserveAudit: "On-chain (public)",
     auditDate: "Real-time",
     auditScore: 92,
-    description: "USDS (formerly DAI) is a decentralised stablecoin maintained by MakerDAO. It is over-collateralised with a mix of crypto assets and real-world assets, with all collateral verifiable on-chain.",
+    description: "USDS is a decentralised stablecoin issued by Sky (formerly MakerDAO). It is over-collateralised with a mix of crypto assets and real-world assets, with all collateral verifiable on-chain. DAI holders can convert 1:1 to USDS via Sky's official upgrade path.",
     contractAddress: "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
   },
   ethena: {
