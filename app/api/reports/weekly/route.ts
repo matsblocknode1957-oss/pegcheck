@@ -363,34 +363,57 @@ export async function POST(request: Request) {
       }
     );
 
+    // Fetch top-3 transfers for the display panel + exact total count.
+    // limit(3) is intentional — count:'exact' returns the full dataset count regardless.
     const { data: whaleRows, count: whaleCount, error: whaleError } = await supabaseAdmin
       .from("large_transactions")
       .select("slug, amount, action, created_at, tx_hash, wallet", { count: 'exact' })
       .gte("created_at", sinceIso)
       .gte("amount", 1000000)
       .order("amount", { ascending: false })
-      .limit(10000);
+      .limit(3);
 
-    if (whaleError) {
-      console.error("Whale query error:", JSON.stringify(whaleError));
-    }
-    console.log("Whale rows returned:", whaleRows?.length ?? 0, "exact count:", whaleCount, whaleError ? `error: ${whaleError.message}` : "");
+    // True total volume: single aggregate over all matching rows, not a sum of a paged fetch.
+    // Requires PostgREST aggregate functions enabled (Supabase Dashboard → Settings → API).
+    const { data: volData, error: volError } = await supabaseAdmin
+      .from("large_transactions")
+      .select("amount.sum()")
+      .gte("created_at", sinceIso)
+      .gte("amount", 1000000)
+      .single();
+
+    // Per-coin breakdown via database GROUP BY so no coin is missed due to row cap.
+    // No .order()/.limit() here — PostgREST cannot order by aggregate expressions.
+    // Result set is bounded by the number of distinct slugs (~19 coins), so sorting in memory is fine.
+    const { data: coinStatRows, error: coinStatError } = await supabaseAdmin
+      .from("large_transactions")
+      .select("slug, amount.sum(), count()")
+      .gte("created_at", sinceIso)
+      .gte("amount", 1000000);
+
+    if (whaleError)    console.error("Whale query error:", JSON.stringify(whaleError));
+    if (volError)      console.error("Volume SUM error:", JSON.stringify(volError));
+    if (coinStatError) console.error("Coin stats error:", JSON.stringify(coinStatError));
+    console.log(
+      "Whale count:", whaleCount,
+      "| totalVolume SUM:", (volData as any)?.sum ?? "(no data)",
+      volError ? `(SUM error: ${volError.message})` : "",
+    );
 
     const whaleData = whaleRows ?? [];
     const whale: WhaleStats = {
-      count: whaleCount ?? whaleData.length,
-      totalVolume: whaleData.reduce((s, r) => s + Number(r.amount), 0),
+      count: whaleCount ?? 0,
+      totalVolume: Number((volData as { sum: string | number } | null)?.sum ?? 0),
       top3: whaleData.slice(0, 3),
     };
 
-    const coinWhaleMap: Record<string, { count: number; totalVolume: number }> = {};
-    for (const row of whaleData) {
-      if (!coinWhaleMap[row.slug]) coinWhaleMap[row.slug] = { count: 0, totalVolume: 0 };
-      coinWhaleMap[row.slug].count++;
-      coinWhaleMap[row.slug].totalVolume += Number(row.amount);
-    }
-    const topCoinsByVolume: CoinWhaleStats[] = Object.entries(coinWhaleMap)
-      .map(([slug, stats]) => ({ slug, name: COIN_NAMES[slug] ?? slug.toUpperCase(), ...stats }))
+    const topCoinsByVolume: CoinWhaleStats[] = (coinStatRows ?? [])
+      .map((r: any) => ({
+        slug: r.slug as string,
+        name: COIN_NAMES[r.slug as string] ?? (r.slug as string).toUpperCase(),
+        count: Number(r.count ?? 0),
+        totalVolume: Number(r.sum ?? 0),
+      }))
       .sort((a, b) => b.totalVolume - a.totalVolume)
       .slice(0, 10);
 
