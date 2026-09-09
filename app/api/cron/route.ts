@@ -208,9 +208,9 @@ export async function GET() {
           });
           const rows = significant.map((tx: any) => {
             const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
-            let action = "large_transfer";
-            if (tx.from === zeroAddress) action = "mint";
-            if (tx.to === zeroAddress) action = "burn";
+            let action = "LARGE TRANSFER";
+            if (tx.from === zeroAddress) action = "MINT";
+            if (tx.to === zeroAddress) action = "BURN";
             return {
               slug: coin.slug,
               action,
