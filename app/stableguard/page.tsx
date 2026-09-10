@@ -12,6 +12,16 @@ const CONTRACTS: [string, string][] = [
 
 const ETHERSCAN_BASE = "https://sepolia.etherscan.io/address/";
 
+const CONTRACTS_ARB: [string, string][] = [
+  ["ExposureRegistry",       "0x55fc74c807dd5aC468Cf2e9B5c26Abb9b1149945"],
+  ["DepegEventRegistry",     "0xAa940C87f3D3251fD297894b5cef7dC7e71b3665"],
+  ["ProtectionHoldLedger",   "0xA3175824EEF5964bA5A839CdBc01e6F8F1F3444b"],
+  ["StableGuardVault",       "0x86602cDeC52Df65Bc8D66528De429EB11A9E0497"],
+  ["StableGuardCREReceiver", "0x8A3De0095Eb8741f89d3a3BF71DEA1d4857a9bbd"],
+];
+
+const ARBISCAN_BASE = "https://sepolia.arbiscan.io/address/";
+
 export default function StableGuardPage() {
   const pathname = usePathname();
   const [prices, setPrices] = useState<Record<string, number>>({});
@@ -123,7 +133,7 @@ export default function StableGuardPage() {
         <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "10px 22px", borderRadius: "30px", background: "rgba(22,163,74,0.12)", border: "1px solid #166534" }}>
           <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22c55e", animation: "sgpulse 2s infinite" }} />
           <span style={{ fontSize: "12px", fontWeight: "700", color: "#22c55e", textTransform: "uppercase", letterSpacing: "1.5px" }}>
-            Protection Active — Testnet (Ethereum Sepolia)
+            Protection Active — Ethereum Sepolia + Arbitrum Sepolia
           </span>
         </div>
         <div style={{ marginTop: "10px", fontSize: "11px", color: "#6b7280" }}>
@@ -208,21 +218,40 @@ export default function StableGuardPage() {
       </div>
 
       {/* Contracts */}
-      <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
-        <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "4px" }}>Contracts — Ethereum Sepolia</div>
-        <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "14px" }}>All contracts deployed and wired. Deployed 2026-09-10.</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {CONTRACTS.map(([name, addr]) => (
-            <div key={name} style={{ padding: "12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                <div style={{ fontSize: "11px", fontWeight: "700", color: textPrimary }}>{name}</div>
-                <a href={`${ETHERSCAN_BASE}${addr}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>
-                  Etherscan ↗
-                </a>
+      <div style={{ margin: "16px 20px 0" }}>
+        <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "4px" }}>Contracts — 2 Testnets</div>
+        <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "12px" }}>Deployed and wired on Ethereum Sepolia and Arbitrum Sepolia. Deployed 2026-09-10.</div>
+        <div style={{ background: cardBg, borderRadius: "12px", padding: "16px 20px", border: `1px solid ${cardBorder}`, marginBottom: "10px" }}>
+          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Ethereum Sepolia</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {CONTRACTS.map(([name, addr]) => (
+              <div key={name} style={{ padding: "12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: "700", color: textPrimary }}>{name}</div>
+                  <a href={`${ETHERSCAN_BASE}${addr}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>
+                    Etherscan ↗
+                  </a>
+                </div>
+                <div style={{ fontFamily: "monospace", fontSize: "11px", color: textSecondary, wordBreak: "break-all" }}>{addr}</div>
               </div>
-              <div style={{ fontFamily: "monospace", fontSize: "11px", color: textSecondary, wordBreak: "break-all" }}>{addr}</div>
-            </div>
-          ))}
+            ))}
+          </div>
+        </div>
+        <div style={{ background: cardBg, borderRadius: "12px", padding: "16px 20px", border: `1px solid ${cardBorder}` }}>
+          <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Arbitrum Sepolia</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {CONTRACTS_ARB.map(([name, addr]) => (
+              <div key={name} style={{ padding: "12px", background: innerBg, borderRadius: "8px", border: `1px solid ${cardBorder}` }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: "700", color: textPrimary }}>{name}</div>
+                  <a href={`${ARBISCAN_BASE}${addr}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#1a56db", textDecoration: "none", fontWeight: "600" }}>
+                    Arbiscan ↗
+                  </a>
+                </div>
+                <div style={{ fontFamily: "monospace", fontSize: "11px", color: textSecondary, wordBreak: "break-all" }}>{addr}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
