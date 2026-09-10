@@ -198,7 +198,7 @@ export default function DevelopersPage() {
                 <p className="text-gray-400 text-sm">Perfect for small projects</p>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-bold">£99</span>
+                <span className="text-2xl font-bold">$9.99</span>
                 <span className="text-gray-400 text-sm">/month</span>
               </div>
             </div>
@@ -228,7 +228,7 @@ export default function DevelopersPage() {
                 <p className="text-gray-400 text-sm">For growing applications</p>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-bold">£249</span>
+                <span className="text-2xl font-bold">$49.99</span>
                 <span className="text-gray-400 text-sm">/month</span>
               </div>
             </div>
@@ -255,11 +255,11 @@ export default function DevelopersPage() {
           <div className="bg-[#161b22] rounded-2xl p-6">
             <div className="flex justify-between items-start mb-3">
               <div>
-                <h3 className="font-semibold text-white">Enterprise</h3>
+                <h3 className="font-semibold text-white">Business</h3>
                 <p className="text-gray-400 text-sm">For serious infrastructure</p>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-bold">£499</span>
+                <span className="text-2xl font-bold">$149.99</span>
                 <span className="text-gray-400 text-sm">/month</span>
               </div>
             </div>
