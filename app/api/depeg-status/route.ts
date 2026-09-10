@@ -59,8 +59,8 @@ function deviationBps(price: number, peg = 1.0): number {
 function signal(bps: number): string {
   if (bps < 20) return "STABLE";
   if (bps < 50) return "WATCH";
-  if (bps < 100) return "HEDGE";
-  return "EXIT";
+  if (bps < 100) return "ELEVATED";
+  return "CRITICAL";
 }
 
 export async function GET(request: NextRequest) {

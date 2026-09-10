@@ -7,7 +7,7 @@ import type { PricePoint, BacktestRow, RegimeClassification, LayerBTrajectory } 
 // Only coins known to have had depeg events
 const BACKTEST_SLUGS = ["alusd", "eurc", "mkusd", "frax", "dola", "lusd"];
 
-const EVENT_THRESHOLD_BPS = 50;  // HEDGE threshold — same basis as the 37 known events
+const EVENT_THRESHOLD_BPS = 50;  // ELEVATED threshold — same basis as the 37 known events
 const WINDOW_HOURS = 48;
 
 interface RawRow {
