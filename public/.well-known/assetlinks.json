@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "uk.pegcheck.twa",
+    "sha256_cert_fingerprints": [
+      "25:35:21:86:5C:76:84:2E:60:C3:75:F3:5C:23:AD:2C:1F:B5:C4:61:BD:84:4E:C3:AB:C5:9B:FF:9E:E9:39:50"
+    ]
+  }
+}]
