@@ -372,13 +372,9 @@ export async function POST(request: Request) {
       .gte("amount", 1000000)
       .single();
 
-    // Per-coin breakdown: plain select of slug+amount, grouped in JS to avoid
-    // PostgREST aggregate/GROUP BY and Prefer:count=exact header conflicts.
+    // Per-coin breakdown via RPC — avoids the 1000-row default limit on plain selects.
     const { data: coinVolRows, error: coinVolError } = await supabase
-      .from("large_transactions")
-      .select("slug, amount")
-      .gte("created_at", sinceIso)
-      .gte("amount", 1000000);
+      .rpc("whale_volume_by_coin", { since_ts: sinceIso, min_amount: 1000000 });
 
     if (whaleError)   console.error("Whale query error:", JSON.stringify(whaleError));
     if (volError)     console.error("Volume SUM error:", JSON.stringify(volError));
@@ -396,21 +392,14 @@ export async function POST(request: Request) {
       top3: whaleData.slice(0, 3),
     };
 
-    const coinVolMap: Record<string, { count: number; totalVolume: number }> = {};
-    for (const row of coinVolRows ?? []) {
-      const s = row.slug as string;
-      if (!coinVolMap[s]) coinVolMap[s] = { count: 0, totalVolume: 0 };
-      coinVolMap[s].count += 1;
-      coinVolMap[s].totalVolume += Number(row.amount);
-    }
-    const topCoinsByVolume: CoinWhaleStats[] = Object.entries(coinVolMap)
-      .map(([slug, stats]) => ({
-        slug,
-        name: COIN_NAMES[slug] ?? slug.toUpperCase(),
-        count: stats.count,
-        totalVolume: stats.totalVolume,
+    const topCoinsByVolume: CoinWhaleStats[] = (coinVolRows ?? [])
+      .map((r: { slug: string; transfer_count: number; total_volume: number }) => ({
+        slug: r.slug,
+        name: COIN_NAMES[r.slug] ?? r.slug.toUpperCase(),
+        count: Number(r.transfer_count),
+        totalVolume: Number(r.total_volume),
       }))
-      .sort((a, b) => b.totalVolume - a.totalVolume)
+      .sort((a: CoinWhaleStats, b: CoinWhaleStats) => b.totalVolume - a.totalVolume)
       .slice(0, 10);
 
     // Group history by slug
