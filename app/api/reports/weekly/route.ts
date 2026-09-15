@@ -353,19 +353,9 @@ export async function POST(request: Request) {
       .gte("created_at", sinceIso)
       .order("created_at", { ascending: true });
 
-    // Fetch whale transfers ≥$1M for last 7 days using service role to bypass RLS
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: { persistSession: false, autoRefreshToken: false },
-        global: { headers: { 'Prefer': 'count=exact' } },
-      }
-    );
-
     // Fetch top-3 transfers for the display panel + exact total count.
     // limit(3) is intentional — count:'exact' returns the full dataset count regardless.
-    const { data: whaleRows, count: whaleCount, error: whaleError } = await supabaseAdmin
+    const { data: whaleRows, count: whaleCount, error: whaleError } = await supabase
       .from("large_transactions")
       .select("slug, amount, action, created_at, tx_hash, wallet", { count: 'exact' })
       .gte("created_at", sinceIso)
@@ -375,7 +365,7 @@ export async function POST(request: Request) {
 
     // True total volume: single aggregate over all matching rows, not a sum of a paged fetch.
     // Requires PostgREST aggregate functions enabled (Supabase Dashboard → Settings → API).
-    const { data: volData, error: volError } = await supabaseAdmin
+    const { data: volData, error: volError } = await supabase
       .from("large_transactions")
       .select("amount.sum()")
       .gte("created_at", sinceIso)
@@ -510,7 +500,7 @@ export async function POST(request: Request) {
     });
 
     // Log send to report_sends table
-    const { error: logError } = await supabaseAdmin
+    const { error: logError } = await supabase
       .from("report_sends")
       .insert({ email: to, report_date: new Date().toISOString().split("T")[0], type: sendType });
     if (logError) console.error("report_sends log error:", logError.message);
