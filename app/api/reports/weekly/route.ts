@@ -382,18 +382,17 @@ export async function POST(request: Request) {
       .gte("amount", 1000000)
       .single();
 
-    // Per-coin breakdown via database GROUP BY so no coin is missed due to row cap.
-    // No .order()/.limit() here — PostgREST cannot order by aggregate expressions.
-    // Result set is bounded by the number of distinct slugs (~19 coins), so sorting in memory is fine.
-    const { data: coinStatRows, error: coinStatError } = await supabaseAdmin
+    // Per-coin breakdown: plain select of slug+amount, grouped in JS to avoid
+    // PostgREST aggregate/GROUP BY and Prefer:count=exact header conflicts.
+    const { data: coinVolRows, error: coinVolError } = await supabase
       .from("large_transactions")
-      .select("slug, amount.sum(), count()")
+      .select("slug, amount")
       .gte("created_at", sinceIso)
       .gte("amount", 1000000);
 
-    if (whaleError)    console.error("Whale query error:", JSON.stringify(whaleError));
-    if (volError)      console.error("Volume SUM error:", JSON.stringify(volError));
-    if (coinStatError) console.error("Coin stats error:", JSON.stringify(coinStatError));
+    if (whaleError)   console.error("Whale query error:", JSON.stringify(whaleError));
+    if (volError)     console.error("Volume SUM error:", JSON.stringify(volError));
+    if (coinVolError) console.error("Coin vol error:", JSON.stringify(coinVolError));
     console.log(
       "Whale count:", whaleCount,
       "| totalVolume SUM:", (volData as any)?.sum ?? "(no data)",
@@ -407,12 +406,19 @@ export async function POST(request: Request) {
       top3: whaleData.slice(0, 3),
     };
 
-    const topCoinsByVolume: CoinWhaleStats[] = (coinStatRows ?? [])
-      .map((r: any) => ({
-        slug: r.slug as string,
-        name: COIN_NAMES[r.slug as string] ?? (r.slug as string).toUpperCase(),
-        count: Number(r.count ?? 0),
-        totalVolume: Number(r.sum ?? 0),
+    const coinVolMap: Record<string, { count: number; totalVolume: number }> = {};
+    for (const row of coinVolRows ?? []) {
+      const s = row.slug as string;
+      if (!coinVolMap[s]) coinVolMap[s] = { count: 0, totalVolume: 0 };
+      coinVolMap[s].count += 1;
+      coinVolMap[s].totalVolume += Number(row.amount);
+    }
+    const topCoinsByVolume: CoinWhaleStats[] = Object.entries(coinVolMap)
+      .map(([slug, stats]) => ({
+        slug,
+        name: COIN_NAMES[slug] ?? slug.toUpperCase(),
+        count: stats.count,
+        totalVolume: stats.totalVolume,
       }))
       .sort((a, b) => b.totalVolume - a.totalVolume)
       .slice(0, 10);
