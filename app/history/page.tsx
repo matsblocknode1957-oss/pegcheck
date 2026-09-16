@@ -51,112 +51,50 @@ export interface DepegEvent {
   recovered: boolean;
 }
 
-function buildEvent(
-  slug: string,
-  coinName: string,
-  records: { price: number; created_at: string }[],
-  now: number
-): DepegEvent {
-  const lowestPrice = Math.min(...records.map((r) => r.price));
-  const startDate = records[0].created_at;
-  const endDate = records[records.length - 1].created_at;
-  const durationHours =
-    (new Date(endDate).getTime() - new Date(startDate).getTime()) / 3_600_000;
-  const recovered = now - new Date(endDate).getTime() > 6 * 3_600_000;
-  return { slug, coinName, startDate, durationHours, lowestPrice, recovered };
-}
-
-function groupDepegEvents(
-  records: { slug: string; price: number; created_at: string }[]
-): DepegEvent[] {
-  if (!records.length) return [];
-  const now = Date.now();
-  const bySlug = new Map<string, { slug: string; price: number; created_at: string }[]>();
-  for (const r of records) {
-    if (!bySlug.has(r.slug)) bySlug.set(r.slug, []);
-    bySlug.get(r.slug)!.push(r);
-  }
-  const events: DepegEvent[] = [];
-  for (const [slug, rows] of bySlug) {
-    const sorted = rows.sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-    const coinName = COINS.find((c) => c.slug === slug)?.name ?? slug.toUpperCase();
-    let groupRecords = [sorted[0]];
-    for (let i = 1; i < sorted.length; i++) {
-      const gapHours =
-        (new Date(sorted[i].created_at).getTime() - new Date(sorted[i - 1].created_at).getTime()) /
-        3_600_000;
-      if (gapHours > 6) {
-        events.push(buildEvent(slug, coinName, groupRecords, now));
-        groupRecords = [sorted[i]];
-      } else {
-        groupRecords.push(sorted[i]);
-      }
-    }
-    events.push(buildEvent(slug, coinName, groupRecords, now));
-  }
-  return events.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-}
-
 export default async function HistoryPage() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const [summaryResults, usdDepegResult, eurcDepegResult] = await Promise.all([
-    // Single query per coin — fetches all rows so we can derive both ATL and avgDev
-    Promise.all(
-      COINS.map(async (coin) => {
-        const peg = COIN_PEGS[coin.slug] ?? 1.0;
-        const { data } = await supabase
-          .from("price_history")
-          .select("price, created_at")
-          .eq("slug", coin.slug)
-          .limit(50000);
+  const slugList = COINS.map((c) => c.slug);
 
-        const rows = data ?? [];
-        let atl = peg;
-        let atlDate: string | null = null;
-        let devSum = 0;
+  const [{ data: atlRows, error: atlError }, { data: depegRows, error: depegError }] =
+    await Promise.all([
+      supabase.rpc("coin_atl_stats", { slugs: slugList }),
+      supabase.rpc("depeg_events", { min_price_usd: 0.999, eurc_max_price: 1.1287, gap_hours: 6 }),
+    ]);
 
-        for (const row of rows) {
-          const p = Number(row.price);
-          if (p < atl) { atl = p; atlDate = row.created_at; }
-          devSum += Math.abs(p - peg) / peg;
-        }
+  if (atlError)   console.error("coin_atl_stats error:", JSON.stringify(atlError));
+  if (depegError) console.error("depeg_events error:",  JSON.stringify(depegError));
 
-        return {
-          slug: coin.slug,
-          name: coin.name,
-          icon: coin.icon,
-          bgColor: coin.bgColor,
-          atl,
-          atlDate,
-          avgDev: rows.length > 0 ? devSum / rows.length : 0,
-        } as SummaryItem;
-      })
-    ),
-    supabase
-      .from("price_history")
-      .select("slug, price, created_at")
-      .neq("slug", "eurc")
-      .lt("price", 0.999)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("price_history")
-      .select("slug, price, created_at")
-      .eq("slug", "eurc")
-      .lt("price", 1.1287)
-      .order("created_at", { ascending: true }),
-  ]);
+  const summaryResults: SummaryItem[] = COINS.map((coin) => {
+    const row = (atlRows ?? []).find(
+      (r: { slug: string; atl: number; atl_date: string; avg_dev: number }) =>
+        r.slug === coin.slug
+    );
+    return {
+      slug:    coin.slug,
+      name:    coin.name,
+      icon:    coin.icon,
+      bgColor: coin.bgColor,
+      atl:     row ? Number(row.atl)     : (COIN_PEGS[coin.slug] ?? 1.0),
+      atlDate: row?.atl_date ?? null,
+      avgDev:  row ? Number(row.avg_dev) : 0,
+    };
+  });
 
-  const allDepegRows = [
-    ...(usdDepegResult.data ?? []),
-    ...(eurcDepegResult.data ?? []),
-  ];
-  const depegEvents = groupDepegEvents(allDepegRows);
+  const now = Date.now();
+  const depegEvents: DepegEvent[] = (depegRows ?? []).map(
+    (r: { slug: string; start_date: string; end_date: string; lowest_price: number; duration_hours: number }) => ({
+      slug:          r.slug,
+      coinName:      COINS.find((c) => c.slug === r.slug)?.name ?? r.slug.toUpperCase(),
+      startDate:     r.start_date,
+      durationHours: Number(r.duration_hours),
+      lowestPrice:   Number(r.lowest_price),
+      recovered:     now - new Date(r.end_date).getTime() > 6 * 3_600_000,
+    })
+  );
 
   return <HistoryContent summaryResults={summaryResults} depegEvents={depegEvents} />;
 }

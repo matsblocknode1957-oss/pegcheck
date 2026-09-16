@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     .map(([time, { sum, count }]) => ({ time, price: parseFloat((sum / count).toFixed(6)) }))
     .sort((a, b) => a.time.localeCompare(b.time));
 
-  return NextResponse.json({ data: Object.fromEntries(chartData.map((p, i) => [String(i), p])) });
+  return NextResponse.json({ data: chartData });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch chart data" }, { status: 500 });
   }

@@ -9,3 +9,8 @@
   for = "/*"
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/history"
+  [headers.values]
+    Cache-Control = "public, max-age=0, s-maxage=300, stale-while-revalidate=60"
