@@ -48,3 +48,19 @@ next-env.d.ts
 # hardhat build output
 /hardhat-artifacts/
 /hardhat-cache/
+
+# Android TWA project (android-twa/)
+android-twa/android.keystore
+android-twa/app/src/
+android-twa/app/build/
+android-twa/build/
+android-twa/.gradle/
+
+# Root-level Android/Gradle artifacts
+android.keystore
+.gradle/
+local.properties
+app-release-bundle.aab
+app-release-signed.apk
+app-release-signed.apk.idsig
+app-release-unsigned-aligned.apk

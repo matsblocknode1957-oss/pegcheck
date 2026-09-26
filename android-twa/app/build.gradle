@@ -150,18 +150,9 @@ android {
 
         
     }
-    signingConfigs {
-        release {
-            storeFile file('../android.keystore')
-            storePassword '2Bigballs!'
-            keyAlias 'android'
-            keyPassword '2Bigballs!'
-        }
-    }
     buildTypes {
         release {
             minifyEnabled true
-            signingConfig signingConfigs.release
         }
     }
     compileOptions {
