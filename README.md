@@ -4,7 +4,7 @@ Real-time stablecoin monitoring dashboard with live peg data, multi-source price
 
 ## Features
 
-- 19 stablecoins monitored every hour (USDT, USDC, USDS, USDe, PYUSD, FDUSD, RLUSD, TUSD, FRAX, GHO, crvUSD, LUSD, USDP, USDD, mkUSD, EURC, DOLA, alUSD, BOLD)
+- 20 stablecoins monitored every hour (USDT, USDC, USDS, USDe, PYUSD, FDUSD, RLUSD, TUSD, FRAX, GHO, crvUSD, LUSD, USDP, USDD, mkUSD, EURC, DOLA, alUSD, BOLD)
 - 5–6 source median price (CoinGecko, Coinbase, Binance.US, Kraken, DefiLlama, Chainlink on-chain feeds)
 - Deviation from peg in basis points stored to Supabase `price_history`
 - Email alerts (Resend) and webhooks for depeg, caution, and recovery events

@@ -311,7 +311,7 @@ export default function AlertsPage() {
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "13px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Premium Features ⚡</div>
-        {["Email notification within seconds of detection", "Be first to know before the market reacts", "All 19 stablecoins monitored 24/7", "Cancel anytime"].map((feature) => (
+        {["Email notification within seconds of detection", "Be first to know before the market reacts", "All 20 stablecoins monitored 24/7", "Cancel anytime"].map((feature) => (
           <div key={feature} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
             <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: dark ? "#1e3a5f" : "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a56db" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -335,7 +335,7 @@ export default function AlertsPage() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "3px" }}>Weekly Risk Report</div>
             <div style={{ fontSize: "12px", color: textSecondary, lineHeight: "1.5", marginBottom: "12px" }}>
-              Get a professional stablecoin risk report every Monday — 19 coins, whale activity, market scoring
+              Get a professional stablecoin risk report every Monday — 20 coins, whale activity, market scoring
             </div>
             <a
               href="mailto:matsblocknode1957@gmail.com?subject=Weekly%20Report%20Trial&body=I'd%20like%20to%20try%20the%20free%20weekly%20report"

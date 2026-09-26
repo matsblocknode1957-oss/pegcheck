@@ -110,7 +110,7 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
   }).join("");
 
   const riskSection = riskCoins.length === 0
-    ? `<p style="color:#6b7280;font-size:13px;margin:0">No coins showed significant stress this week. All 19 tracked stablecoins remained in healthy or near-healthy ranges.</p>`
+    ? `<p style="color:#6b7280;font-size:13px;margin:0">No coins showed significant stress this week. All 20 tracked stablecoins remained in healthy or near-healthy ranges.</p>`
     : riskCoins.map(c => `
         <div style="padding:12px 16px;background:#12192b;border-radius:8px;border-left:3px solid ${c.status === "Depeg" ? "#ef4444" : "#f59e0b"};margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
@@ -146,7 +146,7 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
       </tr>
       <tr><td colspan="2" style="padding-top:16px">
         <div style="font-size:22px;font-weight:700;color:white">Weekly Stablecoin Risk Report</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.7);margin-top:4px">Week of ${weekOf} · 19 Stablecoins Monitored</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.7);margin-top:4px">Week of ${weekOf} · 20 Stablecoins Monitored</div>
       </td></tr>
     </table>
   </td></tr>
@@ -165,7 +165,7 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
         <td width="63%" style="vertical-align:top">
           <p style="margin:0 0 10px;font-size:13px;color:#9ca3af;line-height:1.6">
             ${depegCoins.length === 0 && cautionCoins.length === 0
-              ? "All 19 tracked stablecoins maintained healthy peg proximity this week. No significant deviations detected across any monitored protocol."
+              ? "All 20 tracked stablecoins maintained healthy peg proximity this week. No significant deviations detected across any monitored protocol."
               : depegCoins.length > 0
               ? `This week saw ${depegCoins.length} coin${depegCoins.length > 1 ? "s" : ""} fall into depeg territory: <strong style="color:#fca5a5">${depegCoins.map(c => c.name).join(", ")}</strong>. ${cautionCoins.length > 0 ? `A further ${cautionCoins.length} showed caution signals.` : ""}`
               : `${cautionCoins.length} coin${cautionCoins.length > 1 ? "s" : ""} entered caution zones this week: <strong style="color:#fcd34d">${cautionCoins.map(c => c.name).join(", ")}</strong>. No full depegs detected.`
@@ -209,7 +209,7 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
 
   <!-- Full Coin Table -->
   <tr><td style="background:#0d1628;padding:20px 32px;border-left:1px solid #1e2a40;border-right:1px solid #1e2a40;border-top:1px solid #1e2a40">
-    <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">All 19 Stablecoins</div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">All 20 Stablecoins</div>
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
       <thead>
         <tr style="border-bottom:1px solid #1e2a40">
@@ -303,7 +303,7 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
             <span style="color:#1a56db">P✓</span> Powered by FintechCheck
           </div>
           <div style="font-size:11px;color:#4b5563;margin-top:3px">
-            Real-time stablecoin monitoring · 7 independent sources · 19 coins tracked
+            Real-time stablecoin monitoring · up to 6 independent sources · 20 coins tracked
           </div>
           <a href="https://pegcheck.uk" style="font-size:12px;color:#1a56db;text-decoration:none;margin-top:6px;display:inline-block">pegcheck.uk →</a>
         </td>

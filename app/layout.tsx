@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "PegCheck — Real-time Stablecoin Health Monitor",
-  description: "Real-time depeg monitoring for 19 stablecoins using 7 independent sources. Median-of-medians pricing, instant alerts, and reserve health tracking for USDT, USDC, USDS, EURC and more.",
+  description: "Real-time depeg monitoring for 20 stablecoins using up to 6 independent sources. Median-of-medians pricing, instant alerts, and reserve health tracking for USDT, USDC, USDS, EURC and more.",
   icons: {
     icon: "/favicon.svg",
     apple: "/apple-touch-icon.png",
