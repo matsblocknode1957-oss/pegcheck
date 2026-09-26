@@ -201,6 +201,16 @@ const COIN_DATA: Record<string, {
     description: "BOLD is the stablecoin of Liquity V2, supporting ETH and major liquid staking tokens as collateral. Like V1, the protocol is immutable and governance-free, while enabling multi-collateral positions.",
     contractAddress: "0x6440f144b7e50d6a8439336510312d2f54beb01d",
   },
+  usdg: {
+    name: "USDG", issuer: "Paxos Digital Singapore", icon: "/icons/usdg.png", bgColor: "#00735b",
+    collateral: "Cash & Cash Equivalents, Short-Term US Treasuries",
+    collateralRatio: "100%",
+    reserveAudit: "Monthly Attestation",
+    auditDate: "Monthly",
+    auditScore: 88,
+    description: "USDG (Global Dollar) is issued by Paxos Digital Singapore Pte. Ltd., regulated by the Monetary Authority of Singapore (MAS). Reserves are held in cash and short-term US Treasuries, attested monthly by an independent auditor.",
+    contractAddress: "0xe343167631d89B6Ffc58B88d6b7fB0228795491D",
+  },
 };
 
 function LargeTransactions({ slug, dark, cardBorder, textSecondary, textPrimary }: {

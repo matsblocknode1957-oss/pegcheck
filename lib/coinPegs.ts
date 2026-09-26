@@ -18,6 +18,7 @@ export const COIN_PEGS: Record<string, number> = {
   dola: 1.0,
   alusd: 1.0,
   bold: 1.0,
+  usdg: 1.0,
 };
 
 export const COIN_THRESHOLDS: Record<string, { healthy: number; caution: number }> = {

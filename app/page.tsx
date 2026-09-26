@@ -78,6 +78,7 @@ export default function Home() {
     { name: "DOLA",   issuer: "Inverse Finance", peg: 1.0,   icon: "/icons/dola.png",   slug: "dola",   bgColor: "#1e3a5f" },
     { name: "alUSD",  issuer: "Alchemix",        peg: 1.0,   icon: "/icons/alusd.png",  slug: "alusd",  bgColor: "#f59e0b" },
     { name: "BOLD",   issuer: "Liquity V2",      peg: 1.0,   icon: "/icons/bold.svg",   slug: "bold",   bgColor: "#0f766e" },
+    { name: "USDG",   issuer: "Paxos",           peg: 1.0,   icon: "/icons/usdg.png",   slug: "usdg",   bgColor: "#00735b" },
   ];
 
   type FearGreedData = {

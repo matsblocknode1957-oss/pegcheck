@@ -80,7 +80,7 @@ async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<nu
 export async function GET() {
   try {
     // Source 1 — CoinGecko (coin prices + live EUR/USD rate in parallel)
-    const cgIds = "tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold";
+    const cgIds = "tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold,global-dollar";
     const [cgRes, eurUsdRes] = await Promise.all([
       fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd`,
@@ -202,6 +202,7 @@ export async function GET() {
       dola:   median([cgData["dola-usd"]?.usd      ?? 0, dlResults["dola"]   ?? 0]),
       alusd:  median([cgData["alchemix-usd"]?.usd  ?? 0, dlResults["alusd"]  ?? 0]),
       bold:   median([cgData["bold"]?.usd          ?? 0, dlResults["bold"]   ?? 0]),
+      usdg:   median([cgData["global-dollar"]?.usd  ?? 0, dlResults["usdg"]   ?? 0]),
     };
 
     const sources = {
@@ -224,6 +225,7 @@ export async function GET() {
       dola:   { coingecko: cgData["dola-usd"]?.usd       ?? 0, defillama: dlResults["dola"]   ?? 0 },
       alusd:  { coingecko: cgData["alchemix-usd"]?.usd   ?? 0, defillama: dlResults["alusd"]  ?? 0 },
       bold:   { coingecko: cgData["bold"]?.usd           ?? 0, defillama: dlResults["bold"]   ?? 0 },
+      usdg:   { coingecko: cgData["global-dollar"]?.usd  ?? 0, defillama: dlResults["usdg"]   ?? 0 },
     };
 
     const uniswap = {

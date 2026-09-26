@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const SLUGS = ["usdt","usdc","usds","ethena","pyusd","fdusd","rlusd","tusd","frax","gho","crvusd","lusd","usdp","usdd","mkusd","eurc","dola","alusd","bold"];
+const SLUGS = ["usdt","usdc","usds","ethena","pyusd","fdusd","rlusd","tusd","frax","gho","crvusd","lusd","usdp","usdd","mkusd","eurc","dola","alusd","bold","usdg"];
 
 // Chainlink Proof of Reserve feed contracts (Ethereum Mainnet, 8 decimals)
 const POR_FEEDS: Record<string, string> = {

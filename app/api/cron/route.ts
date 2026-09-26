@@ -94,7 +94,7 @@ export async function GET(request: Request) {
 
     // CoinGecko
     const cgRes = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold&vs_currencies=usd"
+      "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold,global-dollar&vs_currencies=usd"
     );
     const cgData = await cgRes.json();
 
@@ -196,6 +196,7 @@ export async function GET(request: Request) {
       { slug: "dola",   address: "0x865377367054516e17014CcDed1e7d814EDC9ce4", decimals: 18 },
       { slug: "alusd",  address: "0xBC6DA0FE9aD5f3b0d58160288917AA56653660e9", decimals: 18 },
       { slug: "bold",   address: "0x6440f144b7e50d6a8439336510312d2f54beb01d", decimals: 18 },
+      { slug: "usdg",   address: "0xe343167631d89B6Ffc58B88d6b7fB0228795491D", decimals: 6  },
     ];
 
     for (const coin of contracts) {
@@ -262,6 +263,7 @@ export async function GET(request: Request) {
       dola:   median([cgData["dola-usd"]?.usd      ?? 0, dlResults["dola"]   ?? 0]),
       alusd:  median([cgData["alchemix-usd"]?.usd  ?? 0, dlResults["alusd"]  ?? 0]),
       bold:   median([cgData["bold"]?.usd          ?? 0, dlResults["bold"]   ?? 0]),
+      usdg:   median([cgData["global-dollar"]?.usd  ?? 0, dlResults["usdg"]   ?? 0]),
     };
 
     const coinNames: Record<string, string> = {
@@ -284,6 +286,7 @@ export async function GET(request: Request) {
       dola:   "DOLA (Inverse Finance)",
       alusd:  "alUSD (Alchemix)",
       bold:   "BOLD (Liquity V2)",
+      usdg:   "USDG (Global Dollar)",
     };
 
     // Save Price Snapshot
