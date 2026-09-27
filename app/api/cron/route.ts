@@ -19,7 +19,7 @@ function median(values: number[]): number {
 const CHAINLINK_FEEDS: Record<string, string> = {
   usdt: "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D",
   usdc: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
-  usds: "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9",
+  usds: "0xfF30586cD0F29eD462364C7e81375FC0C71219b1",
   tusd: "0xec746eCF986E2927Abd291a2A1716c940100f8Ba",
 };
 
@@ -94,12 +94,12 @@ export async function GET(request: Request) {
 
     // CoinGecko
     const cgRes = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold,global-dollar&vs_currencies=usd"
+      "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold,global-dollar&vs_currencies=usd"
     );
     const cgData = await cgRes.json();
 
     // Coinbase
-    const cbSlugs = ["USDT-USD","USDC-USD","DAI-USD","PYUSD-USD","TUSD-USD"];
+    const cbSlugs = ["USDT-USD","USDC-USD","USDS-USD","PYUSD-USD","TUSD-USD"];
     const cbResults: Record<string, number> = {};
     await Promise.allSettled(
       cbSlugs.map(async (pair) => {
@@ -127,7 +127,7 @@ export async function GET(request: Request) {
     const krPairs: [string, string][] = [
       ["usdt",  "USDTUSD"],
       ["usdc",  "USDCUSD"],
-      ["usds",  "DAIUSD"],
+      ["usds",  "USDSUSD"],
       ["pyusd", "PYUSDUSD"],
       ["tusd",  "TUSDUSD"],
     ];
@@ -246,7 +246,7 @@ export async function GET(request: Request) {
     const prices: Record<string, number> = {
       usdt:   median([cgData["tether"]?.usd ?? 0,        cbResults["USDT-USD"] ?? 0,                                  krResults["usdt"]  ?? 0, dlResults["usdt"]  ?? 0, clResults["usdt"]  ?? 0]),
       usdc:   median([cgData["usd-coin"]?.usd ?? 0,      cbResults["USDC-USD"] ?? 0,  bnResults["usdc"]  ?? 0,        krResults["usdc"]  ?? 0, dlResults["usdc"]  ?? 0, clResults["usdc"]  ?? 0]),
-      usds:   median([cgData["dai"]?.usd ?? 0,           cbResults["DAI-USD"] ?? 0,   bnResults["usds"]  ?? 0,        krResults["usds"]  ?? 0, dlResults["dai"]   ?? 0, clResults["usds"]  ?? 0]),
+      usds:   median([cgData["usds"]?.usd ?? 0,           cbResults["USDS-USD"] ?? 0,   bnResults["usds"]  ?? 0,        krResults["usds"]  ?? 0, dlResults["usds"]   ?? 0, clResults["usds"]  ?? 0]),
       ethena: median([cgData["ethena-usde"]?.usd ?? 0,                                                                                           dlResults["usde"]  ?? 0]),
       pyusd:  median([cgData["paypal-usd"]?.usd ?? 0,    cbResults["PYUSD-USD"] ?? 0, bnResults["pyusd"] ?? 0,        krResults["pyusd"] ?? 0, dlResults["pyusd"] ?? 0, clResults["pyusd"] ?? 0]),
       fdusd:  median([cgData["first-digital-usd"]?.usd ?? 0,                                                                                     dlResults["fdusd"] ?? 0]),

@@ -14,7 +14,7 @@ function median(values: number[]): number {
 const CHAINLINK_FEEDS: Record<string, string> = {
   usdt: "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D",
   usdc: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
-  usds: "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9",
+  usds: "0xfF30586cD0F29eD462364C7e81375FC0C71219b1",
   tusd: "0xec746eCF986E2927Abd291a2A1716c940100f8Ba",
 };
 
@@ -80,7 +80,7 @@ async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<nu
 export async function GET() {
   try {
     // Source 1 — CoinGecko (coin prices + live EUR/USD rate in parallel)
-    const cgIds = "tether,usd-coin,dai,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold,global-dollar";
+    const cgIds = "tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold,global-dollar";
     const [cgRes, eurUsdRes] = await Promise.all([
       fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd`,
@@ -94,7 +94,7 @@ export async function GET() {
     const eurUsd = (eurUsdLive && eurUsdLive > 0.5 && eurUsdLive < 2.0) ? eurUsdLive : 1.16;
 
     // Source 2 — Coinbase
-    const cbSlugs = ["USDT-USD","USDC-USD","DAI-USD","PYUSD-USD","TUSD-USD"];
+    const cbSlugs = ["USDT-USD","USDC-USD","USDS-USD","PYUSD-USD","TUSD-USD"];
     const cbResults: Record<string, number> = {};
     await Promise.allSettled(
       cbSlugs.map(async (pair) => {
@@ -130,7 +130,7 @@ export async function GET() {
     const krPairs: [string, string][] = [
       ["usdt",  "USDTUSD"],
       ["usdc",  "USDCUSD"],
-      ["usds",  "DAIUSD"],
+      ["usds",  "USDSUSD"],
       ["pyusd", "PYUSDUSD"],
       ["tusd",  "TUSDUSD"],
     ];
@@ -185,7 +185,7 @@ export async function GET() {
     const prices = {
       usdt:   median([cgData["tether"]?.usd ?? 0,        cbResults["USDT-USD"] ?? 0,                    krResults["usdt"]  ?? 0, dlResults["usdt"]  ?? 0, clResults["usdt"]  ?? 0]),
       usdc:   median([cgData["usd-coin"]?.usd ?? 0,      cbResults["USDC-USD"] ?? 0,  bnResults["usdc"]  ?? 0, krResults["usdc"]  ?? 0, dlResults["usdc"]  ?? 0, clResults["usdc"]  ?? 0]),
-      usds:   median([cgData["dai"]?.usd ?? 0,           cbResults["DAI-USD"] ?? 0,   bnResults["usds"]  ?? 0, krResults["usds"]  ?? 0, dlResults["dai"]   ?? 0, clResults["usds"]  ?? 0]),
+      usds:   median([cgData["usds"]?.usd ?? 0,           cbResults["USDS-USD"] ?? 0,   bnResults["usds"]  ?? 0, krResults["usds"]  ?? 0, dlResults["usds"]   ?? 0, clResults["usds"]  ?? 0]),
       ethena: median([cgData["ethena-usde"]?.usd ?? 0,                                                                                    dlResults["usde"]  ?? 0]),
       pyusd:  median([cgData["paypal-usd"]?.usd ?? 0,    cbResults["PYUSD-USD"] ?? 0, bnResults["pyusd"] ?? 0, krResults["pyusd"] ?? 0, dlResults["pyusd"] ?? 0, clResults["pyusd"] ?? 0]),
       fdusd:  median([cgData["first-digital-usd"]?.usd ?? 0,                                                                              dlResults["fdusd"] ?? 0]),
@@ -208,7 +208,7 @@ export async function GET() {
     const sources = {
       usdt:   { coingecko: cgData["tether"]?.usd ?? 0,        coinbase: cbResults["USDT-USD"] ?? 0,                                      kraken: krResults["usdt"]  ?? 0, defillama: dlResults["usdt"]  ?? 0, chainlink: clResults["usdt"]  ?? 0 },
       usdc:   { coingecko: cgData["usd-coin"]?.usd ?? 0,      coinbase: cbResults["USDC-USD"] ?? 0,  binance: bnResults["usdc"]  ?? 0,   kraken: krResults["usdc"]  ?? 0, defillama: dlResults["usdc"]  ?? 0, chainlink: clResults["usdc"]  ?? 0 },
-      usds:   { coingecko: cgData["dai"]?.usd ?? 0,           coinbase: cbResults["DAI-USD"] ?? 0,   binance: bnResults["usds"]  ?? 0,   kraken: krResults["usds"]  ?? 0, defillama: dlResults["dai"]   ?? 0, chainlink: clResults["usds"]  ?? 0 },
+      usds:   { coingecko: cgData["usds"]?.usd ?? 0,           coinbase: cbResults["USDS-USD"] ?? 0,   binance: bnResults["usds"]  ?? 0,   kraken: krResults["usds"]  ?? 0, defillama: dlResults["usds"]   ?? 0, chainlink: clResults["usds"]  ?? 0 },
       ethena: { coingecko: cgData["ethena-usde"]?.usd ?? 0,                                                                                                                defillama: dlResults["usde"]  ?? 0 },
       pyusd:  { coingecko: cgData["paypal-usd"]?.usd ?? 0,    coinbase: cbResults["PYUSD-USD"] ?? 0, binance: bnResults["pyusd"] ?? 0,   kraken: krResults["pyusd"] ?? 0, defillama: dlResults["pyusd"] ?? 0, chainlink: clResults["pyusd"] ?? 0 },
       fdusd:  { coingecko: cgData["first-digital-usd"]?.usd ?? 0,                                                                                                          defillama: dlResults["fdusd"] ?? 0 },
