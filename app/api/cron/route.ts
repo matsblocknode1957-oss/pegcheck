@@ -5,6 +5,31 @@ import { fetchEurUsd } from "@/lib/fetchEurUsd";
 // Temporarily excluded from alerts — persistent depeg, remove when recovered
 const EXCLUDED_FROM_ALERTS: string[] = [];
 
+const MAINNET_FALLBACK = "https://ethereum-rpc.publicnode.com";
+
+async function ethCallWithRetry(contract: string, data: string, primaryUrl: string): Promise<string | null> {
+  const urls = primaryUrl ? [primaryUrl, MAINNET_FALLBACK] : [MAINNET_FALLBACK];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to: contract, data }, "latest"] }),
+      });
+      const json = await res.json();
+      if (json.error) {
+        console.warn("Chainlink RPC error:", json.error.message ?? JSON.stringify(json.error));
+        continue;
+      }
+      if (!json.result || json.result === "0x") return null;
+      return json.result;
+    } catch (e: unknown) {
+      console.warn("Chainlink fetch failed:", e instanceof Error ? e.message : String(e));
+    }
+  }
+  return null;
+}
+
 function median(values: number[]): number {
   const sorted = values.filter(v => v > 0.5 && v < 1.5).sort((a, b) => a - b);
   if (sorted.length === 0) return 1.0;
@@ -30,19 +55,7 @@ const POR_FEEDS: Record<string, string> = {
 };
 
 async function callLatestRoundData(contract: string, rpcUrl: string): Promise<string | null> {
-  const res = await fetch(rpcUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      method: "eth_call",
-      params: [{ to: contract, data: "0xfeaf968c" }, "latest"],
-      id: 1,
-    }),
-  });
-  const json = await res.json();
-  if (!json.result || json.result === "0x") return null;
-  return json.result;
+  return ethCallWithRetry(contract, "0xfeaf968c", rpcUrl);
 }
 
 async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<number> {
@@ -58,13 +71,17 @@ async function fetchChainlinkPoR(
   rpcUrl: string
 ): Promise<{ reserves: number; updated_at: string } | null> {
   try {
+    // decimals() = 0x313ce567 — TUSD PoR feed has 18 decimals, not 8
+    const decimalsHex = await ethCallWithRetry(contract, "0x313ce567", rpcUrl);
+    const decimals = decimalsHex ? Number(BigInt(decimalsHex)) : 8;
     const result = await callLatestRoundData(contract, rpcUrl);
     if (!result) return null;
     const hex = result.slice(2);
-    // ABI slot 1 — int256 answer (reserves, 8 decimals)
-    const reserves = Number(BigInt("0x" + hex.slice(64, 128))) / 1e8;
+    // ABI slot 1 — int256 answer (reserves)
+    const reserves = Number(BigInt("0x" + hex.slice(64, 128))) / Math.pow(10, decimals);
     // ABI slot 3 — uint256 updatedAt
     const updatedAt = Number(BigInt("0x" + hex.slice(192, 256)));
+    if (reserves <= 0) return null;
     return { reserves, updated_at: new Date(updatedAt * 1000).toISOString() };
   } catch {
     return null;
@@ -166,27 +183,23 @@ export async function GET(request: Request) {
     // Chainlink on-chain price feeds
     const clResults: Record<string, number> = {};
     const rpcUrl = process.env.ALCHEMY_RPC_URL ?? "";
-    if (rpcUrl) {
-      await Promise.allSettled(
-        Object.entries(CHAINLINK_FEEDS).map(async ([slug, contract]) => {
-          try {
-            clResults[slug] = await fetchChainlinkPrice(contract, rpcUrl);
-          } catch {
-            // skip this feed, median continues with remaining sources
-          }
-        })
-      );
-    }
+    await Promise.allSettled(
+      Object.entries(CHAINLINK_FEEDS).map(async ([slug, contract]) => {
+        try {
+          clResults[slug] = await fetchChainlinkPrice(contract, rpcUrl);
+        } catch {
+          // skip this feed, median continues with remaining sources
+        }
+      })
+    );
 
     // Chainlink Proof of Reserve feeds
     const porResults: Record<string, { reserves: number; updated_at: string } | null> = {};
-    if (rpcUrl) {
-      await Promise.allSettled(
-        Object.entries(POR_FEEDS).map(async ([slug, contract]) => {
-          porResults[slug] = await fetchChainlinkPoR(contract, rpcUrl);
-        })
-      );
-    }
+    await Promise.allSettled(
+      Object.entries(POR_FEEDS).map(async ([slug, contract]) => {
+        porResults[slug] = await fetchChainlinkPoR(contract, rpcUrl);
+      })
+    );
 
     // Etherscan — Large Transactions for all coins
     const contracts: { slug: string; address: string; decimals: number }[] = [

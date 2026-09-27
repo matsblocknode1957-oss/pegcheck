@@ -3,12 +3,11 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 
 const CONTRACT_ADDRESS = "0xA00cbfF342F9009B23f08A0ED3c9918D2B5C86fa";
-const ABI = ["function getDepegEvents() external view returns (tuple(string symbol, uint256 price, uint256 timestamp, string severity)[])"];
 
 interface DepegEvent {
   symbol: string;
-  price: bigint;
-  timestamp: bigint;
+  price: string;
+  timestamp: string;
   severity: string;
 }
 
@@ -32,13 +31,9 @@ export default function OnchainPage() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const { ethers } = await import("ethers");
-        const rpcUrl = process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL;
-        if (!rpcUrl) throw new Error("RPC URL not configured");
-        const provider = new ethers.JsonRpcProvider(rpcUrl);
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-        const raw = await contract.getDepegEvents();
-        setEvents([...raw].reverse());
+        const res = await fetch("/api/onchain-events");
+        const data = await res.json();
+        setEvents(data.events ?? []);
       } catch (e: any) {
         setError(e?.message ?? "Failed to fetch on-chain events");
       } finally {

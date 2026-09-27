@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+const MAINNET_FALLBACK = "https://ethereum-rpc.publicnode.com";
+
 function median(values: number[]): number {
   const sorted = values.filter(v => v > 0.5 && v < 1.5).sort((a, b) => a - b);
   if (sorted.length === 0) return 1.0;
@@ -58,24 +60,35 @@ async function fetchUniswapPrice(poolAddress: string, rpcUrl: string, stablecoin
   return stablecoinIsToken0 ? priceRaw / 1e12 : 1 / (priceRaw * 1e12);
 }
 
-async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<number> {
-  const res = await fetch(rpcUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      method: "eth_call",
-      // latestRoundData() selector: 0xfeaf968c
-      params: [{ to: contract, data: "0xfeaf968c" }, "latest"],
-      id: 1,
-    }),
-  });
-  const json = await res.json();
-  if (!json.result || json.result === "0x") return 0;
-  // ABI decode: (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
-  // answer is the 2nd 32-byte slot (chars 66–130 of the 0x-prefixed hex string)
-  const answerHex = json.result.slice(2 + 64, 2 + 128);
-  return Number(BigInt("0x" + answerHex)) / 1e8;
+async function fetchChainlinkPrice(contract: string, primaryUrl: string): Promise<number> {
+  const urls = primaryUrl ? [primaryUrl, MAINNET_FALLBACK] : [MAINNET_FALLBACK];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "eth_call",
+          // latestRoundData() selector: 0xfeaf968c
+          params: [{ to: contract, data: "0xfeaf968c" }, "latest"],
+          id: 1,
+        }),
+      });
+      const json = await res.json();
+      if (json.error) {
+        console.warn("Chainlink RPC error:", json.error.message ?? JSON.stringify(json.error));
+        continue;
+      }
+      if (!json.result || json.result === "0x") return 0;
+      // ABI slot 1 — int256 answer
+      const answerHex = json.result.slice(2 + 64, 2 + 128);
+      return Number(BigInt("0x" + answerHex)) / 1e8;
+    } catch (e: unknown) {
+      console.warn("Chainlink fetch failed:", e instanceof Error ? e.message : String(e));
+    }
+  }
+  return 0;
 }
 
 export async function GET() {
@@ -169,17 +182,15 @@ export async function GET() {
     // Source 6 — Chainlink on-chain price feeds
     const clResults: Record<string, number> = {};
     const rpcUrl = process.env.ALCHEMY_RPC_URL ?? "";
-    if (rpcUrl) {
-      await Promise.allSettled(
-        Object.entries(CHAINLINK_FEEDS).map(async ([slug, contract]) => {
-          try {
-            clResults[slug] = await fetchChainlinkPrice(contract, rpcUrl);
-          } catch {
-            // skip this feed, median continues with remaining sources
-          }
-        })
-      );
-    }
+    await Promise.allSettled(
+      Object.entries(CHAINLINK_FEEDS).map(async ([slug, contract]) => {
+        try {
+          clResults[slug] = await fetchChainlinkPrice(contract, rpcUrl);
+        } catch {
+          // skip this feed, median continues with remaining sources
+        }
+      })
+    );
 
     // Source 7 — Uniswap V3 on-chain DEX prices (not included in median)
     const uniswapResults: Record<string, number> = {};
