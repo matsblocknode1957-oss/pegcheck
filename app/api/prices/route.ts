@@ -44,6 +44,7 @@ async function fetchUniswapPrice(poolAddress: string, rpcUrl: string, stablecoin
       params: [{ to: poolAddress, data: "0x3850c7bd" }, "latest"],
       id: 1,
     }),
+    signal: AbortSignal.timeout(8000),
   });
   const json = await res.json();
   if (!json.result || json.result === "0x") return 0;
@@ -74,6 +75,7 @@ async function fetchChainlinkPrice(contract: string, primaryUrl: string): Promis
           params: [{ to: contract, data: "0xfeaf968c" }, "latest"],
           id: 1,
         }),
+        signal: AbortSignal.timeout(8000),
       });
       const json = await res.json();
       if (json.error) {

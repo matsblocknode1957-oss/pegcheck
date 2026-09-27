@@ -14,6 +14,7 @@ async function ethCallWithRetry(contract: string, data: string, primaryUrl: stri
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to: contract, data }, "latest"] }),
+        signal: AbortSignal.timeout(8000),
       });
       const json = await res.json();
       if (json.error) {
