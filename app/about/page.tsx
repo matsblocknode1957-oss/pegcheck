@@ -40,7 +40,7 @@ export default function AboutPage() {
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>What is PegCheck?</div>
-        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck is a real-time stablecoin health monitoring platform. It tracks 20 stablecoins — including USD-pegged coins like USDT, USDC, USDS, PYUSD, LUSD, FRAX and BOLD, as well as EUR-pegged coins like EURC — and flags any peg deviation the moment it happens. Each coin is tracked against its own individual peg target and threshold. DEX divergence is also monitored via Uniswap V3, showing when on-chain pool prices diverge from the off-chain consensus. Premium subscribers receive instant email alerts when any coin depegs.</p>
+        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck is a real-time stablecoin health monitoring platform. It tracks 20 stablecoins — including USD-pegged coins like USDT, USDC, USDS, PYUSD, LUSD, frxUSD and BOLD, as well as EUR-pegged coins like EURC — and flags any peg deviation the moment it happens. Each coin is tracked against its own individual peg target and threshold. DEX divergence is also monitored via Uniswap V3, showing when on-chain pool prices diverge from the off-chain consensus. Premium subscribers receive instant email alerts when any coin depegs.</p>
       </div>
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
@@ -72,7 +72,7 @@ export default function AboutPage() {
           { label: "✅ On-chain depeg event logging", desc: <>Live — every depeg event is permanently recorded on the Sepolia blockchain and publicly verifiable at <a href="/onchain" style={{ color: "#1a56db", textDecoration: "none" }}>pegcheck.uk/onchain</a>.</> },
           { label: "✅ Depeg History Page", desc: "Live — full historical depeg events, stability rankings, all-time lows and most stable coins across all 20 tracked stablecoins." },
           { label: "✅ DEX Divergence Monitoring", desc: "Live — Uniswap V3 pool prices cross-checked against consensus for USDC and USDT, divergence shown in basis points on each coin detail page." },
-          { label: "✅ 20 Stablecoin Coverage", desc: "Live — expanded from 8 to 20 coins including FRAX, GHO, crvUSD, LUSD, USDP, USDD, mkUSD, EURC, DOLA, alUSD and BOLD." },
+          { label: "✅ 20 Stablecoin Coverage", desc: "Live — expanded from 8 to 20 coins including frxUSD, GHO, crvUSD, LUSD, USDP, USDD, mkUSD, EURC, DOLA, alUSD and BOLD." },
           { label: "✅ Individual Peg Targets", desc: "Live — each coin tracked against its own peg (USD or EUR), with per-coin healthy/caution/depeg thresholds tuned to each coin's design." },
           { label: "✅ Wallet integration", desc: "Live — connect your wallet to see only the stablecoins you hold, with balances, USD values and live health status." },
           { label: "✅ Weekly Risk Reports", desc: <>Live — professional stablecoin risk report sent every Monday. 20 coins, whale activity ($250M+ tracked weekly), market scoring, and trend analysis. Available via <a href="/alerts" style={{ color: "#1a56db", textDecoration: "none" }}>pegcheck.uk/alerts</a>.</> },

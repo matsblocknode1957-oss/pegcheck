@@ -21,6 +21,7 @@ const CHAINLINK_FEEDS: Record<string, string> = {
   usdc: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
   usds: "0xfF30586cD0F29eD462364C7e81375FC0C71219b1",
   tusd: "0xec746eCF986E2927Abd291a2A1716c940100f8Ba",
+  frax: "0x9B4a96210bc8D9D55b1908B465D8B0de68B7fF83",
 };
 
 // Chainlink Proof of Reserve feed contracts (Ethereum Mainnet, 8 decimals)
@@ -94,7 +95,7 @@ export async function GET(request: Request) {
 
     // CoinGecko
     const cgRes = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar&vs_currencies=usd"
+      "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax-usd,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar&vs_currencies=usd"
     );
     const cgData = await cgRes.json();
 
@@ -154,6 +155,7 @@ export async function GET(request: Request) {
       usde: "Ethena USDe",
       usdp: "Pax Dollar",
       bold: "Liquity BOLD",
+      frax: "Frax USD",
     };
     Object.entries(dlNameOverrides).forEach(([slug, exactName]) => {
       const match = dlCoins.find((c: { name: string; price: number }) => c.name === exactName);
@@ -195,7 +197,7 @@ export async function GET(request: Request) {
       { slug: "fdusd",  address: "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409", decimals: 18 },
       { slug: "rlusd",  address: "0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD", decimals: 18 },
       { slug: "tusd",   address: "0x0000000000085d4780B73119b644AE5ecd22b376", decimals: 18 },
-      { slug: "frax",   address: "0x853d955aCEf822Db058eb8505911ED77F175b99e", decimals: 18 },
+      { slug: "frax",   address: "0xcacd6fd266af91b8aed52accc382b4e165586e29", decimals: 18 },
       { slug: "gho",    address: "0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f", decimals: 18 },
       { slug: "crvusd", address: "0xf939E0A03FB07F59A73314E73794be0E57ac1b4E", decimals: 18 },
       { slug: "lusd",   address: "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0", decimals: 18 },
@@ -262,7 +264,7 @@ export async function GET(request: Request) {
       fdusd:  median([cgData["first-digital-usd"]?.usd ?? 0,                                                                                     dlResults["fdusd"] ?? 0]),
       rlusd:  median([cgData["ripple-usd"]?.usd ?? 0,                                                                                            dlResults["rlusd"] ?? 0]),
       tusd:   median([cgData["true-usd"]?.usd ?? 0,      bnResults["tusd"]  ?? 0, dlResults["tusd"]  ?? 0, clResults["tusd"]  ?? 0]),
-      frax:   median([cgData["frax"]?.usd          ?? 0, dlResults["frax"]   ?? 0]),
+      frax:   median([cgData["frax-usd"]?.usd      ?? 0, dlResults["frax"]   ?? 0, clResults["frax"]  ?? 0]),
       gho:    median([cgData["gho"]?.usd           ?? 0, dlResults["gho"]    ?? 0]),
       crvusd: median([cgData["crvusd"]?.usd        ?? 0, dlResults["crvusd"] ?? 0]),
       lusd:   median([cgData["liquity-usd"]?.usd   ?? 0, dlResults["lusd"]   ?? 0]),
@@ -285,7 +287,7 @@ export async function GET(request: Request) {
       fdusd: "FDUSD (First Digital)",
       rlusd: "RLUSD (Ripple)",
       tusd:   "TUSD (TrueUSD)",
-      frax:   "FRAX (Frax Finance)",
+      frax:   "frxUSD (Frax Finance)",
       gho:    "GHO (Aave)",
       crvusd: "crvUSD (Curve Finance)",
       lusd:   "LUSD (Liquity)",

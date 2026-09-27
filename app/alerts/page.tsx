@@ -19,7 +19,7 @@ const ALL_COINS = [
   { name: "FDUSD",  issuer: "First Digital",   slug: "fdusd",  icon: "/icons/fdusd.png",  bgColor: "#1a1a1a" },
   { name: "RLUSD",  issuer: "Ripple",          slug: "rlusd",  icon: "/icons/rlusd.png",  bgColor: "#346aa9" },
   { name: "TUSD",   issuer: "TrueUSD",         slug: "tusd",   icon: "/icons/tusd.png",   bgColor: "#1a3a5c" },
-  { name: "FRAX",   issuer: "Frax Finance",    slug: "frax",   icon: "/icons/frax.png",   bgColor: "#1c1c1c" },
+  { name: "frxUSD", issuer: "Frax Finance",    slug: "frax",   icon: "/icons/frax.png",   bgColor: "#1c1c1c" },
   { name: "GHO",    issuer: "Aave",            slug: "gho",    icon: "/icons/gho.png",    bgColor: "#b6509e" },
   { name: "crvUSD", issuer: "Curve Finance",   slug: "crvusd", icon: "/icons/crvusd.png", bgColor: "#3a3a3a" },
   { name: "LUSD",   issuer: "Liquity",         slug: "lusd",   icon: "/icons/lusd.png",   bgColor: "#2eb6ae" },

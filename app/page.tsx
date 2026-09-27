@@ -67,7 +67,7 @@ export default function Home() {
     { name: "FDUSD",  issuer: "First Digital",   peg: 1.0,   icon: "/icons/fdusd.png",  slug: "fdusd",  bgColor: "#1a1a1a" },
     { name: "RLUSD",  issuer: "Ripple",          peg: 1.0,   icon: "/icons/rlusd.png",  slug: "rlusd",  bgColor: "#346aa9" },
     { name: "TUSD",   issuer: "TrueUSD",         peg: 0.997, icon: "/icons/tusd.png",   slug: "tusd",   bgColor: "#1a3a5c" },
-    { name: "FRAX",   issuer: "Frax Finance",    peg: 1.0,   icon: "/icons/frax.png",   slug: "frax",   bgColor: "#1c1c1c" },
+    { name: "frxUSD", issuer: "Frax Finance",    peg: 1.0,   icon: "/icons/frax.png",   slug: "frax",   bgColor: "#1c1c1c" },
     { name: "GHO",    issuer: "Aave",            peg: 1.0,   icon: "/icons/gho.png",    slug: "gho",    bgColor: "#b6509e" },
     { name: "crvUSD", issuer: "Curve Finance",   peg: 1.0,   icon: "/icons/crvusd.png", slug: "crvusd", bgColor: "#3a3a3a" },
     { name: "LUSD",   issuer: "Liquity",         peg: 1.0,   icon: "/icons/lusd.png",   slug: "lusd",   bgColor: "#2eb6ae" },

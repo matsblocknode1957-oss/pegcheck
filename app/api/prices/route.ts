@@ -16,6 +16,7 @@ const CHAINLINK_FEEDS: Record<string, string> = {
   usdc: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
   usds: "0xfF30586cD0F29eD462364C7e81375FC0C71219b1",
   tusd: "0xec746eCF986E2927Abd291a2A1716c940100f8Ba",
+  frax: "0x9B4a96210bc8D9D55b1908B465D8B0de68B7fF83",
 };
 
 // ETH/USD Chainlink feed (Ethereum Mainnet, 8 decimals)
@@ -80,7 +81,7 @@ async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<nu
 export async function GET() {
   try {
     // Source 1 — CoinGecko (coin prices + live EUR/USD rate in parallel)
-    const cgIds = "tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar";
+    const cgIds = "tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax-usd,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar";
     const [cgRes, eurUsdRes] = await Promise.all([
       fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd`,
@@ -157,6 +158,7 @@ export async function GET() {
       usde: "Ethena USDe",
       usdp: "Pax Dollar",
       bold: "Liquity BOLD",
+      frax: "Frax USD",
     };
     Object.entries(dlNameOverrides).forEach(([slug, exactName]) => {
       const match = dlCoins.find((c: { name: string; price: number }) => c.name === exactName);
@@ -201,7 +203,7 @@ export async function GET() {
       fdusd:  median([cgData["first-digital-usd"]?.usd ?? 0,                                                                              dlResults["fdusd"] ?? 0]),
       rlusd:  median([cgData["ripple-usd"]?.usd ?? 0,                                                                                     dlResults["rlusd"] ?? 0]),
       tusd:   median([cgData["true-usd"]?.usd ?? 0,      bnResults["tusd"]  ?? 0, dlResults["tusd"]  ?? 0, clResults["tusd"]  ?? 0]),
-      frax:   median([cgData["frax"]?.usd          ?? 0, dlResults["frax"]   ?? 0]),
+      frax:   median([cgData["frax-usd"]?.usd      ?? 0, dlResults["frax"]   ?? 0, clResults["frax"]  ?? 0]),
       gho:    median([cgData["gho"]?.usd           ?? 0, dlResults["gho"]    ?? 0]),
       crvusd: median([cgData["crvusd"]?.usd        ?? 0, dlResults["crvusd"] ?? 0]),
       lusd:   median([cgData["liquity-usd"]?.usd   ?? 0, dlResults["lusd"]   ?? 0]),
@@ -224,7 +226,7 @@ export async function GET() {
       fdusd:  { coingecko: cgData["first-digital-usd"]?.usd ?? 0,                                                                                                          defillama: dlResults["fdusd"] ?? 0 },
       rlusd:  { coingecko: cgData["ripple-usd"]?.usd ?? 0,                                                                                                                 defillama: dlResults["rlusd"] ?? 0 },
       tusd:   { coingecko: cgData["true-usd"]?.usd ?? 0,      binance: bnResults["tusd"]  ?? 0, defillama: dlResults["tusd"]  ?? 0, chainlink: clResults["tusd"]  ?? 0 },
-      frax:   { coingecko: cgData["frax"]?.usd           ?? 0, defillama: dlResults["frax"]   ?? 0 },
+      frax:   { coingecko: cgData["frax-usd"]?.usd       ?? 0, defillama: dlResults["frax"]   ?? 0, chainlink: clResults["frax"]  ?? 0 },
       gho:    { coingecko: cgData["gho"]?.usd            ?? 0, defillama: dlResults["gho"]    ?? 0 },
       crvusd: { coingecko: cgData["crvusd"]?.usd         ?? 0, defillama: dlResults["crvusd"] ?? 0 },
       lusd:   { coingecko: cgData["liquity-usd"]?.usd    ?? 0, defillama: dlResults["lusd"]   ?? 0 },

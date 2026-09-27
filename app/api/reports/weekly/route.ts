@@ -4,7 +4,7 @@ import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 const COIN_NAMES: Record<string, string> = {
   usdt:   "USDT",   usdc:   "USDC",   usds:   "USDS",
   ethena: "USDe",   pyusd:  "PYUSD",  fdusd:  "FDUSD",
-  rlusd:  "RLUSD",  tusd:   "TUSD",   frax:   "FRAX",
+  rlusd:  "RLUSD",  tusd:   "TUSD",   frax:   "frxUSD",
   gho:    "GHO",    crvusd: "crvUSD", lusd:   "LUSD",
   usdp:   "USDP",   usdd:   "USDD",   mkusd:  "mkUSD",
   eurc:   "EURC",   dola:   "DOLA",   alusd:  "alUSD",

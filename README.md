@@ -4,7 +4,7 @@ Real-time stablecoin monitoring dashboard with live peg data, multi-source price
 
 ## Features
 
-- 20 stablecoins monitored every hour (USDT, USDC, USDS, USDe, PYUSD, FDUSD, RLUSD, TUSD, FRAX, GHO, crvUSD, LUSD, USDP, USDD, mkUSD, EURC, DOLA, alUSD, BOLD)
+- 20 stablecoins monitored every hour (USDT, USDC, USDS, USDe, PYUSD, FDUSD, RLUSD, TUSD, frxUSD, GHO, crvUSD, LUSD, USDP, USDD, mkUSD, EURC, DOLA, alUSD, BOLD)
 - 5–6 source median price (CoinGecko, Coinbase, Binance.US, Kraken, DefiLlama, Chainlink on-chain feeds)
 - Deviation from peg in basis points stored to Supabase `price_history`
 - Email alerts (Resend) and webhooks for depeg, caution, and recovery events
@@ -42,7 +42,7 @@ Analysis of **260,950 price snapshots** stored in the `price_history` table acro
 | alUSD (Alchemix) | 1 | 1 | 444 bps | $0.9556 | Below peg |
 | EURC (Circle) | 9 | 6 | 323 bps | $1.1665 | Above peg (EUR/USD) |
 | mkUSD (Prisma) | 13 | 11 | 189 bps | $0.9811 | Below peg |
-| FRAX | 5 | 5 | 143 bps | $0.9857 | Below peg |
+| FRAX (legacy) | 5 | 5 | 143 bps | $0.9857 | Below peg |
 | DOLA (Inverse Finance) | 1 | 1 | 94 bps | $0.9906 | Below peg |
 | LUSD (Liquity) | 8 | 7 | 87 bps | $1.0087 | Above peg |
 | **Total** | **37** | **31** | — | — | — |

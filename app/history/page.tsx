@@ -19,7 +19,7 @@ const COINS = [
   { slug: "fdusd",  name: "FDUSD",  icon: "/icons/fdusd.png",  bgColor: "#1a1a1a" },
   { slug: "rlusd",  name: "RLUSD",  icon: "/icons/rlusd.png",  bgColor: "#346aa9" },
   { slug: "ethena", name: "Ethena", icon: "/icons/ethena.png", bgColor: "#1a1a2e" },
-  { slug: "frax",   name: "FRAX",   icon: "/icons/frax.png",   bgColor: "#1c1c1c" },
+  { slug: "frax",   name: "frxUSD (formerly FRAX)", icon: "/icons/frax.png",   bgColor: "#1c1c1c" },
   { slug: "gho",    name: "GHO",    icon: "/icons/gho.png",    bgColor: "#b6509e" },
   { slug: "crvusd", name: "crvUSD", icon: "/icons/crvusd.png", bgColor: "#3a3a3a" },
   { slug: "lusd",   name: "LUSD",   icon: "/icons/lusd.png",   bgColor: "#2eb6ae" },
