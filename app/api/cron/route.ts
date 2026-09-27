@@ -156,6 +156,7 @@ export async function GET(request: Request) {
       usdp: "Pax Dollar",
       bold: "Liquity BOLD",
       frax: "Frax USD",
+      usds: "Sky Dollar",
     };
     Object.entries(dlNameOverrides).forEach(([slug, exactName]) => {
       const match = dlCoins.find((c: { name: string; price: number }) => c.name === exactName);
