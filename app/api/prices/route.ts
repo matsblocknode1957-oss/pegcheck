@@ -80,7 +80,7 @@ async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<nu
 export async function GET() {
   try {
     // Source 1 — CoinGecko (coin prices + live EUR/USD rate in parallel)
-    const cgIds = "tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold,global-dollar";
+    const cgIds = "tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar";
     const [cgRes, eurUsdRes] = await Promise.all([
       fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd`,
@@ -94,7 +94,7 @@ export async function GET() {
     const eurUsd = (eurUsdLive && eurUsdLive > 0.5 && eurUsdLive < 2.0) ? eurUsdLive : 1.16;
 
     // Source 2 — Coinbase
-    const cbSlugs = ["USDT-USD","USDC-USD","USDS-USD","PYUSD-USD","TUSD-USD"];
+    const cbSlugs = ["USDT-USD","USDC-USD","USDS-USD","PYUSD-USD"];
     const cbResults: Record<string, number> = {};
     await Promise.allSettled(
       cbSlugs.map(async (pair) => {
@@ -132,7 +132,6 @@ export async function GET() {
       ["usdc",  "USDCUSD"],
       ["usds",  "USDSUSD"],
       ["pyusd", "PYUSDUSD"],
-      ["tusd",  "TUSDUSD"],
     ];
     const krResults: Record<string, number> = {};
     await Promise.allSettled(
@@ -151,6 +150,17 @@ export async function GET() {
     const dlResults: Record<string, number> = {};
     dlCoins.forEach((coin: { symbol: string; price: number }) => {
       dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;
+    });
+    // Name-exact overrides for coins where multiple tokens share the same symbol.
+    // If the exact name is not found, set to 0 so the wrong token is never used.
+    const dlNameOverrides: Record<string, string> = {
+      usde: "Ethena USDe",
+      usdp: "Pax Dollar",
+      bold: "Liquity BOLD",
+    };
+    Object.entries(dlNameOverrides).forEach(([slug, exactName]) => {
+      const match = dlCoins.find((c: { name: string; price: number }) => c.name === exactName);
+      dlResults[slug] = match ? (match.price ?? 0) : 0;
     });
 
     // Source 6 — Chainlink on-chain price feeds
@@ -190,7 +200,7 @@ export async function GET() {
       pyusd:  median([cgData["paypal-usd"]?.usd ?? 0,    cbResults["PYUSD-USD"] ?? 0, bnResults["pyusd"] ?? 0, krResults["pyusd"] ?? 0, dlResults["pyusd"] ?? 0, clResults["pyusd"] ?? 0]),
       fdusd:  median([cgData["first-digital-usd"]?.usd ?? 0,                                                                              dlResults["fdusd"] ?? 0]),
       rlusd:  median([cgData["ripple-usd"]?.usd ?? 0,                                                                                     dlResults["rlusd"] ?? 0]),
-      tusd:   median([cgData["true-usd"]?.usd ?? 0,      cbResults["TUSD-USD"] ?? 0,  bnResults["tusd"]  ?? 0, krResults["tusd"]  ?? 0, dlResults["tusd"]  ?? 0, clResults["tusd"]  ?? 0]),
+      tusd:   median([cgData["true-usd"]?.usd ?? 0,      bnResults["tusd"]  ?? 0, dlResults["tusd"]  ?? 0, clResults["tusd"]  ?? 0]),
       frax:   median([cgData["frax"]?.usd          ?? 0, dlResults["frax"]   ?? 0]),
       gho:    median([cgData["gho"]?.usd           ?? 0, dlResults["gho"]    ?? 0]),
       crvusd: median([cgData["crvusd"]?.usd        ?? 0, dlResults["crvusd"] ?? 0]),
@@ -201,7 +211,7 @@ export async function GET() {
       eurc:   median([cgData["euro-coin"]?.usd     ?? 0, dlResults["eurc"]   ?? 0]),
       dola:   median([cgData["dola-usd"]?.usd      ?? 0, dlResults["dola"]   ?? 0]),
       alusd:  median([cgData["alchemix-usd"]?.usd  ?? 0, dlResults["alusd"]  ?? 0]),
-      bold:   median([cgData["bold"]?.usd          ?? 0, dlResults["bold"]   ?? 0]),
+      bold:   median([cgData["liquity-bold-2"]?.usd          ?? 0, dlResults["bold"]   ?? 0]),
       usdg:   median([cgData["global-dollar"]?.usd  ?? 0, dlResults["usdg"]   ?? 0]),
     };
 
@@ -213,7 +223,7 @@ export async function GET() {
       pyusd:  { coingecko: cgData["paypal-usd"]?.usd ?? 0,    coinbase: cbResults["PYUSD-USD"] ?? 0, binance: bnResults["pyusd"] ?? 0,   kraken: krResults["pyusd"] ?? 0, defillama: dlResults["pyusd"] ?? 0, chainlink: clResults["pyusd"] ?? 0 },
       fdusd:  { coingecko: cgData["first-digital-usd"]?.usd ?? 0,                                                                                                          defillama: dlResults["fdusd"] ?? 0 },
       rlusd:  { coingecko: cgData["ripple-usd"]?.usd ?? 0,                                                                                                                 defillama: dlResults["rlusd"] ?? 0 },
-      tusd:   { coingecko: cgData["true-usd"]?.usd ?? 0,      coinbase: cbResults["TUSD-USD"] ?? 0,  binance: bnResults["tusd"]  ?? 0,   kraken: krResults["tusd"]  ?? 0, defillama: dlResults["tusd"]  ?? 0, chainlink: clResults["tusd"]  ?? 0 },
+      tusd:   { coingecko: cgData["true-usd"]?.usd ?? 0,      binance: bnResults["tusd"]  ?? 0, defillama: dlResults["tusd"]  ?? 0, chainlink: clResults["tusd"]  ?? 0 },
       frax:   { coingecko: cgData["frax"]?.usd           ?? 0, defillama: dlResults["frax"]   ?? 0 },
       gho:    { coingecko: cgData["gho"]?.usd            ?? 0, defillama: dlResults["gho"]    ?? 0 },
       crvusd: { coingecko: cgData["crvusd"]?.usd         ?? 0, defillama: dlResults["crvusd"] ?? 0 },
@@ -224,7 +234,7 @@ export async function GET() {
       eurc:   { coingecko: cgData["euro-coin"]?.usd      ?? 0, defillama: dlResults["eurc"]   ?? 0 },
       dola:   { coingecko: cgData["dola-usd"]?.usd       ?? 0, defillama: dlResults["dola"]   ?? 0 },
       alusd:  { coingecko: cgData["alchemix-usd"]?.usd   ?? 0, defillama: dlResults["alusd"]  ?? 0 },
-      bold:   { coingecko: cgData["bold"]?.usd           ?? 0, defillama: dlResults["bold"]   ?? 0 },
+      bold:   { coingecko: cgData["liquity-bold-2"]?.usd           ?? 0, defillama: dlResults["bold"]   ?? 0 },
       usdg:   { coingecko: cgData["global-dollar"]?.usd  ?? 0, defillama: dlResults["usdg"]   ?? 0 },
     };
 

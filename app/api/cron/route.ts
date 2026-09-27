@@ -94,12 +94,12 @@ export async function GET(request: Request) {
 
     // CoinGecko
     const cgRes = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,bold,global-dollar&vs_currencies=usd"
+      "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar&vs_currencies=usd"
     );
     const cgData = await cgRes.json();
 
     // Coinbase
-    const cbSlugs = ["USDT-USD","USDC-USD","USDS-USD","PYUSD-USD","TUSD-USD"];
+    const cbSlugs = ["USDT-USD","USDC-USD","USDS-USD","PYUSD-USD"];
     const cbResults: Record<string, number> = {};
     await Promise.allSettled(
       cbSlugs.map(async (pair) => {
@@ -129,7 +129,6 @@ export async function GET(request: Request) {
       ["usdc",  "USDCUSD"],
       ["usds",  "USDSUSD"],
       ["pyusd", "PYUSDUSD"],
-      ["tusd",  "TUSDUSD"],
     ];
     const krResults: Record<string, number> = {};
     await Promise.allSettled(
@@ -148,6 +147,17 @@ export async function GET(request: Request) {
     const dlResults: Record<string, number> = {};
     dlCoins.forEach((coin: { symbol: string; price: number }) => {
       dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;
+    });
+    // Name-exact overrides for coins where multiple tokens share the same symbol.
+    // If the exact name is not found, set to 0 so the wrong token is never used.
+    const dlNameOverrides: Record<string, string> = {
+      usde: "Ethena USDe",
+      usdp: "Pax Dollar",
+      bold: "Liquity BOLD",
+    };
+    Object.entries(dlNameOverrides).forEach(([slug, exactName]) => {
+      const match = dlCoins.find((c: { name: string; price: number }) => c.name === exactName);
+      dlResults[slug] = match ? (match.price ?? 0) : 0;
     });
 
     // Chainlink on-chain price feeds
@@ -251,7 +261,7 @@ export async function GET(request: Request) {
       pyusd:  median([cgData["paypal-usd"]?.usd ?? 0,    cbResults["PYUSD-USD"] ?? 0, bnResults["pyusd"] ?? 0,        krResults["pyusd"] ?? 0, dlResults["pyusd"] ?? 0, clResults["pyusd"] ?? 0]),
       fdusd:  median([cgData["first-digital-usd"]?.usd ?? 0,                                                                                     dlResults["fdusd"] ?? 0]),
       rlusd:  median([cgData["ripple-usd"]?.usd ?? 0,                                                                                            dlResults["rlusd"] ?? 0]),
-      tusd:   median([cgData["true-usd"]?.usd ?? 0,      cbResults["TUSD-USD"] ?? 0,  bnResults["tusd"]  ?? 0,        krResults["tusd"]  ?? 0, dlResults["tusd"]  ?? 0, clResults["tusd"]  ?? 0]),
+      tusd:   median([cgData["true-usd"]?.usd ?? 0,      bnResults["tusd"]  ?? 0, dlResults["tusd"]  ?? 0, clResults["tusd"]  ?? 0]),
       frax:   median([cgData["frax"]?.usd          ?? 0, dlResults["frax"]   ?? 0]),
       gho:    median([cgData["gho"]?.usd           ?? 0, dlResults["gho"]    ?? 0]),
       crvusd: median([cgData["crvusd"]?.usd        ?? 0, dlResults["crvusd"] ?? 0]),
@@ -262,7 +272,7 @@ export async function GET(request: Request) {
       eurc:   median([cgData["euro-coin"]?.usd     ?? 0, dlResults["eurc"]   ?? 0]),
       dola:   median([cgData["dola-usd"]?.usd      ?? 0, dlResults["dola"]   ?? 0]),
       alusd:  median([cgData["alchemix-usd"]?.usd  ?? 0, dlResults["alusd"]  ?? 0]),
-      bold:   median([cgData["bold"]?.usd          ?? 0, dlResults["bold"]   ?? 0]),
+      bold:   median([cgData["liquity-bold-2"]?.usd          ?? 0, dlResults["bold"]   ?? 0]),
       usdg:   median([cgData["global-dollar"]?.usd  ?? 0, dlResults["usdg"]   ?? 0]),
     };
 
