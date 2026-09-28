@@ -2,14 +2,22 @@ import { NextResponse } from "next/server";
 
 const MAINNET_FALLBACK = "https://ethereum-rpc.publicnode.com";
 
-function median(values: number[]): number {
-  const sorted = values.filter(v => v > 0.5 && v < 1.5).sort((a, b) => a - b);
-  if (sorted.length === 0) return 1.0;
-  if (sorted.length === 1) return sorted[0];
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 !== 0
-    ? sorted[mid]
-    : (sorted[mid - 1] + sorted[mid]) / 2;
+function median(values: number[]): number | null {
+  const valid = values.filter(v => isFinite(v) && v > 0);
+  if (valid.length === 0) return null;
+  const sorted = [...valid].sort((a, b) => a - b);
+  const rawMid = Math.floor(sorted.length / 2);
+  const raw = sorted.length % 2 !== 0
+    ? sorted[rawMid]
+    : (sorted[rawMid - 1] + sorted[rawMid]) / 2;
+  if (valid.length < 3) return raw;
+  // 3+ sources: drop outliers > 20% from preliminary median, then re-median
+  const trimmed = sorted.filter(v => Math.abs(v - raw) / raw <= 0.20);
+  if (trimmed.length === 0) return raw;
+  const mid = Math.floor(trimmed.length / 2);
+  return trimmed.length % 2 !== 0
+    ? trimmed[mid]
+    : (trimmed[mid - 1] + trimmed[mid]) / 2;
 }
 
 // Chainlink feed contracts (Ethereum Mainnet, 8 decimals)
@@ -258,12 +266,16 @@ export async function GET() {
       usdc: {
         pool_price: uniswapResults["usdc"] ?? 0,
         consensus_price: prices.usdc,
-        divergence_bps: Math.round(Math.abs((uniswapResults["usdc"] ?? 0) - prices.usdc) * 10000),
+        divergence_bps: prices.usdc !== null
+          ? Math.round(Math.abs((uniswapResults["usdc"] ?? 0) - prices.usdc) * 10000)
+          : null,
       },
       usdt: {
         pool_price: uniswapResults["usdt"] ?? 0,
         consensus_price: prices.usdt,
-        divergence_bps: Math.round(Math.abs((uniswapResults["usdt"] ?? 0) - prices.usdt) * 10000),
+        divergence_bps: prices.usdt !== null
+          ? Math.round(Math.abs((uniswapResults["usdt"] ?? 0) - prices.usdt) * 10000)
+          : null,
       },
     };
 

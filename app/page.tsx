@@ -88,7 +88,8 @@ export default function Home() {
     yesterdayClassification: string;
   };
 
-  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [prices, setPrices] = useState<Record<string, number | null>>({});
+  const [pricesLoaded, setPricesLoaded] = useState(false);
   const [coinSources, setCoinSources] = useState<Record<string, Record<string, number>>>({});
   const [eurUsd, setEurUsd] = useState(1.16);
   const [fearGreed, setFearGreed] = useState<FearGreedData | null>(null);
@@ -223,23 +224,27 @@ export default function Home() {
 
   // Save snapshot and refresh history whenever balances + prices are both loaded
   useEffect(() => {
-    if (!walletAddress || Object.keys(walletBalances).length === 0 || Object.keys(prices).length === 0) return;
+    if (!walletAddress || !pricesLoaded || Object.keys(walletBalances).length === 0) return;
 
-    // Inline score calculation — avoids referencing render-derived consts before their declaration
+    // Only include coins where we have a real live price; skip any with null/undefined
     const heldSlugs = Object.entries(walletBalances).filter(([, b]) => formatBalance(b.balance, b.decimals) > 0.0001);
     if (heldSlugs.length === 0) return;
 
-    const total = heldSlugs.reduce((sum, [slug, b]) => {
-      const price = prices[slug] ?? (COIN_PEGS[slug] ?? 1.0);
-      return sum + formatBalance(b.balance, b.decimals) * price;
-    }, 0);
+    const pricedHeld: { slug: string; price: number; amount: number }[] = [];
+    for (const [slug, b] of heldSlugs) {
+      const p = prices[slug];
+      if (typeof p !== "number") continue; // null (no sources) or undefined (not loaded) — skip
+      pricedHeld.push({ slug, price: p, amount: formatBalance(b.balance, b.decimals) });
+    }
+    if (pricedHeld.length === 0) return; // no live prices at all — skip snapshot
+
+    const total = pricedHeld.reduce((sum, { price, amount }) => sum + amount * price, 0);
     if (total === 0) return;
 
     const score = (() => {
-      const weighted = heldSlugs.reduce((sum, [slug, b]) => {
-        const price = prices[slug] ?? (COIN_PEGS[slug] ?? 1.0);
+      const weighted = pricedHeld.reduce((sum, { slug, price, amount }) => {
         const peg = COIN_PEGS[slug] ?? 1.0;
-        const weight = (formatBalance(b.balance, b.decimals) * price) / total;
+        const weight = (amount * price) / total;
         const { healthy, caution } = getThresholds(slug);
         const diff = Math.abs(price - peg) / peg;
         const pts = diff > caution ? 10 : diff > healthy ? 5 : 1;
@@ -256,14 +261,14 @@ export default function Home() {
     fetch("/api/wallet/snapshot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ address: walletAddress, riskScore: score, totalValue: total, coinCount: heldSlugs.length }),
+      body: JSON.stringify({ address: walletAddress, riskScore: score, totalValue: total, coinCount: pricedHeld.length }),
     }).catch(() => {});
 
     fetch(`/api/wallet/snapshot?address=${walletAddress}`)
       .then((r) => r.json())
       .then((data) => { if (data.snapshots) setScoreHistory(data.snapshots.slice(0, 7)); })
       .catch(() => {});
-  }, [walletAddress, walletBalances, prices]);
+  }, [walletAddress, walletBalances, prices, pricesLoaded]);
 
   // Fetch history when wallet first connects (before a snapshot is saved this session)
   useEffect(() => {
@@ -288,6 +293,8 @@ export default function Home() {
         }
       } catch (error) {
         console.error("Failed to fetch prices", error);
+      } finally {
+        setPricesLoaded(true);
       }
     };
     fetchPrices();
@@ -323,7 +330,10 @@ export default function Home() {
     }
   };
 
-  const getLivePrice = (slug: string, fallback: number) => prices[slug] ?? fallback;
+  const getLivePrice = (slug: string, _fallback?: number): number | null => {
+    const p = prices[slug];
+    return p ?? null; // undefined (not loaded) or null (no valid sources) → null
+  };
   const getEffectivePeg = (slug: string) => slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
   const getSourceCount = (slug: string): number | null => {
     const s = coinSources[slug];
@@ -331,7 +341,8 @@ export default function Home() {
     return Object.values(s).filter((v) => v > 0).length;
   };
 
-  const getStatus = (price: number, peg: number, slug = '') => {
+  const getStatus = (price: number | null, peg: number, slug = ''): string => {
+    if (price === null) return "No data";
     const { healthy, caution } = getThresholds(slug);
     const diff = Math.abs(price - peg) / peg;
     if (diff <= healthy) return "Healthy";
@@ -342,6 +353,7 @@ export default function Home() {
   const statusColor = (status: string) => {
     if (status === "Healthy") return "#16a34a";
     if (status === "Caution") return "#d97706";
+    if (status === "No data" || status === "Loading...") return "#6b7280";
     return "#dc2626";
   };
 
@@ -349,16 +361,18 @@ export default function Home() {
     if (dark) {
       if (status === "Healthy") return "#052e16";
       if (status === "Caution") return "#451a03";
+      if (status === "No data" || status === "Loading...") return "#111827";
       return "#450a0a";
     }
     if (status === "Healthy") return "#f0fdf4";
     if (status === "Caution") return "#fffbeb";
+    if (status === "No data" || status === "Loading...") return "#f3f4f6";
     return "#fef2f2";
   };
 
-  const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), getEffectivePeg(c.slug), c.slug) === "Healthy").length;
-  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), getEffectivePeg(c.slug), c.slug) === "Caution").length;
-  const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug, c.peg), getEffectivePeg(c.slug), c.slug) === "Depeg").length;
+  const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug) === "Healthy").length;
+  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug) === "Caution").length;
+  const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug) === "Depeg").length;
 
   const holdings = walletAddress
     ? stablecoins.filter((coin) => {
@@ -368,23 +382,32 @@ export default function Home() {
       })
     : [];
 
-  const portfolioTotal = holdings.reduce((sum, coin) => {
-    const bal = walletBalances[coin.slug];
-    const amount = formatBalance(bal.balance, bal.decimals);
-    return sum + amount * getLivePrice(coin.slug, coin.peg);
-  }, 0);
+  const { portfolioTotal, portfolioNoDataCount } = holdings.reduce(
+    ({ portfolioTotal, portfolioNoDataCount }, coin) => {
+      const price = getLivePrice(coin.slug);
+      if (price === null) return { portfolioTotal, portfolioNoDataCount: portfolioNoDataCount + 1 };
+      const bal = walletBalances[coin.slug];
+      return {
+        portfolioTotal: portfolioTotal + formatBalance(bal.balance, bal.decimals) * price,
+        portfolioNoDataCount,
+      };
+    },
+    { portfolioTotal: 0, portfolioNoDataCount: 0 }
+  );
 
   const portfolioRiskScore = (() => {
     if (holdings.length === 0 || portfolioTotal === 0) return 0;
-    const weighted = holdings.reduce((sum, coin) => {
+    let weighted = 0;
+    for (const coin of holdings) {
+      const price = getLivePrice(coin.slug);
+      if (price === null) continue;
       const bal = walletBalances[coin.slug];
       const amount = formatBalance(bal.balance, bal.decimals);
-      const price = getLivePrice(coin.slug, coin.peg);
       const weight = (amount * price) / portfolioTotal;
       const status = getStatus(price, getEffectivePeg(coin.slug), coin.slug);
       const pts = status === "Depeg" ? 10 : status === "Caution" ? 5 : 1;
-      return sum + weight * pts;
-    }, 0);
+      weighted += weight * pts;
+    }
     return Math.round(weighted * 10) / 10;
   })();
 
@@ -450,17 +473,19 @@ export default function Home() {
       </div>
 
       {/* Stablecoin Health Index */}
-      {Object.keys(prices).length > 0 && (() => {
-        const pegScores = stablecoins.map((coin) => {
-          const price = getLivePrice(coin.slug, coin.peg);
+      {pricesLoaded && (() => {
+        let scoreSum = 0, scoreCount = 0;
+        for (const coin of stablecoins) {
+          const price = getLivePrice(coin.slug);
+          if (price === null) continue;
           const peg = getEffectivePeg(coin.slug);
           const bps = (Math.abs(price - peg) / peg) * 10000;
-          if (bps < 20) return 100;
-          if (bps < 50) return 75;
-          if (bps < 200) return 25;
-          return 0;
-        });
-        const pegScore = pegScores.reduce<number>((a, b) => a + b, 0) / pegScores.length;
+          const s = bps < 20 ? 100 : bps < 50 ? 75 : bps < 200 ? 25 : 0;
+          scoreSum += s;
+          scoreCount++;
+        }
+        if (scoreCount === 0) return null;
+        const pegScore = scoreSum / scoreCount;
         const healthIndex = fearGreed
           ? Math.round(0.5 * pegScore + 0.5 * fearGreed.score)
           : Math.round(pegScore);
@@ -528,8 +553,11 @@ export default function Home() {
       {/* Coin list */}
       <div style={{ background: cardBg, transition: "background 0.2s ease" }}>
         {stablecoins.map((coin) => {
-          const livePrice = getLivePrice(coin.slug, coin.peg);
-          const liveStatus = getStatus(livePrice, getEffectivePeg(coin.slug), coin.slug);
+          const livePrice = getLivePrice(coin.slug);
+          const noDataLabel = pricesLoaded ? "No data" : "Loading...";
+          const liveStatus = livePrice !== null
+            ? getStatus(livePrice, getEffectivePeg(coin.slug), coin.slug)
+            : noDataLabel;
           const sourceCount = getSourceCount(coin.slug);
           return (
             <Link
@@ -563,8 +591,8 @@ export default function Home() {
                   </span>
                 </div>
               </div>
-              <div style={{ fontFamily: "monospace", fontSize: "13px", fontWeight: "500", color: livePrice < 0.995 ? statusColor(liveStatus) : (dark ? "#d1d5db" : "#374151"), textAlign: "center" }}>
-                ${livePrice.toFixed(4)}
+              <div style={{ fontFamily: "monospace", fontSize: "13px", fontWeight: "500", color: (livePrice !== null && livePrice < 0.995) ? statusColor(liveStatus) : (dark ? "#d1d5db" : "#374151"), textAlign: "center" }}>
+                {livePrice !== null ? `$${livePrice.toFixed(4)}` : noDataLabel}
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <span style={{ padding: "3px 9px", borderRadius: "20px", fontSize: "11px", fontWeight: "600", background: statusBg(liveStatus), color: statusColor(liveStatus), whiteSpace: "nowrap" }}>
@@ -588,9 +616,16 @@ export default function Home() {
             <div>
               <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>Your Holdings</div>
               {portfolioTotal > 0 && (
-                <div style={{ fontSize: "18px", fontWeight: "800", fontFamily: "monospace", color: textPrimary, marginTop: "3px", lineHeight: 1 }}>
-                  ${portfolioTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
+                <>
+                  <div style={{ fontSize: "18px", fontWeight: "800", fontFamily: "monospace", color: textPrimary, marginTop: "3px", lineHeight: 1 }}>
+                    ${portfolioTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  {portfolioNoDataCount > 0 && (
+                    <div style={{ fontSize: "10px", color: textSecondary, marginTop: "3px" }}>
+                      Excludes {portfolioNoDataCount} coin{portfolioNoDataCount > 1 ? "s" : ""} with no live price
+                    </div>
+                  )}
+                </>
               )}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
@@ -683,9 +718,10 @@ export default function Home() {
             holdings.map((coin) => {
               const bal = walletBalances[coin.slug];
               const amount = formatBalance(bal.balance, bal.decimals);
-              const price = getLivePrice(coin.slug, coin.peg);
-              const usdValue = amount * price;
-              const status = getStatus(price, getEffectivePeg(coin.slug), coin.slug);
+              const holdingPrice = getLivePrice(coin.slug);
+              const holdingStatus = holdingPrice !== null
+                ? getStatus(holdingPrice, getEffectivePeg(coin.slug), coin.slug)
+                : (pricesLoaded ? "No data" : "Loading...");
               return (
                 <Link
                   key={coin.slug}
@@ -704,10 +740,12 @@ export default function Home() {
                     </div>
                   </div>
                   <div style={{ fontFamily: "monospace", fontSize: "13px", color: textPrimary, textAlign: "right" }}>
-                    ${usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {holdingPrice !== null
+                      ? `$${(amount * holdingPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : "—"}
                   </div>
-                  <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "10px", fontWeight: "600", background: statusBg(status), color: statusColor(status), whiteSpace: "nowrap" }}>
-                    {status}
+                  <span style={{ padding: "2px 8px", borderRadius: "20px", fontSize: "10px", fontWeight: "600", background: statusBg(holdingStatus), color: statusColor(holdingStatus), whiteSpace: "nowrap" }}>
+                    {holdingStatus}
                   </span>
                 </Link>
               );

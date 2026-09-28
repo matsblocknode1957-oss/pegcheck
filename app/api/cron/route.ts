@@ -31,14 +31,22 @@ async function ethCallWithRetry(contract: string, data: string, primaryUrl: stri
   return null;
 }
 
-function median(values: number[]): number {
-  const sorted = values.filter(v => v > 0.5 && v < 1.5).sort((a, b) => a - b);
-  if (sorted.length === 0) return 1.0;
-  if (sorted.length === 1) return sorted[0];
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 !== 0
-    ? sorted[mid]
-    : (sorted[mid - 1] + sorted[mid]) / 2;
+function median(values: number[]): number | null {
+  const valid = values.filter(v => isFinite(v) && v > 0);
+  if (valid.length === 0) return null;
+  const sorted = [...valid].sort((a, b) => a - b);
+  const rawMid = Math.floor(sorted.length / 2);
+  const raw = sorted.length % 2 !== 0
+    ? sorted[rawMid]
+    : (sorted[rawMid - 1] + sorted[rawMid]) / 2;
+  if (valid.length < 3) return raw;
+  // 3+ sources: drop outliers > 20% from preliminary median, then re-median
+  const trimmed = sorted.filter(v => Math.abs(v - raw) / raw <= 0.20);
+  if (trimmed.length === 0) return raw;
+  const mid = Math.floor(trimmed.length / 2);
+  return trimmed.length % 2 !== 0
+    ? trimmed[mid]
+    : (trimmed[mid - 1] + trimmed[mid]) / 2;
 }
 
 // Chainlink price feed contracts (Ethereum Mainnet, 8 decimals)
@@ -270,7 +278,7 @@ export async function GET(request: Request) {
     }
 
     // Compute Median Prices
-    const prices: Record<string, number> = {
+    const prices: Record<string, number | null> = {
       usdt:   median([cgData["tether"]?.usd ?? 0,        cbResults["USDT-USD"] ?? 0,                                  krResults["usdt"]  ?? 0, dlResults["usdt"]  ?? 0, clResults["usdt"]  ?? 0]),
       usdc:   median([cgData["usd-coin"]?.usd ?? 0,      cbResults["USDC-USD"] ?? 0,  bnResults["usdc"]  ?? 0,        krResults["usdc"]  ?? 0, dlResults["usdc"]  ?? 0, clResults["usdc"]  ?? 0]),
       usds:   median([cgData["usds"]?.usd ?? 0,           cbResults["USDS-USD"] ?? 0,   bnResults["usds"]  ?? 0,        krResults["usds"]  ?? 0, dlResults["usds"]   ?? 0, clResults["usds"]  ?? 0]),
@@ -317,11 +325,13 @@ export async function GET(request: Request) {
     };
 
     // Save Price Snapshot
-    const snapshots = Object.entries(prices).map(([slug, price]) => ({
-      slug,
-      price,
-      deviation_bps: Math.round((price - effectivePeg(slug)) / effectivePeg(slug) * 10000),
-    }));
+    const snapshots = Object.entries(prices)
+      .filter((e): e is [string, number] => e[1] !== null)
+      .map(([slug, price]) => ({
+        slug,
+        price,
+        deviation_bps: Math.round((price - effectivePeg(slug)) / effectivePeg(slug) * 10000),
+      }));
     const { error: priceError } = await supabase.from("price_history").insert(snapshots);
     if (priceError) console.error("Price history insert error:", priceError);
     else console.log("Price history saved:", snapshots.length, "rows");
@@ -345,7 +355,9 @@ export async function GET(request: Request) {
     );
 
     // Check for Depegs — only alert if coin has ≥2 history records AND wasn't already depegged last cycle
-    const currentlyDepegged = Object.entries(prices).filter(([slug, price]) => price < effectivePeg(slug) * 0.975);
+    const currentlyDepegged = Object.entries(prices).filter(
+      (e): e is [string, number] => e[1] !== null && e[1] < effectivePeg(e[0]) * 0.975
+    );
 
     const depegChecks = await Promise.all(
       currentlyDepegged.map(async ([slug]) => {
@@ -370,8 +382,8 @@ export async function GET(request: Request) {
     // Recovery detection — was depegged last cycle, now back above 2.5% threshold
     const recoveryResults = await Promise.all(
       Object.entries(prices)
-        .filter(([slug, price]) => price >= effectivePeg(slug) * 0.975)
-        .map(async ([slug]) => {
+        .filter((e): e is [string, number] => e[1] !== null && e[1] >= effectivePeg(e[0]) * 0.975)
+        .map(async ([slug, price]) => {
           if (!seasonedSlugs.has(slug)) return null; // < 30 days of history — skip
           const { data } = await supabase
             .from("price_history")
@@ -382,7 +394,7 @@ export async function GET(request: Request) {
           if (!data || data.length < 2) return null;
           const prevPrice = Number(data[1].price);
           if (prevPrice >= effectivePeg(slug) * 0.975) return null;
-          return [slug, prices[slug]] as [string, number];
+          return [slug, price] as [string, number];
         })
     );
     const recovered = recoveryResults.filter(Boolean) as [string, number][];
@@ -390,11 +402,12 @@ export async function GET(request: Request) {
     // Caution detection — newly entered the 1–2.5% below-peg zone
     const cautionResults = await Promise.all(
       Object.entries(prices)
-        .filter(([slug, price]) => {
-          const peg = effectivePeg(slug);
-          return price >= peg * 0.975 && price < peg * 0.99;
+        .filter((e): e is [string, number] => {
+          if (e[1] === null) return false;
+          const peg = effectivePeg(e[0]);
+          return e[1] >= peg * 0.975 && e[1] < peg * 0.99;
         })
-        .map(async ([slug]) => {
+        .map(async ([slug, price]) => {
           if (!seasonedSlugs.has(slug)) return null; // < 30 days of history — skip
           const { data } = await supabase
             .from("price_history")
@@ -407,7 +420,7 @@ export async function GET(request: Request) {
           const peg = effectivePeg(slug);
           if (prevPrice >= peg * 0.975 && prevPrice < peg * 0.99) return null;
           if (EXCLUDED_FROM_ALERTS.includes(slug)) return null;
-          return [slug, prices[slug]] as [string, number];
+          return [slug, price] as [string, number];
         })
     );
     const cautioned = cautionResults.filter(Boolean) as [string, number][];
