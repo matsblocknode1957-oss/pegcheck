@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
 
   const cmcId = CMC_IDS[slug];
   const cmcApiKey = process.env.CMC_API_KEY;
+  const cgKey = process.env.COINGECKO_API_KEY;
   const peg = slug === "eurc" ? await fetchEurUsd() : 1.0;
 
   try {
@@ -99,7 +100,10 @@ export async function GET(request: NextRequest) {
         .single() as unknown as Promise<unknown>,
       fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd`,
-        { next: { revalidate: 60 } }
+        {
+          next: { revalidate: 60 },
+          ...(cgKey ? { headers: { "x-cg-demo-api-key": cgKey } } : {}),
+        }
       ).then((r) => r.json()),
     ];
 

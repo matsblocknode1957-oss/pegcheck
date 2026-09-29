@@ -123,11 +123,15 @@ export async function GET(request: Request) {
       slug === "eurc" ? (eurUsd ?? COIN_PEGS.eurc) : (COIN_PEGS[slug] ?? 1.0);
 
     // CoinGecko
+    const cgKey = process.env.COINGECKO_API_KEY;
     let cgData: Record<string, { usd?: number }> = {};
     try {
       const cgRes = await fetch(
         "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax-usd,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar&vs_currencies=usd",
-        { signal: AbortSignal.timeout(10000) }
+        {
+          signal: AbortSignal.timeout(10000),
+          ...(cgKey ? { headers: { "x-cg-demo-api-key": cgKey } } : {}),
+        }
       );
       if (!cgRes.ok) throw new Error(`HTTP ${cgRes.status}`);
       cgData = await cgRes.json();

@@ -29,9 +29,13 @@ export async function fetchEurUsd(): Promise<number | null> {
   }
   // Fallback: derive from BTC priced in USD and EUR (avoids euro-coin/EURC circularity)
   try {
+    const cgKey = process.env.COINGECKO_API_KEY;
     const res = await fetch(
       "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur",
-      { signal: AbortSignal.timeout(6000) }
+      {
+        signal: AbortSignal.timeout(6000),
+        ...(cgKey ? { headers: { "x-cg-demo-api-key": cgKey } } : {}),
+      }
     );
     const data = await res.json();
     const btcUsd = data?.bitcoin?.usd;
