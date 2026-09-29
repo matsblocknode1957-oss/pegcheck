@@ -104,16 +104,18 @@ async function fetchChainlinkPrice(contract: string, primaryUrl: string): Promis
 
 export async function GET() {
   try {
-    // Source 1 — CoinGecko (coin prices + live EUR/USD rate in parallel)
+    // Source 1 — CoinGecko + EUR/USD: run concurrently, each fault-tolerant
     const cgIds = "tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax-usd,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar";
-    const [cgRes, eurUsd] = await Promise.all([
-      fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd`,
-        { next: { revalidate: 60 } }
-      ),
-      fetchEurUsd(),
-    ]);
-    const cgData = await cgRes.json();
+    const cgDataPromise = fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd`,
+      { next: { revalidate: 60 }, signal: AbortSignal.timeout(10000) }
+    )
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<Record<string, { usd?: number }>>; })
+      .catch((e: unknown) => {
+        console.error("CoinGecko source failed:", e instanceof Error ? e.message : String(e));
+        return {} as Record<string, { usd?: number }>;
+      });
+    const [cgData, eurUsd] = await Promise.all([cgDataPromise, fetchEurUsd()]);
 
     // Source 2 — Coinbase
     const cbSlugs = ["USDT-USD","USDC-USD","USDS-USD","PYUSD-USD"];
@@ -166,9 +168,17 @@ export async function GET() {
     );
 
     // Source 5 — DefiLlama
-    const dlRes = await fetch(`https://stablecoins.llama.fi/stablecoins?includePrices=true`);
-    const dlData = await dlRes.json();
-    const dlCoins = dlData?.peggedAssets ?? [];
+    let dlCoins: { symbol: string; name: string; price: number }[] = [];
+    try {
+      const dlRes = await fetch("https://stablecoins.llama.fi/stablecoins?includePrices=true", {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!dlRes.ok) throw new Error(`HTTP ${dlRes.status}`);
+      const dlData = await dlRes.json();
+      dlCoins = dlData?.peggedAssets ?? [];
+    } catch (e: unknown) {
+      console.error("DefiLlama source failed:", e instanceof Error ? e.message : String(e));
+    }
     const dlResults: Record<string, number> = {};
     dlCoins.forEach((coin: { symbol: string; price: number }) => {
       dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;

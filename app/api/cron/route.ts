@@ -123,10 +123,17 @@ export async function GET(request: Request) {
       slug === "eurc" ? (eurUsd ?? COIN_PEGS.eurc) : (COIN_PEGS[slug] ?? 1.0);
 
     // CoinGecko
-    const cgRes = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax-usd,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar&vs_currencies=usd"
-    );
-    const cgData = await cgRes.json();
+    let cgData: Record<string, { usd?: number }> = {};
+    try {
+      const cgRes = await fetch(
+        "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax-usd,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar&vs_currencies=usd",
+        { signal: AbortSignal.timeout(10000) }
+      );
+      if (!cgRes.ok) throw new Error(`HTTP ${cgRes.status}`);
+      cgData = await cgRes.json();
+    } catch (e: unknown) {
+      console.error("CoinGecko source failed:", e instanceof Error ? e.message : String(e));
+    }
 
     // Coinbase
     const cbSlugs = ["USDT-USD","USDC-USD","USDS-USD","PYUSD-USD"];
@@ -171,9 +178,17 @@ export async function GET(request: Request) {
     );
 
     // DefiLlama
-    const dlRes = await fetch("https://stablecoins.llama.fi/stablecoins?includePrices=true");
-    const dlData = await dlRes.json();
-    const dlCoins = dlData?.peggedAssets ?? [];
+    let dlCoins: { symbol: string; name: string; price: number }[] = [];
+    try {
+      const dlRes = await fetch("https://stablecoins.llama.fi/stablecoins?includePrices=true", {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!dlRes.ok) throw new Error(`HTTP ${dlRes.status}`);
+      const dlData = await dlRes.json();
+      dlCoins = dlData?.peggedAssets ?? [];
+    } catch (e: unknown) {
+      console.error("DefiLlama source failed:", e instanceof Error ? e.message : String(e));
+    }
     const dlResults: Record<string, number> = {};
     dlCoins.forEach((coin: { symbol: string; price: number }) => {
       dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;
