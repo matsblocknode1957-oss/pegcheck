@@ -76,17 +76,22 @@ export async function GET(
     const row = data[0];
     const price = Number(row.price);
     const peg = slug === "eurc" ? await fetchEurUsd() : (COIN_PEGS[slug] ?? 1.0);
-    const deviation = ((price - peg) / peg) * 100;
-    const absDeviation = Math.abs(deviation);
     const { healthy, caution } = getThresholds(slug);
-    const status =
-      absDeviation >= caution * 100 ? "depegged" :
-      absDeviation >= healthy * 100 ? "warning" : "stable";
+    let deviation: number | null = null;
+    let status = "unknown";
+    if (peg !== null) {
+      const rawDeviation = ((price - peg) / peg) * 100;
+      const absDeviation = Math.abs(rawDeviation);
+      deviation = parseFloat(rawDeviation.toFixed(4));
+      status = absDeviation >= caution * 100 ? "depegged"
+        : absDeviation >= healthy * 100 ? "warning" : "stable";
+    }
 
     return NextResponse.json({
       slug: row.slug,
       price,
-      deviation: parseFloat(deviation.toFixed(4)),
+      peg,
+      deviation,
       status,
       updated_at: row.created_at,
       chainlink_por: porData,

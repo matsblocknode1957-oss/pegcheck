@@ -117,7 +117,10 @@ export async function GET(request: Request) {
     );
 
     const eurUsd = await fetchEurUsd();
-    const effectivePeg = (slug: string) => slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
+    // eurUsd ?? COIN_PEGS.eurc is dead code when prices.eurc is null (see below),
+    // but keeps effectivePeg returning number so callers need no null guards.
+    const effectivePeg = (slug: string): number =>
+      slug === "eurc" ? (eurUsd ?? COIN_PEGS.eurc) : (COIN_PEGS[slug] ?? 1.0);
 
     // CoinGecko
     const cgRes = await fetch(
@@ -300,6 +303,10 @@ export async function GET(request: Request) {
       bold:   median([cgData["liquity-bold-2"]?.usd          ?? 0, dlResults["bold"]   ?? 0]),
       usdg:   median([cgData["global-dollar"]?.usd  ?? 0, dlResults["usdg"]   ?? 0]),
     };
+
+    // When EUR/USD rate unavailable, treat EURC as no data so it is excluded
+    // from snapshots, depeg/caution checks, alerts, and on-chain logging.
+    if (eurUsd === null) prices.eurc = null;
 
     const coinNames: Record<string, string> = {
       usdt: "USDT (Tether)",

@@ -91,7 +91,7 @@ export default function Home() {
   const [prices, setPrices] = useState<Record<string, number | null>>({});
   const [pricesLoaded, setPricesLoaded] = useState(false);
   const [coinSources, setCoinSources] = useState<Record<string, Record<string, number>>>({});
-  const [eurUsd, setEurUsd] = useState(1.16);
+  const [eurUsd, setEurUsd] = useState<number | null>(null);
   const [fearGreed, setFearGreed] = useState<FearGreedData | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>("Loading...");
   const [hoveredCoin, setHoveredCoin] = useState<string | null>(null);
@@ -287,7 +287,7 @@ export default function Home() {
         if (data.prices) {
           setPrices(data.prices);
           if (data.sources) setCoinSources(data.sources);
-          if (data.eurUsd) setEurUsd(data.eurUsd);
+          setEurUsd(data.eurUsd ?? null);
           const now = new Date();
           setLastUpdated(now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
         }
@@ -334,15 +334,16 @@ export default function Home() {
     const p = prices[slug];
     return p ?? null; // undefined (not loaded) or null (no valid sources) → null
   };
-  const getEffectivePeg = (slug: string) => slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
+  const getEffectivePeg = (slug: string): number | null =>
+    slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
   const getSourceCount = (slug: string): number | null => {
     const s = coinSources[slug];
     if (!s) return null;
     return Object.values(s).filter((v) => v > 0).length;
   };
 
-  const getStatus = (price: number | null, peg: number, slug = ''): string => {
-    if (price === null) return "No data";
+  const getStatus = (price: number | null, peg: number | null, slug = ''): string => {
+    if (price === null || peg === null) return "No data";
     const { healthy, caution } = getThresholds(slug);
     const diff = Math.abs(price - peg) / peg;
     if (diff <= healthy) return "Healthy";
@@ -404,7 +405,9 @@ export default function Home() {
       const bal = walletBalances[coin.slug];
       const amount = formatBalance(bal.balance, bal.decimals);
       const weight = (amount * price) / portfolioTotal;
-      const status = getStatus(price, getEffectivePeg(coin.slug), coin.slug);
+      const peg = getEffectivePeg(coin.slug);
+      if (peg === null) continue;
+      const status = getStatus(price, peg, coin.slug);
       const pts = status === "Depeg" ? 10 : status === "Caution" ? 5 : 1;
       weighted += weight * pts;
     }
@@ -479,6 +482,7 @@ export default function Home() {
           const price = getLivePrice(coin.slug);
           if (price === null) continue;
           const peg = getEffectivePeg(coin.slug);
+          if (peg === null) continue;
           const bps = (Math.abs(price - peg) / peg) * 10000;
           const s = bps < 20 ? 100 : bps < 50 ? 75 : bps < 200 ? 25 : 0;
           scoreSum += s;

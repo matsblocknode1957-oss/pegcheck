@@ -46,7 +46,8 @@ async function fetchChainlinkPoR(
 export async function GET() {
   try {
     const eurUsd = await fetchEurUsd();
-    const effectivePeg = (slug: string) => slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
+    const effectivePeg = (slug: string): number | null =>
+      slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
 
     // Fetch PoR data in parallel with coin price queries
     const rpcUrl = process.env.ALCHEMY_RPC_URL ?? "";
@@ -73,17 +74,22 @@ export async function GET() {
 
         const price = Number(data.price);
         const peg = effectivePeg(slug);
-        const deviation = ((price - peg) / peg) * 100;
-        const absDeviation = Math.abs(deviation);
         const { healthy, caution } = getThresholds(slug);
-        const status =
-          absDeviation >= caution * 100 ? "depegged" :
-          absDeviation >= healthy * 100 ? "warning" : "stable";
+        let deviation: number | null = null;
+        let status = "unknown";
+        if (peg !== null) {
+          const rawDeviation = ((price - peg) / peg) * 100;
+          const absDeviation = Math.abs(rawDeviation);
+          deviation = parseFloat(rawDeviation.toFixed(4));
+          status = absDeviation >= caution * 100 ? "depegged"
+            : absDeviation >= healthy * 100 ? "warning" : "stable";
+        }
 
         return {
           slug: data.slug,
           price,
-          deviation: parseFloat(deviation.toFixed(4)),
+          peg,
+          deviation,
           status,
           updated_at: data.created_at,
           chainlink_por: porResults[slug] ?? null,

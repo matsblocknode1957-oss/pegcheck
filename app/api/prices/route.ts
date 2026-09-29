@@ -1,3 +1,4 @@
+import { fetchEurUsd } from "@/lib/fetchEurUsd";
 import { NextResponse } from "next/server";
 
 const MAINNET_FALLBACK = "https://ethereum-rpc.publicnode.com";
@@ -105,17 +106,14 @@ export async function GET() {
   try {
     // Source 1 — CoinGecko (coin prices + live EUR/USD rate in parallel)
     const cgIds = "tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax-usd,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar";
-    const [cgRes, eurUsdRes] = await Promise.all([
+    const [cgRes, eurUsd] = await Promise.all([
       fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd`,
         { next: { revalidate: 60 } }
       ),
-      fetch("https://api.coingecko.com/api/v3/simple/price?ids=euro-coin&vs_currencies=usd").catch(() => null),
+      fetchEurUsd(),
     ]);
     const cgData = await cgRes.json();
-    const eurUsdRaw = eurUsdRes ? await eurUsdRes.json().catch(() => null) : null;
-    const eurUsdLive = eurUsdRaw?.["euro-coin"]?.usd;
-    const eurUsd = (eurUsdLive && eurUsdLive > 0.5 && eurUsdLive < 2.0) ? eurUsdLive : 1.16;
 
     // Source 2 — Coinbase
     const cbSlugs = ["USDT-USD","USDC-USD","USDS-USD","PYUSD-USD"];

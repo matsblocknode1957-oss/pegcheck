@@ -43,16 +43,19 @@ export async function GET(
     const { healthy, caution } = getThresholds(slug);
     const history = data.map((row) => {
       const price = Number(row.price);
-      const deviation = ((price - peg) / peg) * 100;
-      const absDeviation = Math.abs(deviation);
+      if (peg === null) {
+        return { timestamp: row.created_at, price, peg: null, deviation: null, status: "unknown" };
+      }
+      const rawDeviation = ((price - peg) / peg) * 100;
+      const absDeviation = Math.abs(rawDeviation);
       const status =
         absDeviation >= caution * 100 ? "depegged" :
         absDeviation >= healthy * 100 ? "warning" : "stable";
-
       return {
         timestamp: row.created_at,
         price,
-        deviation: parseFloat(deviation.toFixed(4)),
+        peg,
+        deviation: parseFloat(rawDeviation.toFixed(4)),
         status,
       };
     });
@@ -61,6 +64,7 @@ export async function GET(
 
     return NextResponse.json({
       slug,
+      peg,
       interval,
       history,
       depeg_events: Object.fromEntries(depegEvents.map((h, i) => [String(i), h])),

@@ -116,24 +116,24 @@ export async function GET(request: NextRequest) {
     const results = await Promise.allSettled(fetches) as PromiseSettledResult<any>[];
     const [supabaseResult, cgResult, cmcResult] = results;
 
-    let pegcheckSource: { price: number; deviation_bps: number; source: string } | null = null;
+    let pegcheckSource: { price: number; deviation_bps: number | null; source: string } | null = null;
     if (supabaseResult.status === "fulfilled" && !supabaseResult.value.error && supabaseResult.value.data) {
       const price = Number(supabaseResult.value.data.price);
-      pegcheckSource = { price, deviation_bps: deviationBps(price, peg), source: "Chainlink" };
+      pegcheckSource = { price, deviation_bps: peg !== null ? deviationBps(price, peg) : null, source: "Chainlink" };
     }
 
-    let coingeckoSource: { price: number; deviation_bps: number; source: string } | null = null;
+    let coingeckoSource: { price: number; deviation_bps: number | null; source: string } | null = null;
     if (cgResult.status === "fulfilled" && cgResult.value?.[cgId]?.usd != null) {
       const price = Number(cgResult.value[cgId].usd);
-      coingeckoSource = { price, deviation_bps: deviationBps(price, peg), source: "CoinGecko" };
+      coingeckoSource = { price, deviation_bps: peg !== null ? deviationBps(price, peg) : null, source: "CoinGecko" };
     }
 
-    let cmcSource: { price: number; deviation_bps: number; source: string } | null = null;
+    let cmcSource: { price: number; deviation_bps: number | null; source: string } | null = null;
     if (cmcResult?.status === "fulfilled" && cmcId) {
       const cmcPrice = cmcResult.value?.data?.[String(cmcId)]?.quote?.USD?.price;
       if (cmcPrice != null) {
         const price = Number(cmcPrice);
-        cmcSource = { price, deviation_bps: deviationBps(price, peg), source: "CoinMarketCap" };
+        cmcSource = { price, deviation_bps: peg !== null ? deviationBps(price, peg) : null, source: "CoinMarketCap" };
       }
     }
 
@@ -150,16 +150,17 @@ export async function GET(request: NextRequest) {
     const consensusPrice = parseFloat(
       (availablePrices.reduce((a, b) => a + b, 0) / availablePrices.length).toFixed(4)
     );
-    const consensusDeviationBps = deviationBps(consensusPrice, peg);
+    const consensusDeviationBps = peg !== null ? deviationBps(consensusPrice, peg) : null;
     const sourcesConfirmed = availablePrices.length;
 
     // HIGH only when ≥2 sources are present and all prices agree within 10 bps of consensus
     const maxDiffBps = availablePrices.length >= 2
       ? Math.max(...availablePrices.map((p) => Math.round(Math.abs(p - consensusPrice) * 10000)))
       : null;
-    const confidence = sourcesConfirmed >= 2 && maxDiffBps! <= 10 ? "HIGH" : "LOW";
+    const confidence = peg === null ? "NONE"
+      : sourcesConfirmed >= 2 && maxDiffBps !== null && maxDiffBps <= 10 ? "HIGH" : "LOW";
 
-    const sources: Record<string, { price: number; deviation_bps: number; source: string }> = {};
+    const sources: Record<string, { price: number; deviation_bps: number | null; source: string }> = {};
     if (pegcheckSource) sources.pegcheck = pegcheckSource;
     if (coingeckoSource) sources.coingecko = coingeckoSource;
     if (cmcSource) sources.coinmarketcap = cmcSource;
@@ -167,10 +168,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       coin: coin.toUpperCase(),
       timestamp: new Date().toISOString(),
+      peg,
       sources,
       consensus_price: consensusPrice,
       consensus_deviation_bps: consensusDeviationBps,
-      signal: signal(consensusDeviationBps),
+      signal: peg !== null && consensusDeviationBps !== null ? signal(consensusDeviationBps) : "UNKNOWN",
       confidence,
       sources_confirmed: sourcesConfirmed,
       pegcheck_url: "https://pegcheck.uk",

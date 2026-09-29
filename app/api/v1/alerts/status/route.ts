@@ -13,7 +13,8 @@ const SLUGS = ["usdt","usdc","usds","ethena","pyusd","fdusd","rlusd","tusd","fra
 export async function GET() {
   try {
     const eurUsd = await fetchEurUsd();
-    const effectivePeg = (slug: string) => slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
+    const effectivePeg = (slug: string): number | null =>
+      slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
     const alerts = [];
 
     for (const slug of SLUGS) {
@@ -29,6 +30,7 @@ export async function GET() {
       const row = data[0];
       const price = Number(row.price);
       const peg = effectivePeg(slug);
+      if (peg === null) continue; // EUR/USD unavailable — skip EURC, do not alert
       const deviation = ((price - peg) / peg) * 100;
       const absDeviation = Math.abs(deviation);
       const { healthy, caution } = getThresholds(slug);
