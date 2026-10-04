@@ -80,6 +80,7 @@ export default function StableGuardPage() {
   const monitoredCoins = [
     { slug: "usdt", name: "USDT", icon: "/icons/usdt.png", bgColor: "#26a17b" },
     { slug: "usdc", name: "USDC", icon: "/icons/usdc.png", bgColor: "#2775ca" },
+    { slug: "dai",  name: "DAI",  icon: "/icons/dai.png",  bgColor: "#f4b731" },
     { slug: "usds", name: "USDS", icon: "/icons/usds.png", bgColor: "#f4b731" },
   ];
 
@@ -183,8 +184,9 @@ export default function StableGuardPage() {
         <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "14px" }}>The CRE workflow covers USDC, USDT, DAI and USDS. Live prices shown for USDC, USDT and USDS.</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
           {monitoredCoins.map((coin) => {
-            const price = prices[coin.slug] ?? 1.0;
-            const s = coinStatus(coin.slug);
+            const rawPrice = prices[coin.slug];
+            const hasPrice = rawPrice !== undefined;
+            const s = hasPrice ? coinStatus(coin.slug) : null;
             return (
               <div key={coin.slug} style={{ background: innerBg, borderRadius: "10px", padding: "12px", border: `1px solid ${cardBorder}`, display: "flex", flexDirection: "column", gap: "8px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -194,8 +196,12 @@ export default function StableGuardPage() {
                   <span style={{ fontSize: "13px", fontWeight: "700", color: textPrimary }}>{coin.name}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontFamily: "monospace", fontSize: "12px", fontWeight: "600", color: textPrimary }}>${price.toFixed(4)}</span>
-                  <span style={{ padding: "2px 7px", borderRadius: "20px", fontSize: "10px", fontWeight: "700", background: statusBg(s), color: statusColor(s) }}>{s}</span>
+                  <span style={{ fontFamily: "monospace", fontSize: "12px", fontWeight: "600", color: textPrimary }}>
+                    {hasPrice ? `$${rawPrice.toFixed(4)}` : "—"}
+                  </span>
+                  {s !== null && (
+                    <span style={{ padding: "2px 7px", borderRadius: "20px", fontSize: "10px", fontWeight: "700", background: statusBg(s), color: statusColor(s) }}>{s}</span>
+                  )}
                 </div>
               </div>
             );
