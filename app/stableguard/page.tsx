@@ -185,7 +185,7 @@ export default function StableGuardPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
           {monitoredCoins.map((coin) => {
             const rawPrice = prices[coin.slug];
-            const hasPrice = rawPrice !== undefined;
+            const hasPrice = rawPrice != null;
             const s = hasPrice ? coinStatus(coin.slug) : null;
             return (
               <div key={coin.slug} style={{ background: innerBg, borderRadius: "10px", padding: "12px", border: `1px solid ${cardBorder}`, display: "flex", flexDirection: "column", gap: "8px" }}>
