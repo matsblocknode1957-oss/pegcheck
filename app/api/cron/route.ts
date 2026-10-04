@@ -362,6 +362,29 @@ export async function GET(request: Request) {
     if (priceError) console.error("Price history insert error:", priceError);
     else console.log("Price history saved:", snapshots.length, "rows");
 
+    // Save RWA NAV Snapshot
+    try {
+      const { fetchRwaAssets } = await import("@/lib/rwa");
+      const rwaAssets = await fetchRwaAssets();
+      const today = new Date().toISOString().slice(0, 10);
+      const rwaRows = rwaAssets
+        .filter(a => a.nav != null)
+        .map(a => ({
+          token: a.name, chain: a.chain, snapshot_date: today,
+          nav: a.nav, nav_updated_at: a.navUpdatedAt,
+          supply: a.supply, supply_usd: a.supplyUsd,
+        }));
+      if (rwaRows.length > 0) {
+        const { error: rwaError } = await supabase
+          .from("rwa_nav_history")
+          .upsert(rwaRows, { onConflict: "token,chain,snapshot_date" });
+        if (rwaError) console.error("RWA NAV history upsert error:", rwaError);
+        else console.log("RWA NAV history saved:", rwaRows.length, "rows");
+      }
+    } catch (e: unknown) {
+      console.error("RWA snapshot failed:", e instanceof Error ? e.message : String(e));
+    }
+
     // Build set of seasoned slugs — coins with ≥ 30 days of price history
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const seasoningResults = await Promise.all(

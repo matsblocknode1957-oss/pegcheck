@@ -16,7 +16,7 @@ interface RwaAsset {
 
 function fmtNav(nav: number | null): string {
   if (nav == null) return "—";
-  return "$" + nav.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+  return "$" + nav.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 }
 
 function fmtTokens(n: number | null): string {
@@ -36,7 +36,7 @@ function fmtUsd(n: number | null): string {
 
 function fmtUpdated(asset: RwaAsset): string {
   if (asset.navContinuous) return "Updates continuously";
-  if (!asset.navUpdatedAt) return "—";
+  if (!asset.navUpdatedAt) return "Updated by issuer";
   const d = new Date(asset.navUpdatedAt);
   return d.toLocaleString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
