@@ -49,6 +49,7 @@ export default function RwaPage() {
   const pathname = usePathname();
   const [assets, setAssets] = useState<RwaAsset[]>([]);
   const [lastUpdated, setLastUpdated] = useState("Loading...");
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [dark, setDark] = useState(() => {
     if (typeof window !== "undefined") return localStorage.getItem("pegcheck-dark") === "true";
     return false;
@@ -63,11 +64,17 @@ export default function RwaPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res  = await fetch("/api/rwa");
+        const res  = await fetch("/api/rwa", { signal: AbortSignal.timeout(15000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (Array.isArray(data.assets)) setAssets(data.assets);
+        if (!Array.isArray(data.assets) || data.assets.length === 0) throw new Error("no assets");
+        setAssets(data.assets);
+        setFetchFailed(false);
         setLastUpdated(new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
-      } catch {}
+      } catch {
+        setFetchFailed(true);
+        setLastUpdated("Unavailable");
+      }
     };
     load();
     const iv = setInterval(load, 300_000);
@@ -97,7 +104,7 @@ export default function RwaPage() {
           <span style={{ fontSize: "16px", fontWeight: "700", color: textPrimary }}>Tokenised Treasuries</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{ fontSize: "10px", color: textSecondary, fontFamily: "monospace" }}>Updated {lastUpdated}</div>
+          <div style={{ fontSize: "10px", color: textSecondary, fontFamily: "monospace" }}>{lastUpdated === "Unavailable" ? "Unavailable" : `Updated ${lastUpdated}`}</div>
           <button onClick={toggleDark} style={{ width: "32px", height: "32px", borderRadius: "8px", border: `1px solid ${headerBorder}`, background: dark ? "#1e2a40" : "#f3f4f6", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>
             {dark ? "☀️" : "🌙"}
           </button>
@@ -128,7 +135,9 @@ export default function RwaPage() {
       <div style={{ padding: "16px 20px 0", display: "flex", flexDirection: "column", gap: "12px" }}>
         {assets.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px 0", color: textSecondary, fontSize: "13px" }}>
-            Loading…
+            {fetchFailed
+              ? "Couldn't load the values right now. Try again in a minute."
+              : "Loading…"}
           </div>
         ) : assets.map((asset) => (
           <div key={asset.name} style={{ background: cardBg, borderRadius: "12px", padding: "18px 20px", border: `1px solid ${cardBorder}` }}>
