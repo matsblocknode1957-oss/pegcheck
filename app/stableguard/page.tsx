@@ -17,7 +17,7 @@ const CONTRACTS_ARB: [string, string][] = [
   ["DepegEventRegistry",     "0xAa940C87f3D3251fD297894b5cef7dC7e71b3665"],
   ["ProtectionHoldLedger",   "0xA3175824EEF5964bA5A839CdBc01e6F8F1F3444b"],
   ["StableGuardVault",       "0x86602cDeC52Df65Bc8D66528De429EB11A9E0497"],
-  ["StableGuardCREReceiver", "0x8A3De0095Eb8741f89d3a3BF71DEA1d4857a9bbd"],
+  ["StableGuardCREReceiver", "0xac83a85Ee4dF1FfF44DFdEF055e95Db4886a9aD8"],
 ];
 
 const ARBISCAN_BASE = "https://sepolia.arbiscan.io/address/";
@@ -131,13 +131,16 @@ export default function StableGuardPage() {
           Real-time stablecoin monitoring via Chainlink CRE, with automated vault protection when a depeg is detected.
         </div>
         <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "10px 22px", borderRadius: "30px", background: "rgba(22,163,74,0.12)", border: "1px solid #166534" }}>
-          <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22c55e", animation: "sgpulse 2s infinite" }} />
+          <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22c55e" }} />
           <span style={{ fontSize: "12px", fontWeight: "700", color: "#22c55e", textTransform: "uppercase", letterSpacing: "1.5px" }}>
-            Protection Active — Ethereum Sepolia + Arbitrum Sepolia
+            Live-tested on Arbitrum Sepolia · 2 Oct 2026
           </span>
         </div>
         <div style={{ marginTop: "10px", fontSize: "11px", color: "#6b7280" }}>
-          Live deployment, hardened through internal and external security review.
+          First live protection event: a simulated 3% USDC depeg froze the vault in one transaction.{" "}
+          <a href="https://sepolia.arbiscan.io/tx/0x2bce3db20f25841c7d0570440ffd22e05542842302286da790d6c9591f1cbc6c" target="_blank" rel="noopener noreferrer" style={{ color: "#1a56db", textDecoration: "none" }}>View transaction ↗</a>
+          {" · "}
+          <a href="https://youtu.be/TnBZz8lVtpM" target="_blank" rel="noopener noreferrer" style={{ color: "#1a56db", textDecoration: "none" }}>Watch demo ↗</a>
         </div>
       </div>
 
@@ -146,9 +149,9 @@ export default function StableGuardPage() {
         <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "14px" }}>How It Works</div>
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           {([
-            ["📡", "Monitors stablecoin prices via Chainlink CRE and Data Streams — running continuously, no manual triggers needed."],
-            ["🛡️", "A confirmed depeg triggers automatic vault protection — full freeze or deposit-only mode, depending on severity."],
-            ["✅", "Existing depositors can always withdraw. New deposits are blocked during protection to prevent loss exposure."],
+            ["📡", "A Chainlink CRE workflow checks Data Streams prices on a schedule — no manual triggers needed."],
+            ["🛡️", "A confirmed depeg triggers automatic vault protection — full freeze or deposit-only mode, chosen per vault."],
+            ["✅", "Deposit-only mode blocks new deposits while existing depositors can still withdraw. Full freeze pauses deposits and withdrawals until the peg recovers."],
             ["🔄", "Auto-recovers once prices stabilise for a set window. No manual reset required."],
           ] as [string, string][]).map(([icon, text]) => (
             <div key={icon} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
@@ -164,10 +167,10 @@ export default function StableGuardPage() {
         <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "14px" }}>Engineering Rigor</div>
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {[
-            "226 passing automated tests",
+            "240 passing automated tests",
             "Externally reviewed for security, with all findings fixed and re-tested",
             "Hardened against replay attacks, stale reports, and reconciliation edge cases",
-            "Monitors all 19 major stablecoins",
+            "CRE protection workflow covers USDC, USDT, DAI and USDS",
           ].map((point) => (
             <div key={point} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
               <span style={{ color: "#22c55e", fontWeight: "700", fontSize: "13px", flexShrink: 0, lineHeight: 1.5 }}>✓</span>
@@ -220,7 +223,7 @@ export default function StableGuardPage() {
       {/* Contracts */}
       <div style={{ margin: "16px 20px 0" }}>
         <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "4px" }}>Contracts — 2 Testnets</div>
-        <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "12px" }}>Deployed and wired on Ethereum Sepolia and Arbitrum Sepolia. Deployed 2026-09-10.</div>
+        <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "12px" }}>Deployed and wired on Ethereum Sepolia and Arbitrum Sepolia (2026-09-10). Arbitrum receiver redeployed 2026-10-02 with ERC-165 support.</div>
         <div style={{ background: cardBg, borderRadius: "12px", padding: "16px 20px", border: `1px solid ${cardBorder}`, marginBottom: "10px" }}>
           <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Ethereum Sepolia</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
