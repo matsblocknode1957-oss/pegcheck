@@ -25,6 +25,7 @@ function median(values: number[]): number | null {
 const CHAINLINK_FEEDS: Record<string, string> = {
   usdt: "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D",
   usdc: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
+  dai:  "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9",
   usds: "0xfF30586cD0F29eD462364C7e81375FC0C71219b1",
   tusd: "0xec746eCF986E2927Abd291a2A1716c940100f8Ba",
   frax: "0x9B4a96210bc8D9D55b1908B465D8B0de68B7fF83",
@@ -108,7 +109,7 @@ export async function GET() {
     const eurUsd = await fetchEurUsd();
 
     // Source 2 — Coinbase
-    const cbSlugs = ["USDT-USD","USDC-USD","USDS-USD","PYUSD-USD"];
+    const cbSlugs = ["USDT-USD","USDC-USD","DAI-USD","USDS-USD","PYUSD-USD"];
     const cbResults: Record<string, number> = {};
     await Promise.allSettled(
       cbSlugs.map(async (pair) => {
@@ -144,6 +145,7 @@ export async function GET() {
     const krPairs: [string, string][] = [
       ["usdt",  "USDTUSD"],
       ["usdc",  "USDCUSD"],
+      ["dai",   "DAIUSD"],
       ["usds",  "USDSUSD"],
       ["pyusd", "PYUSDUSD"],
     ];
@@ -217,6 +219,7 @@ export async function GET() {
     const prices = {
       usdt:   median([cbResults["USDT-USD"] ?? 0,                    krResults["usdt"]  ?? 0, dlResults["usdt"]  ?? 0, clResults["usdt"]  ?? 0]),
       usdc:   median([cbResults["USDC-USD"] ?? 0,  bnResults["usdc"]  ?? 0, krResults["usdc"]  ?? 0, dlResults["usdc"]  ?? 0, clResults["usdc"]  ?? 0]),
+      dai:    median([cbResults["DAI-USD"]  ?? 0,                    krResults["dai"]   ?? 0, dlResults["dai"]   ?? 0, clResults["dai"]   ?? 0]),
       usds:   median([cbResults["USDS-USD"] ?? 0,   bnResults["usds"]  ?? 0, krResults["usds"]  ?? 0, dlResults["usds"]   ?? 0, clResults["usds"]  ?? 0]),
       ethena: median([dlResults["usde"]  ?? 0]),
       pyusd:  median([cbResults["PYUSD-USD"] ?? 0, bnResults["pyusd"] ?? 0, krResults["pyusd"] ?? 0, dlResults["pyusd"] ?? 0, clResults["pyusd"] ?? 0]),
@@ -240,6 +243,7 @@ export async function GET() {
     const sources = {
       usdt:   { coinbase: cbResults["USDT-USD"] ?? 0,                                    kraken: krResults["usdt"]  ?? 0, defillama: dlResults["usdt"]  ?? 0, chainlink: clResults["usdt"]  ?? 0 },
       usdc:   { coinbase: cbResults["USDC-USD"] ?? 0,  binance: bnResults["usdc"]  ?? 0, kraken: krResults["usdc"]  ?? 0, defillama: dlResults["usdc"]  ?? 0, chainlink: clResults["usdc"]  ?? 0 },
+      dai:    { coinbase: cbResults["DAI-USD"]  ?? 0,                                    kraken: krResults["dai"]   ?? 0, defillama: dlResults["dai"]   ?? 0, chainlink: clResults["dai"]   ?? 0 },
       usds:   { coinbase: cbResults["USDS-USD"] ?? 0,  binance: bnResults["usds"]  ?? 0, kraken: krResults["usds"]  ?? 0, defillama: dlResults["usds"]   ?? 0, chainlink: clResults["usds"]  ?? 0 },
       ethena: { defillama: dlResults["usde"]  ?? 0 },
       pyusd:  { coinbase: cbResults["PYUSD-USD"] ?? 0, binance: bnResults["pyusd"] ?? 0, kraken: krResults["pyusd"] ?? 0, defillama: dlResults["pyusd"] ?? 0, chainlink: clResults["pyusd"] ?? 0 },

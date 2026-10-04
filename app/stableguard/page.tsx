@@ -181,7 +181,7 @@ export default function StableGuardPage() {
       {/* Monitored Assets */}
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>Protected Assets</div>
-        <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "14px" }}>The CRE workflow covers USDC, USDT, DAI and USDS. Live prices shown for USDC, USDT and USDS.</div>
+        <div style={{ fontSize: "11px", color: textSecondary, marginBottom: "14px" }}>The CRE workflow covers USDC, USDT, DAI and USDS. Prices below are live from PegCheck.</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
           {monitoredCoins.map((coin) => {
             const rawPrice = prices[coin.slug];
