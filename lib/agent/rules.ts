@@ -75,8 +75,9 @@ export function decide(evidence: Evidence): DecideResult {
   } = evidence;
 
   const depegPct = (peg - medianPrice) / peg;
+  const sourceCount = Object.values(pricesBySource).length;
   const spread = priceSpread(pricesBySource);
-  const sourcesAgree = spread < SOURCE_DISAGREE_SPREAD_PCT;
+  const sourcesAgree = sourceCount >= 2 && spread < SOURCE_DISAGREE_SPREAD_PCT;
   const isDeepDepeg = depegPct > DEEP_DEPEG_PCT;
   const isInDipZone = depegPct >= DIP_ZONE_START_PCT && depegPct <= DEEP_DEPEG_PCT;
   const atMaxPositions = openPositionsCount >= MAX_OPEN_POSITIONS;
@@ -93,7 +94,10 @@ export function decide(evidence: Evidence): DecideResult {
     );
   }
 
-  if (!sourcesAgree) {
+  if (sourceCount < 2) {
+    danger.score += 25;
+    danger.reasons.push(`Only ${sourceCount} price source — can't cross-check`);
+  } else if (!sourcesAgree) {
     danger.score += 25;
     danger.reasons.push(
       `Sources disagree: spread is ${(spread * 100).toFixed(2)}% (limit is ${(SOURCE_DISAGREE_SPREAD_PCT * 100).toFixed(0)}%)`
@@ -126,23 +130,27 @@ export function decide(evidence: Evidence): DecideResult {
     opportunity.reasons.push(
       `Price is ${(depegPct * 100).toFixed(2)}% below peg — in the dip zone ${(DIP_ZONE_START_PCT * 100).toFixed(1)}%–${(DEEP_DEPEG_PCT * 100).toFixed(0)}% (+${dipPts} pts)`
     );
-  }
 
-  if (sourcesAgree) {
-    opportunity.score += 25;
-    opportunity.reasons.push(
-      `Sources agree: spread is ${(spread * 100).toFixed(2)}% (under ${(SOURCE_DISAGREE_SPREAD_PCT * 100).toFixed(0)}%)`
-    );
-  }
+    if (sourcesAgree) {
+      opportunity.score += 25;
+      opportunity.reasons.push(
+        `Sources agree: spread is ${(spread * 100).toFixed(2)}% (under ${(SOURCE_DISAGREE_SPREAD_PCT * 100).toFixed(0)}%)`
+      );
+    }
 
-  // 25 pts if zero transfers, minus 5 per transfer seen
-  const lowTransferPts = Math.max(0, 25 - largeTransferCount24h * 5);
-  if (lowTransferPts > 0) {
-    opportunity.score += lowTransferPts;
+    // 25 pts if zero transfers, minus 5 per transfer seen
+    const lowTransferPts = Math.max(0, 25 - largeTransferCount24h * 5);
+    if (lowTransferPts > 0) {
+      opportunity.score += lowTransferPts;
+      opportunity.reasons.push(
+        largeTransferCount24h === 0
+          ? `No $1M+ transfers in 24 h (+${lowTransferPts} pts)`
+          : `${largeTransferCount24h} large transfer(s) — still low activity (+${lowTransferPts} pts)`
+      );
+    }
+  } else if (!isDeepDepeg) {
     opportunity.reasons.push(
-      largeTransferCount24h === 0
-        ? `No $1M+ transfers in 24 h (+${lowTransferPts} pts)`
-        : `${largeTransferCount24h} large transfer(s) — still low activity (+${lowTransferPts} pts)`
+      `No dip to buy (price is ${(Math.abs(depegPct) * 100).toFixed(2)}% from peg)`
     );
   }
 
@@ -157,7 +165,7 @@ export function decide(evidence: Evidence): DecideResult {
   const mustAvoid =
     isDeepDepeg ||
     !sourcesAgree ||
-    danger.score > opportunity.score;
+    (isInDipZone && danger.score > opportunity.score);
 
   let decision: Decision;
   if (canBuy) {
