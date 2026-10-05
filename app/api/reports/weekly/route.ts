@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
+import { fetchEurUsd } from "@/lib/fetchEurUsd";
 
 const COIN_NAMES: Record<string, string> = {
   usdt:   "USDT",   usdc:   "USDC",   usds:   "USDS",
@@ -8,17 +9,17 @@ const COIN_NAMES: Record<string, string> = {
   gho:    "GHO",    crvusd: "crvUSD", lusd:   "LUSD",
   usdp:   "USDP",   usdd:   "USDD",   mkusd:  "mkUSD",
   eurc:   "EURC",   dola:   "DOLA",   alusd:  "alUSD",
-  bold:   "BOLD",
+  bold:   "BOLD",   usdg:   "USDG",
 };
 
 const COIN_ISSUERS: Record<string, string> = {
-  usdt:   "Tether",         usdc:   "Circle",        usds:   "MakerDAO",
+  usdt:   "Tether",         usdc:   "Circle",        usds:   "Sky",
   ethena: "Ethena Labs",    pyusd:  "PayPal",         fdusd:  "First Digital",
   rlusd:  "Ripple",         tusd:   "TrueUSD",        frax:   "Frax Finance",
   gho:    "Aave",           crvusd: "Curve Finance",  lusd:   "Liquity",
   usdp:   "Paxos",          usdd:   "TRON DAO",       mkusd:  "Prisma Finance",
   eurc:   "Circle",         dola:   "Inverse Finance", alusd: "Alchemix",
-  bold:   "Liquity V2",
+  bold:   "Liquity V2",     usdg:   "Paxos",
 };
 
 interface CoinStats {
@@ -47,8 +48,7 @@ interface CoinWhaleStats {
   totalVolume: number;
 }
 
-function getStatus(price: number, slug: string): "Healthy" | "Caution" | "Depeg" {
-  const peg = COIN_PEGS[slug] ?? 1.0;
+function getStatus(price: number, slug: string, peg: number): "Healthy" | "Caution" | "Depeg" {
   const { healthy, caution } = getThresholds(slug);
   const diff = Math.abs(price - peg) / peg;
   if (diff <= healthy) return "Healthy";
@@ -227,9 +227,10 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
     </table>
   </td></tr>
 
-  <!-- Whale Activity -->
+  <!-- Large transfers spotted -->
   <tr><td style="background:#0d1628;padding:20px 32px;border-left:1px solid #1e2a40;border-right:1px solid #1e2a40;border-top:1px solid #1e2a40">
-    <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">Whale Activity</div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Large transfers spotted</div>
+    <div style="font-size:11px;color:#4b5563;margin-bottom:12px">A sample of $1M+ transfers on Ethereum, not a full count.</div>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px">
       <tr>
         <td width="48%" style="text-align:center;padding:16px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
@@ -267,9 +268,9 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
     }
   </td></tr>
 
-  <!-- Top 10 Coins by Large Transaction Volume -->
+  <!-- Coins with large transfers spotted -->
   <tr><td style="background:#0d1628;padding:20px 32px;border-left:1px solid #1e2a40;border-right:1px solid #1e2a40;border-top:1px solid #1e2a40">
-    <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">Top 10 Coins by Large Transaction Volume</div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">Coins with large transfers spotted</div>
     ${topCoinsByVolume.length === 0
       ? `<p style="color:#6b7280;font-size:13px;margin:0">No large transfers recorded this week.</p>`
       : `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
@@ -341,6 +342,8 @@ export async function POST(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    const liveEurUsd = await fetchEurUsd().catch(() => null);
 
     const since = new Date();
     since.setDate(since.getDate() - 7);
@@ -414,7 +417,7 @@ export async function POST(request: Request) {
 
     const coins: CoinStats[] = slugs.map(slug => {
       const prices  = bySlug[slug] ?? [];
-      const peg     = COIN_PEGS[slug] ?? 1.0;
+      const peg     = slug === "eurc" ? (liveEurUsd ?? COIN_PEGS["eurc"] ?? 1.16) : (COIN_PEGS[slug] ?? 1.0);
       const { healthy } = getThresholds(slug);
 
       const currentPrice = prices.length > 0 ? prices[prices.length - 1] : peg;
@@ -439,7 +442,7 @@ export async function POST(request: Request) {
       return {
         slug, peg, currentPrice, high7d, low7d, stabilityPct, trend,
         name: COIN_NAMES[slug], issuer: COIN_ISSUERS[slug],
-        status: getStatus(currentPrice, slug),
+        status: getStatus(currentPrice, slug, peg),
         dataPoints: prices.length,
       };
     });
