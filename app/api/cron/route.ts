@@ -333,7 +333,7 @@ export async function GET(request: Request) {
     const coinNames: Record<string, string> = {
       usdt: "USDT (Tether)",
       usdc: "USDC (Circle)",
-      usds: "USDS (MakerDAO)",
+      usds: "USDS (Sky)",
       ethena: "Ethena",
       pyusd: "PYUSD (PayPal)",
       fdusd: "FDUSD (First Digital)",
