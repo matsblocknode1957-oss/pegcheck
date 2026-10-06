@@ -146,7 +146,7 @@ export function decide(evidence: Evidence): DecideResult {
     danger.score += 10;
     danger.reasons.push("No price history to check");
   } else {
-    isChronic = history.hoursOffPeg !== null && history.hoursOffPeg > CHRONIC_HOURS;
+    isChronic = history.hoursOffPeg !== null && history.hoursOffPeg > CHRONIC_HOURS && depegPct >= DIP_ZONE_START_PCT;
     isFallingFast = history.change1hPct !== null && history.change1hPct <= -FALLING_FAST_PCT;
 
     if (isChronic) {

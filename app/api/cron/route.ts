@@ -300,28 +300,31 @@ export async function GET(request: Request) {
     }
 
     // Compute Median Prices
-    const prices: Record<string, number | null> = {
-      usdt:   median([cgData["tether"]?.usd ?? 0,        cbResults["USDT-USD"] ?? 0,                                  krResults["usdt"]  ?? 0, dlResults["usdt"]  ?? 0, clResults["usdt"]  ?? 0]),
-      usdc:   median([cgData["usd-coin"]?.usd ?? 0,      cbResults["USDC-USD"] ?? 0,  bnResults["usdc"]  ?? 0,        krResults["usdc"]  ?? 0, dlResults["usdc"]  ?? 0, clResults["usdc"]  ?? 0]),
-      usds:   median([cgData["usds"]?.usd ?? 0,           cbResults["USDS-USD"] ?? 0,   bnResults["usds"]  ?? 0,        krResults["usds"]  ?? 0, dlResults["usds"]   ?? 0, clResults["usds"]  ?? 0]),
-      ethena: median([cgData["ethena-usde"]?.usd ?? 0,                                                                                           dlResults["usde"]  ?? 0]),
-      pyusd:  median([cgData["paypal-usd"]?.usd ?? 0,    cbResults["PYUSD-USD"] ?? 0, bnResults["pyusd"] ?? 0,        krResults["pyusd"] ?? 0, dlResults["pyusd"] ?? 0, clResults["pyusd"] ?? 0]),
-      fdusd:  median([cgData["first-digital-usd"]?.usd ?? 0,                                                                                     dlResults["fdusd"] ?? 0]),
-      rlusd:  median([cgData["ripple-usd"]?.usd ?? 0,                                                                                            dlResults["rlusd"] ?? 0]),
-      tusd:   median([cgData["true-usd"]?.usd ?? 0,      bnResults["tusd"]  ?? 0, dlResults["tusd"]  ?? 0, clResults["tusd"]  ?? 0]),
-      frax:   median([cgData["frax-usd"]?.usd      ?? 0, dlResults["frax"]   ?? 0, clResults["frax"]  ?? 0]),
-      gho:    median([cgData["gho"]?.usd           ?? 0, dlResults["gho"]    ?? 0]),
-      crvusd: median([cgData["crvusd"]?.usd        ?? 0, dlResults["crvusd"] ?? 0]),
-      lusd:   median([cgData["liquity-usd"]?.usd   ?? 0, dlResults["lusd"]   ?? 0]),
-      usdp:   median([cgData["paxos-standard"]?.usd ?? 0, dlResults["usdp"]  ?? 0]),
-      usdd:   median([cgData["usdd"]?.usd          ?? 0, dlResults["usdd"]   ?? 0]),
-      mkusd:  median([cgData["prisma-mkusd"]?.usd  ?? 0, dlResults["mkusd"]  ?? 0]),
-      eurc:   median([cgData["euro-coin"]?.usd     ?? 0, dlResults["eurc"]   ?? 0]),
-      dola:   median([cgData["dola-usd"]?.usd      ?? 0, dlResults["dola"]   ?? 0]),
-      alusd:  median([cgData["alchemix-usd"]?.usd  ?? 0, dlResults["alusd"]  ?? 0]),
-      bold:   median([cgData["liquity-bold-2"]?.usd          ?? 0, dlResults["bold"]   ?? 0]),
-      usdg:   median([cgData["global-dollar"]?.usd  ?? 0, dlResults["usdg"]   ?? 0]),
+    const sourcePrices: Record<string, Record<string, number>> = {
+      usdt:   { coingecko: cgData["tether"]?.usd ?? 0,           coinbase: cbResults["USDT-USD"] ?? 0,                                   kraken: krResults["usdt"]  ?? 0, defillama: dlResults["usdt"]  ?? 0, chainlink: clResults["usdt"]  ?? 0 },
+      usdc:   { coingecko: cgData["usd-coin"]?.usd ?? 0,         coinbase: cbResults["USDC-USD"] ?? 0,  binance: bnResults["usdc"]  ?? 0, kraken: krResults["usdc"]  ?? 0, defillama: dlResults["usdc"]  ?? 0, chainlink: clResults["usdc"]  ?? 0 },
+      usds:   { coingecko: cgData["usds"]?.usd ?? 0,             coinbase: cbResults["USDS-USD"] ?? 0,  binance: bnResults["usds"]  ?? 0, kraken: krResults["usds"]  ?? 0, defillama: dlResults["usds"]  ?? 0, chainlink: clResults["usds"]  ?? 0 },
+      ethena: { coingecko: cgData["ethena-usde"]?.usd ?? 0,                                                                                                                  defillama: dlResults["usde"]  ?? 0 },
+      pyusd:  { coingecko: cgData["paypal-usd"]?.usd ?? 0,       coinbase: cbResults["PYUSD-USD"] ?? 0, binance: bnResults["pyusd"] ?? 0, kraken: krResults["pyusd"] ?? 0, defillama: dlResults["pyusd"] ?? 0, chainlink: clResults["pyusd"] ?? 0 },
+      fdusd:  { coingecko: cgData["first-digital-usd"]?.usd ?? 0,                                                                                                            defillama: dlResults["fdusd"] ?? 0 },
+      rlusd:  { coingecko: cgData["ripple-usd"]?.usd ?? 0,                                                                                                                   defillama: dlResults["rlusd"] ?? 0 },
+      tusd:   { coingecko: cgData["true-usd"]?.usd ?? 0,                                                 binance: bnResults["tusd"]  ?? 0,                                   defillama: dlResults["tusd"]  ?? 0, chainlink: clResults["tusd"]  ?? 0 },
+      frax:   { coingecko: cgData["frax-usd"]?.usd ?? 0,                                                                                                                     defillama: dlResults["frax"]  ?? 0, chainlink: clResults["frax"]  ?? 0 },
+      gho:    { coingecko: cgData["gho"]?.usd ?? 0,                                                                                                                          defillama: dlResults["gho"]   ?? 0 },
+      crvusd: { coingecko: cgData["crvusd"]?.usd ?? 0,                                                                                                                       defillama: dlResults["crvusd"] ?? 0 },
+      lusd:   { coingecko: cgData["liquity-usd"]?.usd ?? 0,                                                                                                                  defillama: dlResults["lusd"]  ?? 0 },
+      usdp:   { coingecko: cgData["paxos-standard"]?.usd ?? 0,                                                                                                               defillama: dlResults["usdp"]  ?? 0 },
+      usdd:   { coingecko: cgData["usdd"]?.usd ?? 0,                                                                                                                         defillama: dlResults["usdd"]  ?? 0 },
+      mkusd:  { coingecko: cgData["prisma-mkusd"]?.usd ?? 0,                                                                                                                 defillama: dlResults["mkusd"] ?? 0 },
+      eurc:   { coingecko: cgData["euro-coin"]?.usd ?? 0,                                                                                                                    defillama: dlResults["eurc"]  ?? 0 },
+      dola:   { coingecko: cgData["dola-usd"]?.usd ?? 0,                                                                                                                     defillama: dlResults["dola"]  ?? 0 },
+      alusd:  { coingecko: cgData["alchemix-usd"]?.usd ?? 0,                                                                                                                 defillama: dlResults["alusd"] ?? 0 },
+      bold:   { coingecko: cgData["liquity-bold-2"]?.usd ?? 0,                                                                                                               defillama: dlResults["bold"]  ?? 0 },
+      usdg:   { coingecko: cgData["global-dollar"]?.usd ?? 0,                                                                                                                defillama: dlResults["usdg"]  ?? 0 },
     };
+    const prices: Record<string, number | null> = Object.fromEntries(
+      Object.keys(sourcePrices).map(slug => [slug, median(Object.values(sourcePrices[slug]))])
+    );
 
     // When EUR/USD rate unavailable, treat EURC as no data so it is excluded
     // from snapshots, depeg/caution checks, alerts, and on-chain logging.
@@ -383,6 +386,14 @@ export async function GET(request: Request) {
       }
     } catch (e: unknown) {
       console.error("RWA snapshot failed:", e instanceof Error ? e.message : String(e));
+    }
+
+    try {
+      const { runAgent } = await import("@/lib/agent/runner");
+      const agentResult = await runAgent({ supabase, prices, sourcePrices, pegFor: effectivePeg, now: new Date() });
+      console.log("Agent:", agentResult);
+    } catch (e: unknown) {
+      console.error("Agent failed:", e instanceof Error ? e.message : String(e));
     }
 
     // Build set of seasoned slugs — coins with ≥ 30 days of price history
