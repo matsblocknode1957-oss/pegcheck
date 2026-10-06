@@ -150,6 +150,46 @@ export async function runAgent({
 
       if (!shouldRecord(evidence)) continue;
 
+      // Fetch price history for this coin
+      try {
+        const { data: statsRaw, error: statsError } = await supabase
+          .rpc("coin_history_stats", { p_slug: slug });
+
+        if (statsError) {
+          console.error(`History RPC error for ${slug}:`, statsError);
+        } else if (statsRaw) {
+          const s = Array.isArray(statsRaw) ? statsRaw[0] : statsRaw;
+          if (s) {
+            const lastAtPeg = s.last_at_peg ? new Date(s.last_at_peg) : null;
+            const firstSeen = s.first_seen ? new Date(s.first_seen) : null;
+
+            let hoursOffPeg: number | null = null;
+            if (lastAtPeg) {
+              hoursOffPeg = (now.getTime() - lastAtPeg.getTime()) / (1000 * 60 * 60);
+            } else if (firstSeen) {
+              hoursOffPeg = (now.getTime() - firstSeen.getTime()) / (1000 * 60 * 60);
+            }
+
+            const p1h = s.price_1h_ago != null ? Number(s.price_1h_ago) : null;
+            const p24h = s.price_24h_ago != null ? Number(s.price_24h_ago) : null;
+            const low24h = s.low_24h != null ? Number(s.low_24h) : null;
+
+            evidence.history = {
+              hoursOffPeg,
+              change1hPct: p1h ? (price - p1h) / p1h : null,
+              change24hPct: p24h ? (price - p24h) / p24h : null,
+              bounceFromLowPct: low24h ? (price - low24h) / low24h : null,
+              pctBelow7d: s.pct_below_7d != null ? Number(s.pct_below_7d) : null,
+              daysOfData: firstSeen
+                ? (now.getTime() - firstSeen.getTime()) / (1000 * 60 * 60 * 24)
+                : null,
+            };
+          }
+        }
+      } catch (histErr) {
+        console.error(`Failed to fetch history for ${slug}:`, histErr);
+      }
+
       const result = decide(evidence);
       const { decision, danger, opportunity } = result;
 

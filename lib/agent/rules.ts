@@ -7,7 +7,22 @@ import {
   MAX_POSITION_USD,
   MAX_TRADE_DAYS,
   SOURCE_DISAGREE_SPREAD_PCT,
+  CHRONIC_HOURS,
+  FRESH_DIP_HOURS,
+  FALLING_FAST_PCT,
+  FALLING_PCT,
+  BOUNCE_PCT,
+  MIN_HISTORY_DAYS,
 } from "./config";
+
+export interface HistoryStats {
+  hoursOffPeg: number | null;
+  change1hPct: number | null;
+  change24hPct: number | null;
+  bounceFromLowPct: number | null;
+  pctBelow7d: number | null;
+  daysOfData: number | null;
+}
 
 export interface Evidence {
   coin: string;
@@ -17,6 +32,7 @@ export interface Evidence {
   largeTransferCount24h: number;
   largeTransferTotalUsd24h: number;
   openPositionsCount: number;
+  history?: HistoryStats;
 }
 
 export interface ScoredCase {
@@ -72,6 +88,7 @@ export function decide(evidence: Evidence): DecideResult {
     largeTransferCount24h,
     largeTransferTotalUsd24h,
     openPositionsCount,
+    history,
   } = evidence;
 
   const depegPct = (peg - medianPrice) / peg;
@@ -120,6 +137,43 @@ export function decide(evidence: Evidence): DecideResult {
     );
   }
 
+  // --- History-based danger ---
+
+  let isChronic = false;
+  let isFallingFast = false;
+
+  if (history === undefined) {
+    danger.score += 10;
+    danger.reasons.push("No price history to check");
+  } else {
+    isChronic = history.hoursOffPeg !== null && history.hoursOffPeg > CHRONIC_HOURS;
+    isFallingFast = history.change1hPct !== null && history.change1hPct <= -FALLING_FAST_PCT;
+
+    if (isChronic) {
+      danger.score += 35;
+      danger.reasons.push(
+        `Below peg for ${(history.hoursOffPeg! / 24).toFixed(1)} days — looks chronic, not a dip`
+      );
+    }
+
+    if (isFallingFast) {
+      danger.score += 25;
+      danger.reasons.push(
+        `Still falling fast: down ${(Math.abs(history.change1hPct!) * 100).toFixed(1)}% in the last hour`
+      );
+    } else if (history.change1hPct !== null && history.change1hPct <= -FALLING_PCT) {
+      danger.score += 10;
+      danger.reasons.push(
+        `Still slipping: down ${(Math.abs(history.change1hPct) * 100).toFixed(1)}% in the last hour`
+      );
+    }
+
+    if (history.daysOfData !== null && history.daysOfData < MIN_HISTORY_DAYS) {
+      danger.score += 10;
+      danger.reasons.push(`Only ${history.daysOfData.toFixed(1)} days of price history`);
+    }
+  }
+
   // --- Opportunity scoring ---
 
   if (isInDipZone) {
@@ -148,11 +202,37 @@ export function decide(evidence: Evidence): DecideResult {
           : `${largeTransferCount24h} large transfer(s) — still low activity (+${lowTransferPts} pts)`
       );
     }
+
+    // History-based opportunity
+    if (history !== undefined) {
+      if (history.hoursOffPeg !== null && history.hoursOffPeg <= FRESH_DIP_HOURS) {
+        opportunity.score += 10;
+        opportunity.reasons.push(
+          `Fresh dip: was at peg ${history.hoursOffPeg.toFixed(1)} hours ago`
+        );
+      }
+      if (
+        history.bounceFromLowPct !== null &&
+        history.bounceFromLowPct >= BOUNCE_PCT &&
+        history.change1hPct !== null &&
+        history.change1hPct >= 0
+      ) {
+        opportunity.score += 10;
+        opportunity.reasons.push(
+          `Bouncing: up ${(history.bounceFromLowPct * 100).toFixed(1)}% from today's low`
+        );
+      }
+    }
   } else if (!isDeepDepeg) {
     opportunity.reasons.push(
       `No dip to buy (price is ${(Math.abs(depegPct) * 100).toFixed(2)}% from peg)`
     );
   }
+
+  // --- Cap scores ---
+
+  danger.score = Math.min(100, danger.score);
+  opportunity.score = Math.min(100, opportunity.score);
 
   // --- Decision ---
 
@@ -160,11 +240,15 @@ export function decide(evidence: Evidence): DecideResult {
     isInDipZone &&
     sourcesAgree &&
     opportunity.score > danger.score &&
-    !atMaxPositions;
+    !atMaxPositions &&
+    history !== undefined &&
+    !isChronic &&
+    !isFallingFast;
 
   const mustAvoid =
     isDeepDepeg ||
     !sourcesAgree ||
+    isChronic ||
     (isInDipZone && danger.score > opportunity.score);
 
   let decision: Decision;
