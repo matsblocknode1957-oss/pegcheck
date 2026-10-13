@@ -13,7 +13,7 @@ function formatBalance(balance: string, decimals: number): number {
 const ALL_COINS = [
   { name: "USDT",   issuer: "Tether",         slug: "usdt",   icon: "/icons/usdt.png",   bgColor: "#26a17b" },
   { name: "USDC",   issuer: "Circle",          slug: "usdc",   icon: "/icons/usdc.png",   bgColor: "#2775ca" },
-  { name: "USDS",   issuer: "MakerDAO",        slug: "usds",   icon: "/icons/usds.png",   bgColor: "#f4b731" },
+  { name: "USDS",   issuer: "Sky",              slug: "usds",   icon: "/icons/usds.png",   bgColor: "#f4b731" },
   { name: "Ethena", issuer: "Ethena Labs",     slug: "ethena", icon: "/icons/ethena.png", bgColor: "#1a1a2e" },
   { name: "PYUSD",  issuer: "PayPal",          slug: "pyusd",  icon: "/icons/pyusd.png",  bgColor: "#003087" },
   { name: "FDUSD",  issuer: "First Digital",   slug: "fdusd",  icon: "/icons/fdusd.png",  bgColor: "#1a1a1a" },

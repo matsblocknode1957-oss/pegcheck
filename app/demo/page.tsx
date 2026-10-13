@@ -104,7 +104,7 @@ export default function DemoPage() {
     s === "depegged" ? "Depeg" : s;
 
   const COIN_NAMES: Record<string, string> = {
-    usdt: "Tether", usdc: "Circle", usds: "MakerDAO", ethena: "Ethena Labs",
+    usdt: "Tether", usdc: "Circle", usds: "Sky", ethena: "Ethena Labs",
     pyusd: "PayPal", fdusd: "First Digital", rlusd: "Ripple", tusd: "TrueUSD",
   };
 

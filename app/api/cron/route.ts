@@ -116,6 +116,15 @@ export async function GET(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    const slot = Math.floor(Date.now() / 300_000);
+    const { error: lockError } = await supabase.from("cron_runs").insert({ slot });
+    if (lockError) {
+      if (lockError.code === "23505") {
+        return NextResponse.json({ message: "skipped: run already in progress for this slot" });
+      }
+      console.error("cron_runs lock error (continuing):", lockError);
+    }
+
     const eurUsd = await fetchEurUsd();
     // eurUsd ?? COIN_PEGS.eurc is dead code when prices.eurc is null (see below),
     // but keeps effectivePeg returning number so callers need no null guards.
@@ -333,7 +342,7 @@ export async function GET(request: Request) {
     const coinNames: Record<string, string> = {
       usdt: "USDT (Tether)",
       usdc: "USDC (Circle)",
-      usds: "USDS (MakerDAO)",
+      usds: "USDS (Sky)",
       ethena: "Ethena",
       pyusd: "PYUSD (PayPal)",
       fdusd: "FDUSD (First Digital)",

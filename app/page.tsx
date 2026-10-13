@@ -61,7 +61,7 @@ export default function Home() {
   const stablecoins = [
     { name: "USDT",   issuer: "Tether",         peg: 1.0,   icon: "/icons/usdt.png",   slug: "usdt",   bgColor: "#26a17b" },
     { name: "USDC",   issuer: "Circle",          peg: 1.0,   icon: "/icons/usdc.png",   slug: "usdc",   bgColor: "#2775ca" },
-    { name: "USDS",   issuer: "MakerDAO",        peg: 0.999, icon: "/icons/usds.png",   slug: "usds",   bgColor: "#f4b731" },
+    { name: "USDS",   issuer: "Sky",              peg: 0.999, icon: "/icons/usds.png",   slug: "usds",   bgColor: "#f4b731" },
     { name: "Ethena", issuer: "Ethena Labs",     peg: 1.0,   icon: "/icons/ethena.png", slug: "ethena", bgColor: "#1a1a2e" },
     { name: "PYUSD",  issuer: "PayPal",          peg: 1.0,   icon: "/icons/pyusd.png",  slug: "pyusd",  bgColor: "#003087" },
     { name: "FDUSD",  issuer: "First Digital",   peg: 1.0,   icon: "/icons/fdusd.png",  slug: "fdusd",  bgColor: "#1a1a1a" },
@@ -591,7 +591,7 @@ export default function Home() {
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <span style={{ fontSize: "14px", fontWeight: "700", color: textPrimary }}>{coin.name}</span>
                   <span style={{ fontSize: "11px", color: textSecondary }}>
-                    {coin.issuer}{sourceCount !== null ? ` · ${sourceCount} sources` : ""}
+                    {coin.issuer}{sourceCount !== null ? ` · ${sourceCount} ${sourceCount === 1 ? "source" : "sources"}` : ""}
                   </span>
                 </div>
               </div>
