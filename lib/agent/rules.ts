@@ -13,6 +13,10 @@ import {
   FALLING_PCT,
   BOUNCE_PCT,
   MIN_HISTORY_DAYS,
+  getCoinTier,
+  REPEAT_DIP_WINDOW_HOURS,
+  REPEAT_DIP_BACKED_MIN_PCT,
+  LIVES_BELOW_PEG_THRESHOLD,
 } from "./config";
 
 export interface HistoryStats {
@@ -22,6 +26,9 @@ export interface HistoryStats {
   bounceFromLowPct: number | null;
   pctBelow7d: number | null;
   daysOfData: number | null;
+  // v3: populated by price_history query in runner.ts (dip-zone coins only)
+  hadPriorDipCycle: boolean | null;
+  medianPrice7d: number | null;
 }
 
 export interface Evidence {
@@ -33,6 +40,11 @@ export interface Evidence {
   largeTransferTotalUsd24h: number;
   openPositionsCount: number;
   history?: HistoryStats;
+  // v3 recording fields — set by runner.ts so they appear in the stored evidence JSON
+  tier?: "BACKED" | "STRICT";
+  livesBelowPeg?: boolean;
+  livesBelowPegMedian?: number;
+  isRepeatDip?: boolean;
 }
 
 export interface ScoredCase {
@@ -98,6 +110,7 @@ export function decide(evidence: Evidence): DecideResult {
   const isDeepDepeg = depegPct > DEEP_DEPEG_PCT;
   const isInDipZone = depegPct >= DIP_ZONE_START_PCT && depegPct <= DEEP_DEPEG_PCT;
   const atMaxPositions = openPositionsCount >= MAX_OPEN_POSITIONS;
+  const tier = getCoinTier(evidence.coin);
 
   const danger: ScoredCase = { score: 0, reasons: [] };
   const opportunity: ScoredCase = { score: 0, reasons: [] };
@@ -141,6 +154,9 @@ export function decide(evidence: Evidence): DecideResult {
 
   let isChronic = false;
   let isFallingFast = false;
+  let livesBelowPeg = false;
+  let isRepeatDip = false;
+  let v3DataMissing = false;
 
   if (history === undefined) {
     danger.score += 10;
@@ -171,6 +187,40 @@ export function decide(evidence: Evidence): DecideResult {
     if (history.daysOfData !== null && history.daysOfData < MIN_HISTORY_DAYS) {
       danger.score += 10;
       danger.reasons.push(`Only ${history.daysOfData.toFixed(1)} days of price history`);
+    }
+
+    // v3 checks — only evaluated when a buy is possible (dip zone)
+    if (isInDipZone) {
+      if (history.medianPrice7d === null || history.hadPriorDipCycle === null) {
+        // price_history query failed or returned no data — fail safe
+        v3DataMissing = true;
+        danger.score += 20;
+        danger.reasons.push("v3 price history unavailable — skipping buy this cycle");
+      } else {
+        // Rule 3: lives below peg (relative to coin's own peg)
+        if (history.medianPrice7d / peg < LIVES_BELOW_PEG_THRESHOLD) {
+          livesBelowPeg = true;
+          danger.score += 35;
+          danger.reasons.push(
+            `Lives below peg: 7-day median $${history.medianPrice7d.toFixed(4)} — not a real dip`
+          );
+        }
+
+        // Rule B: repeat-dip guard
+        if (history.hadPriorDipCycle) {
+          const minDepeg = tier === "BACKED" ? REPEAT_DIP_BACKED_MIN_PCT : 0;
+          if (depegPct >= minDepeg) {
+            isRepeatDip = true;
+            danger.score += 35;
+            danger.reasons.push(
+              tier === "STRICT"
+                ? `Repeat dip (STRICT): dip→peg→dip cycle within ${REPEAT_DIP_WINDOW_HOURS}h`
+                : `Repeat dip (BACKED): dip→peg→dip within ${REPEAT_DIP_WINDOW_HOURS}h, ` +
+                  `current dip ${(depegPct * 100).toFixed(2)}% ≥ ${(REPEAT_DIP_BACKED_MIN_PCT * 100).toFixed(1)}% threshold`
+            );
+          }
+        }
+      }
     }
   }
 
@@ -243,7 +293,10 @@ export function decide(evidence: Evidence): DecideResult {
     !atMaxPositions &&
     history !== undefined &&
     !isChronic &&
-    !isFallingFast;
+    !isFallingFast &&
+    !livesBelowPeg &&
+    !isRepeatDip &&
+    !v3DataMissing;
 
   const mustAvoid =
     isDeepDepeg ||

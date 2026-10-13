@@ -1,6 +1,64 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { decide, checkExit, shouldRecord, Evidence } from "./rules";
-import { RULES_VERSION } from "./config";
+import {
+  RULES_VERSION,
+  DIP_ZONE_START_PCT,
+  DEEP_DEPEG_PCT,
+  REPEAT_DIP_WINDOW_HOURS,
+  LIVES_BELOW_PEG_THRESHOLD,
+  getCoinTier,
+} from "./config";
+
+// ── v3 helpers ────────────────────────────────────────────────────────────────
+
+function computeMedian(prices: number[]): number | null {
+  if (prices.length === 0) return null;
+  const sorted = [...prices].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!;
+}
+
+// Mirrors the hadPriorDipCycle logic in pegcheck-agent-cre/pegcheck-workflow/lib/agent/history.ts.
+// Returns true when: a dip-zone reading exists before the most recent at-peg timestamp,
+// both within the REPEAT_DIP_WINDOW_HOURS window from nowMs.
+// Returns false when data exists but no such cycle is found.
+// Returns null when rows is empty (caller should treat as unavailable).
+function computeHadPriorDipCycle(
+  rows: Array<{ created_at: string; price: number }>,
+  nowMs: number,
+  peg: number,
+): boolean | null {
+  if (rows.length === 0) return null;
+
+  const windowMs = REPEAT_DIP_WINDOW_HOURS * 60 * 60 * 1000;
+  const dipWindowStart = nowMs - windowMs;
+
+  const sorted = rows
+    .map(r => ({ ts: Date.parse(r.created_at), price: r.price }))
+    .sort((a, b) => a.ts - b.ts);
+
+  // Find the most recent timestamp where the coin was within the peg zone
+  let lastAtPegTs: number | null = null;
+  for (const e of sorted) {
+    if (Math.abs(e.price - peg) / peg < DIP_ZONE_START_PCT) {
+      if (lastAtPegTs === null || e.ts > lastAtPegTs) lastAtPegTs = e.ts;
+    }
+  }
+
+  // No recovery found, or recovery is older than the repeat-dip window
+  if (lastAtPegTs === null || nowMs - lastAtPegTs >= windowMs) return false;
+
+  // Was there a dip-zone reading before that recovery, within the window?
+  for (const e of sorted) {
+    if (e.ts >= lastAtPegTs) break; // sorted ascending — nothing earlier follows
+    if (e.ts < dipWindowStart) continue;
+    if ((peg - e.price) / peg >= DIP_ZONE_START_PCT) return true;
+  }
+
+  return false;
+}
 
 interface RunnerParams {
   supabase: SupabaseClient;
@@ -150,6 +208,9 @@ export async function runAgent({
 
       if (!shouldRecord(evidence)) continue;
 
+      // v3: record tier on all evaluated decisions
+      evidence.tier = getCoinTier(slug);
+
       // Fetch price history for this coin
       try {
         const { data: statsRaw, error: statsError } = await supabase
@@ -183,11 +244,89 @@ export async function runAgent({
               daysOfData: firstSeen
                 ? (now.getTime() - firstSeen.getTime()) / (1000 * 60 * 60 * 24)
                 : null,
+              // v3: populated below by price_history query (dip-zone only)
+              hadPriorDipCycle: null,
+              medianPrice7d: null,
             };
           }
         }
       } catch (histErr) {
         console.error(`Failed to fetch history for ${slug}:`, histErr);
+      }
+
+      // v3: extra price_history query — only for coins currently in the dip zone
+      // (where a buy is actually possible). Kept out of deep-depeg coins to save DB load.
+      const currentDepegPct = (peg - price) / peg;
+      const isInDipZoneNow =
+        currentDepegPct >= DIP_ZONE_START_PCT && currentDepegPct <= DEEP_DEPEG_PCT;
+
+      if (isInDipZoneNow && evidence.history) {
+        // Supabase returns max 1,000 rows per request. At a 5-min cron cadence,
+        // 7 days = 2,016 rows, so we page through until we have the full window.
+        try {
+          const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+          type PhRow = { created_at: string; price: number };
+          const PH_PAGE = 1000;
+          const PH_MAX  = 4000; // hard cap — 7-day window can never exceed ~2,100 rows
+          const allRows: PhRow[] = [];
+          let phFailed = false;
+          let from = 0;
+
+          while (allRows.length < PH_MAX) {
+            const { data: page, error: pageError } = await supabase
+              .from("price_history")
+              .select("created_at, price")
+              .eq("slug", slug)
+              .gte("created_at", since7d)
+              .order("created_at", { ascending: true })
+              .range(from, from + PH_PAGE - 1);
+
+            if (pageError || !page) {
+              console.error(
+                `v3 price history page error for ${slug}:`,
+                pageError?.message ?? "null response",
+              );
+              phFailed = true;
+              break;
+            }
+            allRows.push(...page);
+            if (page.length < PH_PAGE) break; // last page
+            from += PH_PAGE;
+          }
+
+          if (phFailed || allRows.length === 0) {
+            console.error(
+              `v3 price history unavailable for ${slug}:`,
+              phFailed ? "query error" : "no rows returned",
+            );
+            // hadPriorDipCycle and medianPrice7d stay null → decide() blocks the buy
+          } else {
+            // Coerce and drop any non-finite prices before computing
+            const validRows = allRows
+              .map(r => ({ created_at: r.created_at, price: Number(r.price) }))
+              .filter(r => isFinite(r.price));
+
+            if (validRows.length === 0) {
+              console.error(`v3 price history for ${slug}: no finite prices after coercion`);
+              // hadPriorDipCycle and medianPrice7d stay null → decide() blocks the buy
+            } else {
+              evidence.history.medianPrice7d = computeMedian(validRows.map(r => r.price));
+              evidence.history.hadPriorDipCycle = computeHadPriorDipCycle(
+                validRows, now.getTime(), peg,
+              );
+            }
+          }
+        } catch (phErr) {
+          console.error(`v3 price history query failed for ${slug}:`, phErr);
+          // hadPriorDipCycle and medianPrice7d stay null → decide() blocks the buy
+        }
+
+        // Top-level evidence fields for storage in the evidence JSON column
+        evidence.livesBelowPeg =
+          evidence.history.medianPrice7d !== null &&
+          evidence.history.medianPrice7d / peg < LIVES_BELOW_PEG_THRESHOLD;
+        evidence.livesBelowPegMedian = evidence.history.medianPrice7d ?? undefined;
+        evidence.isRepeatDip = evidence.history.hadPriorDipCycle === true;
       }
 
       const result = decide(evidence);
