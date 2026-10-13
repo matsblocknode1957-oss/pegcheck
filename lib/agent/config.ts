@@ -13,4 +13,21 @@ export const FALLING_FAST_PCT = 0.01;
 export const FALLING_PCT = 0.005;
 export const BOUNCE_PCT = 0.003;
 export const MIN_HISTORY_DAYS = 2;
-export const RULES_VERSION = "v2";
+export const RULES_VERSION = "v3";
+
+// v3: coin tiers — everything not in BACKED is treated as STRICT
+export const BACKED_COINS = new Set([
+  "usdc", "usdt", "pyusd", "rlusd", "fdusd", "usdp", "tusd",
+  "lusd", "bold", "mkusd", "crvusd", "gho", "usds",
+]);
+
+export function getCoinTier(coin: string): "BACKED" | "STRICT" {
+  return BACKED_COINS.has(coin.toLowerCase()) ? "BACKED" : "STRICT";
+}
+
+// v3: repeat-dip guard (Rule B)
+export const REPEAT_DIP_WINDOW_HOURS = 72;
+export const REPEAT_DIP_BACKED_MIN_PCT = 0.015; // BACKED coins: only block at ≥1.5% below peg
+
+// v3: lives-below-peg guard — coin's 7-day median must be above this to buy
+export const LIVES_BELOW_PEG_THRESHOLD = 0.996;
