@@ -1,4 +1,4 @@
-export const BANKROLL_USD = 10_000;
+export const BANKROLL_USD = 3_000;
 export const MAX_POSITION_USD = 1_000;
 export const MAX_OPEN_POSITIONS = 3;
 export const DIP_ZONE_START_PCT = 0.005;        // 0.5% below peg
