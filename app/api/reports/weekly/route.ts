@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 import { fetchEurUsd } from "@/lib/fetchEurUsd";
 
+const ADMIN_EMAIL = "fintechcheckadmin1@gmail.com";
+
 const COIN_NAMES: Record<string, string> = {
   usdt:   "USDT",   usdc:   "USDC",   usds:   "USDS",
   ethena: "USDe",   pyusd:  "PYUSD",  fdusd:  "FDUSD",
@@ -21,6 +23,16 @@ const COIN_ISSUERS: Record<string, string> = {
   eurc:   "Circle",         dola:   "Inverse Finance", alusd: "Alchemix",
   bold:   "Liquity V2",     usdg:   "Paxos",
 };
+
+interface PriceStatRow {
+  slug:            string;
+  latest_price:    number;
+  high_7d:         number;
+  low_7d:          number;
+  reading_count:   number;
+  stability_pct:   number;
+  trend_direction: string;
+}
 
 interface CoinStats {
   slug: string; name: string; issuer: string;
@@ -328,16 +340,31 @@ export async function POST(request: Request) {
     const { Resend } = await import("resend");
     const { createClient } = await import("@supabase/supabase-js");
 
-    const body = await request.json().catch(() => ({}));
-    const to: string = body.to ?? "mat@fintechcheck.uk";
-    const sendType: string = body.type ?? "manual";
-    const unsubscribeToken: string | null = body.unsubscribeToken ?? null;
+    const body        = await request.json().catch(() => ({}));
+    const sendType    = (body.type ?? "manual") as string;
+    const isAutomated = sendType === "automated";
+    const to          = (body.to ?? ADMIN_EMAIL) as string;
+    const unsubscribeToken = (body.unsubscribeToken ?? null) as string | null;
 
-    if (!to.includes("@")) {
+    // Automated sends require CRON_SECRET. The Netlify scheduled function
+    // (netlify/functions/weekly-report-scheduler.mts) → GET /api/cron/weekly-report
+    // → POST here with x-cron-secret forwarded. Missing secret = misconfiguration.
+    if (isAutomated) {
+      const secret = process.env.CRON_SECRET;
+      if (!secret) {
+        console.error("Weekly report: CRON_SECRET is not set — automated send refused");
+        return NextResponse.json({ error: "CRON_SECRET is not configured" }, { status: 500 });
+      }
+      if (request.headers.get("x-cron-secret") !== secret) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
+    if (!isAutomated && !to.includes("@")) {
       return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
     }
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
+    const resend   = new Resend(process.env.RESEND_API_KEY);
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -345,29 +372,22 @@ export async function POST(request: Request) {
 
     const liveEurUsd = await fetchEurUsd().catch(() => null);
 
-    const since = new Date();
+    const since    = new Date();
     since.setDate(since.getDate() - 7);
     const sinceIso = since.toISOString();
 
-    // Fetch 7-day price history for all slugs
-    const { data: history } = await supabase
-      .from("price_history")
-      .select("slug, price, created_at")
-      .gte("created_at", sinceIso)
-      .order("created_at", { ascending: true });
+    // ── Fetch all data ─────────────────────────────────────────────────────────
+    const { data: priceStats, error: priceError } = await supabase
+      .rpc("weekly_price_stats", { since: sinceIso });
 
-    // Fetch top-3 transfers for the display panel + exact total count.
-    // limit(3) is intentional — count:'exact' returns the full dataset count regardless.
     const { data: whaleRows, count: whaleCount, error: whaleError } = await supabase
       .from("large_transactions")
-      .select("slug, amount, action, created_at, tx_hash, wallet", { count: 'exact' })
+      .select("slug, amount, action, created_at, tx_hash, wallet", { count: "exact" })
       .gte("created_at", sinceIso)
       .gte("amount", 1000000)
       .order("amount", { ascending: false })
       .limit(3);
 
-    // True total volume: single aggregate over all matching rows, not a sum of a paged fetch.
-    // Requires PostgREST aggregate functions enabled (Supabase Dashboard → Settings → API).
     const { data: volData, error: volError } = await supabase
       .from("large_transactions")
       .select("amount.sum()")
@@ -375,79 +395,116 @@ export async function POST(request: Request) {
       .gte("amount", 1000000)
       .single();
 
-    // Per-coin breakdown via RPC — avoids the 1000-row default limit on plain selects.
     const { data: coinVolRows, error: coinVolError } = await supabase
       .rpc("whale_volume_by_coin", { since_ts: sinceIso, min_amount: 1000000 });
 
-    if (whaleError)   console.error("Whale query error:", JSON.stringify(whaleError));
-    if (volError)     console.error("Volume SUM error:", JSON.stringify(volError));
-    if (coinVolError) console.error("Coin vol error:", JSON.stringify(coinVolError));
-    console.log(
-      "Whale count:", whaleCount,
-      "| totalVolume SUM:", (volData as any)?.sum ?? "(no data)",
-      volError ? `(SUM error: ${volError.message})` : "",
+    if (priceError)   console.error("Price stats RPC error:",   JSON.stringify(priceError));
+    if (whaleError)   console.error("Whale query error:",       JSON.stringify(whaleError));
+    if (volError)     console.error("Volume SUM error:",        JSON.stringify(volError));
+    if (coinVolError) console.error("Coin vol RPC error:",      JSON.stringify(coinVolError));
+
+    // ── Build coins array ──────────────────────────────────────────────────────
+    const statsBySlug: Record<string, PriceStatRow> = Object.fromEntries(
+      ((priceStats ?? []) as PriceStatRow[]).map(r => [r.slug, r])
     );
-
-    const whaleData = whaleRows ?? [];
-    const whale: WhaleStats = {
-      count: whaleCount ?? 0,
-      totalVolume: Number((volData as { sum: string | number } | null)?.sum ?? 0),
-      top3: whaleData.slice(0, 3),
-    };
-
-    const topCoinsByVolume: CoinWhaleStats[] = (coinVolRows ?? [])
-      .map((r: { slug: string; transfer_count: number; total_volume: number }) => ({
-        slug: r.slug,
-        name: COIN_NAMES[r.slug] ?? r.slug.toUpperCase(),
-        count: Number(r.transfer_count),
-        totalVolume: Number(r.total_volume),
-      }))
-      .sort((a: CoinWhaleStats, b: CoinWhaleStats) => b.totalVolume - a.totalVolume)
-      .slice(0, 10);
-
-    // Group history by slug
-    const bySlug: Record<string, number[]> = {};
-    for (const row of history ?? []) {
-      if (!bySlug[row.slug]) bySlug[row.slug] = [];
-      bySlug[row.slug].push(Number(row.price));
-    }
-
     const weekOf = weekLabel();
-    const slugs = Object.keys(COIN_NAMES);
+    const slugs  = Object.keys(COIN_NAMES);
 
     const coins: CoinStats[] = slugs.map(slug => {
-      const prices  = bySlug[slug] ?? [];
-      const peg     = slug === "eurc" ? (liveEurUsd ?? COIN_PEGS["eurc"] ?? 1.16) : (COIN_PEGS[slug] ?? 1.0);
-      const { healthy } = getThresholds(slug);
+      const row = statsBySlug[slug] as PriceStatRow | undefined;
+      const peg = slug === "eurc"
+        ? (liveEurUsd ?? COIN_PEGS["eurc"] ?? 1.16)
+        : (COIN_PEGS[slug] ?? 1.0);
 
-      const currentPrice = prices.length > 0 ? prices[prices.length - 1] : peg;
-      const high7d  = prices.length > 0 ? Math.max(...prices) : peg;
-      const low7d   = prices.length > 0 ? Math.min(...prices) : peg;
-
-      // Stability: % of readings within healthy band (used for per-coin STAB column)
-      const stabilityPct = prices.length > 0
-        ? (prices.filter(p => Math.abs(p - peg) / peg <= healthy).length / prices.length) * 100
-        : 100;
-
-      // Trend: compare avg deviation first half vs second half
-      let trend: "up" | "stable" | "down" = "stable";
-      if (prices.length >= 6) {
-        const half = Math.floor(prices.length / 2);
-        const early = prices.slice(0, half).reduce((s, p) => s + Math.abs(p - peg), 0) / half;
-        const recent = prices.slice(-half).reduce((s, p) => s + Math.abs(p - peg), 0) / half;
-        if (recent < early * 0.9) trend = "up";
-        else if (recent > early * 1.1) trend = "down";
-      }
+      const currentPrice = row ? Number(row.latest_price)  : peg;
+      const high7d       = row ? Number(row.high_7d)        : peg;
+      const low7d        = row ? Number(row.low_7d)         : peg;
+      const stabilityPct = row ? Number(row.stability_pct)  : 100;
+      const trend        = (row?.trend_direction ?? "stable") as "up" | "stable" | "down";
 
       return {
         slug, peg, currentPrice, high7d, low7d, stabilityPct, trend,
-        name: COIN_NAMES[slug], issuer: COIN_ISSUERS[slug],
-        status: getStatus(currentPrice, slug, peg),
-        dataPoints: prices.length,
+        name:       COIN_NAMES[slug],
+        issuer:     COIN_ISSUERS[slug],
+        status:     getStatus(currentPrice, slug, peg),
+        dataPoints: row ? Number(row.reading_count) : 0,
       };
     });
 
-    // Health Index — same formula as /api/health-index: bps bands → peg score, blended with Fear & Greed
+    // ── Safety guard — abort if data looks blank or broken ─────────────────────
+    const coinsWithData   = coins.filter(c => c.dataPoints > 0).length;
+    const coinsWithPrices = coins.filter(c => c.dataPoints > 0);
+    // allAtPeg: every coin that returned data has currentPrice === its peg exactly,
+    // which only happens when the TypeScript fallback fires (no rows from the RPC).
+    const allAtPeg = coinsWithPrices.length > 0 &&
+                     coinsWithPrices.every(c => c.currentPrice === c.peg);
+
+    const abortReason: string | null =
+      priceError   ? `price_stats RPC failed: ${priceError.message}` :
+      whaleError   ? `large_transactions query failed: ${whaleError.message}` :
+      volError     ? `volume SUM query failed: ${volError.message}` :
+      coinVolError ? `whale_volume_by_coin RPC failed: ${coinVolError.message}` :
+      coinsWithData < Math.floor(slugs.length / 2)
+        ? `only ${coinsWithData}/${slugs.length} coins have price data` :
+      allAtPeg
+        ? `all ${coinsWithPrices.length} coins with data are priced at exactly their peg — possible data fallback` :
+      null;
+
+    if (abortReason) {
+      console.error("Weekly report aborted:", abortReason);
+      const abortDate = new Date().toISOString().slice(0, 10);
+      await resend.emails.send({
+        from: "FintechCheck <alerts@fintechcheck.uk>",
+        to:   ADMIN_EMAIL,
+        subject: `⚠ Weekly report aborted — ${abortDate}`,
+        html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <h2 style="color:#ef4444">Weekly report not sent</h2>
+          <p>The weekly stablecoin report was <strong>not dispatched</strong> to subscribers.</p>
+          <table style="border-collapse:collapse;width:100%;font-size:13px">
+            <tr><td style="padding:6px 10px;font-weight:700;background:#f9fafb">Reason</td>
+                <td style="padding:6px 10px">${abortReason}</td></tr>
+            <tr><td style="padding:6px 10px;font-weight:700;background:#f9fafb">Coins with data</td>
+                <td style="padding:6px 10px">${coinsWithData} / ${slugs.length}</td></tr>
+            <tr><td style="padding:6px 10px;font-weight:700;background:#f9fafb">Time window</td>
+                <td style="padding:6px 10px">since ${sinceIso}</td></tr>
+            <tr><td style="padding:6px 10px;font-weight:700;background:#f9fafb">Report date</td>
+                <td style="padding:6px 10px">${abortDate}</td></tr>
+          </table>
+          <p style="color:#6b7280;font-size:12px;margin-top:16px">
+            Fix the underlying issue and retrigger via POST /api/reports/weekly.
+          </p>
+        </div>`,
+      }).catch(e => console.error("Abort alert email failed:", e));
+
+      await supabase.from("report_sends").insert({
+        email: ADMIN_EMAIL,
+        report_date: abortDate,
+        type: "aborted",
+      }); // error ignored — don't let a log failure mask the abort response
+
+      return NextResponse.json({ aborted: true, reason: abortReason, coinsWithData });
+    }
+
+    // ── Process whale data ─────────────────────────────────────────────────────
+    const whale: WhaleStats = {
+      count:       whaleCount ?? 0,
+      totalVolume: Number((volData as { sum: string | number } | null)?.sum ?? 0),
+      top3:        (whaleRows ?? []).slice(0, 3),
+    };
+
+    const topCoinsByVolume: CoinWhaleStats[] = ((coinVolRows ?? []) as {
+      slug: string; transfer_count: number; total_volume: number;
+    }[])
+      .map(r => ({
+        slug:        r.slug,
+        name:        COIN_NAMES[r.slug] ?? r.slug.toUpperCase(),
+        count:       Number(r.transfer_count),
+        totalVolume: Number(r.total_volume),
+      }))
+      .sort((a, b) => b.totalVolume - a.totalVolume)
+      .slice(0, 10);
+
+    // ── Market score ───────────────────────────────────────────────────────────
     const pegScore = Math.round(
       coins.reduce((sum, c) => {
         const bps = (Math.abs(c.currentPrice - c.peg) / c.peg) * 10000;
@@ -470,42 +527,100 @@ export async function POST(request: Request) {
       : pegScore;
 
     const baseUrlForLinks = process.env.NEXT_PUBLIC_BASE_URL ?? "https://pegcheck.uk";
-    const unsubscribeUrl = unsubscribeToken
-      ? `${baseUrlForLinks}/api/unsubscribe?token=${unsubscribeToken}`
-      : `${baseUrlForLinks}/api/unsubscribe`;
-    const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, marketScore, unsubscribeUrl);
-
-    const depegList = coins.filter(c => c.status === "Depeg").map(c => c.name);
-    const subjectSuffix = depegList.length > 0
+    const depegList       = coins.filter(c => c.status === "Depeg").map(c => c.name);
+    const subjectSuffix   = depegList.length > 0
       ? ` — ⚠ ${depegList.join(", ")} in depeg`
       : " — All systems healthy";
+    const reportDate = new Date().toISOString().split("T")[0];
 
-    await resend.emails.send({
-      from: "FintechCheck <alerts@fintechcheck.uk>",
-      to,
-      subject: `FintechCheck Weekly Report · ${weekOf}${subjectSuffix}`,
-      html,
-      headers: {
-        "List-Unsubscribe": `<${unsubscribeUrl}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      },
-    });
+    // ── Dispatch emails ────────────────────────────────────────────────────────
+    if (isAutomated) {
+      // Data was fetched once above. Now fan out to all opted-in subscribers.
+      const { data: subscribers, error: subError } = await supabase
+        .from("subscribers")
+        .select("email, unsubscribe_token")
+        .eq("weekly_report", true);
 
-    // Log send to report_sends table
-    const { error: logError } = await supabase
-      .from("report_sends")
-      .insert({ email: to, report_date: new Date().toISOString().split("T")[0], type: sendType });
-    if (logError) console.error("report_sends log error:", logError.message);
+      if (subError) {
+        console.error("Weekly report — subscriber query error:", subError.message);
+        return NextResponse.json({ error: subError.message }, { status: 500 });
+      }
+      if (!subscribers || subscribers.length === 0) {
+        return NextResponse.json({ message: "No subscribers opted in to weekly reports", sent: 0 });
+      }
 
-    return NextResponse.json({
-      success: true,
-      sentTo: to,
-      marketScore,
-      coinsWithData: coins.filter(c => c.dataPoints > 0).length,
-      whaleTransfers: whale.count,
-      whaleTotalVolume: whale.totalVolume,
-      ...(whaleError ? { whaleQueryError: whaleError.message } : {}),
-    });
+      // Sequential sends with a 600 ms gap to stay within Resend's ~2 req/s limit.
+      // resend.emails.send() returns { data, error } rather than throwing, so we
+      // check the error field explicitly.
+      let sent = 0, failed = 0;
+      for (const sub of subscribers) {
+        const subUnsubUrl = sub.unsubscribe_token
+          ? `${baseUrlForLinks}/api/unsubscribe?token=${sub.unsubscribe_token}`
+          : `${baseUrlForLinks}/api/unsubscribe`;
+        const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, marketScore, subUnsubUrl);
+        try {
+          const { error: sendError } = await resend.emails.send({
+            from:    "FintechCheck <alerts@fintechcheck.uk>",
+            to:      sub.email,
+            subject: `FintechCheck Weekly Report · ${weekOf}${subjectSuffix}`,
+            html,
+            headers: {
+              "List-Unsubscribe":      `<${subUnsubUrl}>`,
+              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
+          });
+          if (sendError) {
+            console.error(`Weekly report send failed for ${sub.email}:`, sendError);
+            failed++;
+          } else {
+            await supabase.from("report_sends").insert({
+              email: sub.email, report_date: reportDate, type: sendType,
+            }); // log error intentionally ignored
+            sent++;
+          }
+        } catch (e) {
+          console.error(`Weekly report send exception for ${sub.email}:`, e);
+          failed++;
+        }
+        await new Promise(r => setTimeout(r, 600));
+      }
+
+      console.log(`Weekly report: sent=${sent} failed=${failed} total=${subscribers.length} coinsWithData=${coinsWithData}`);
+
+      return NextResponse.json({
+        success: true, sent, failed, total: subscribers.length,
+        marketScore, coinsWithData,
+        whaleTransfers: whale.count, whaleTotalVolume: whale.totalVolume,
+      });
+
+    } else {
+      // Manual / preview send to a single address.
+      const subUnsubUrl = unsubscribeToken
+        ? `${baseUrlForLinks}/api/unsubscribe?token=${unsubscribeToken}`
+        : `${baseUrlForLinks}/api/unsubscribe`;
+      const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, marketScore, subUnsubUrl);
+
+      await resend.emails.send({
+        from:    "FintechCheck <alerts@fintechcheck.uk>",
+        to,
+        subject: `FintechCheck Weekly Report · ${weekOf}${subjectSuffix}`,
+        html,
+        headers: {
+          "List-Unsubscribe":      `<${subUnsubUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+      });
+
+      const { error: logError } = await supabase.from("report_sends").insert({
+        email: to, report_date: reportDate, type: sendType,
+      });
+      if (logError) console.error("report_sends log error:", logError.message);
+
+      return NextResponse.json({
+        success: true, sentTo: to, marketScore, coinsWithData,
+        whaleTransfers: whale.count, whaleTotalVolume: whale.totalVolume,
+      });
+    }
 
   } catch (err) {
     console.error("Weekly report error:", err);

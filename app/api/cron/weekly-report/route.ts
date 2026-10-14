@@ -1,51 +1,34 @@
 import { NextResponse } from "next/server";
 
-export async function GET() {
+// Invoked by netlify/functions/weekly-report-scheduler.mts every Monday 08:00 UTC.
+// Requires Authorization: Bearer <CRON_SECRET>.
+// CRON_SECRET must be set — automated sends are refused without it.
+export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    console.error("Weekly report cron: CRON_SECRET env var is not set");
+    return NextResponse.json({ error: "CRON_SECRET is not configured" }, { status: 500 });
+  }
+  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } }
-    );
-
-    const { data: subscribers, error } = await supabase
-      .from("subscribers")
-      .select("email, unsubscribe_token")
-      .eq("weekly_report", true);
-
-    if (error) {
-      console.error("Weekly report cron — subscriber query error:", error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    if (!subscribers || subscribers.length === 0) {
-      return NextResponse.json({ message: "No subscribers opted in to weekly reports", sent: 0 });
-    }
-
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://pegcheck.uk";
 
-    const results = await Promise.allSettled(
-      subscribers.map(sub =>
-        fetch(`${baseUrl}/api/reports/weekly`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to: sub.email, type: "automated", unsubscribeToken: sub.unsubscribe_token }),
-        })
-      )
-    );
-
-    const succeeded = results.filter(r => r.status === "fulfilled").length;
-    const failed    = results.filter(r => r.status === "rejected").length;
-
-    console.log(`Weekly report cron: sent=${succeeded} failed=${failed} total=${subscribers.length}`);
-
-    return NextResponse.json({
-      message: "Weekly reports dispatched",
-      sent: succeeded,
-      failed,
-      total: subscribers.length,
+    // Forward the secret so the report handler can gate automated sends
+    // against direct POST requests from unknown callers.
+    const res = await fetch(`${baseUrl}/api/reports/weekly`, {
+      method:  "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-cron-secret": secret,
+      },
+      body: JSON.stringify({ type: "automated" }),
     });
+
+    const result = await res.json();
+    return NextResponse.json(result);
 
   } catch (err) {
     console.error("Weekly report cron error:", err);
