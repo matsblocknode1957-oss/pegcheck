@@ -267,7 +267,7 @@ export async function runAgent({
           const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
           type PhRow = { created_at: string; price: number };
           const PH_PAGE = 1000;
-          const PH_MAX  = 4000; // hard cap — 7-day window can never exceed ~2,100 rows
+          const PH_MAX  = 12000; // hard cap — 7-day window is ~5,245 rows at current cadence
           const allRows: PhRow[] = [];
           let phFailed = false;
           let from = 0;
@@ -294,26 +294,47 @@ export async function runAgent({
             from += PH_PAGE;
           }
 
+          // Cap hit means oldest-first paging cut off the newest rows — never compute on partial data.
+          if (allRows.length >= PH_MAX) {
+            console.error(
+              `v3 price history cap hit for ${slug}: ${allRows.length} rows >= PH_MAX ${PH_MAX} — data is cut off, treating as unavailable`,
+            );
+            phFailed = true;
+          }
+
           if (phFailed || allRows.length === 0) {
             console.error(
               `v3 price history unavailable for ${slug}:`,
-              phFailed ? "query error" : "no rows returned",
+              phFailed ? "query error or cap hit" : "no rows returned",
             );
             // hadPriorDipCycle and medianPrice7d stay null → decide() blocks the buy
           } else {
-            // Coerce and drop any non-finite prices before computing
-            const validRows = allRows
-              .map(r => ({ created_at: r.created_at, price: Number(r.price) }))
-              .filter(r => isFinite(r.price));
-
-            if (validRows.length === 0) {
-              console.error(`v3 price history for ${slug}: no finite prices after coercion`);
+            // Freshness check: if the newest row is > 30 min old the cron may have stalled.
+            const newestTs = Math.max(...allRows.map(r => Date.parse(r.created_at)));
+            const ageMinutes = (now.getTime() - newestTs) / 60_000;
+            console.log(
+              `v3 price history for ${slug}: ${allRows.length} rows, newest ${new Date(newestTs).toISOString()} (${ageMinutes.toFixed(1)} min ago)`,
+            );
+            if (ageMinutes > 30) {
+              console.error(
+                `v3 price history stale for ${slug}: newest row is ${ageMinutes.toFixed(1)} min old (> 30 min threshold), treating as unavailable`,
+              );
               // hadPriorDipCycle and medianPrice7d stay null → decide() blocks the buy
             } else {
-              evidence.history.medianPrice7d = computeMedian(validRows.map(r => r.price));
-              evidence.history.hadPriorDipCycle = computeHadPriorDipCycle(
-                validRows, now.getTime(), peg,
-              );
+              // Coerce and drop any non-finite prices before computing
+              const validRows = allRows
+                .map(r => ({ created_at: r.created_at, price: Number(r.price) }))
+                .filter(r => isFinite(r.price));
+
+              if (validRows.length === 0) {
+                console.error(`v3 price history for ${slug}: no finite prices after coercion`);
+                // hadPriorDipCycle and medianPrice7d stay null → decide() blocks the buy
+              } else {
+                evidence.history.medianPrice7d = computeMedian(validRows.map(r => r.price));
+                evidence.history.hadPriorDipCycle = computeHadPriorDipCycle(
+                  validRows, now.getTime(), peg,
+                );
+              }
             }
           }
         } catch (phErr) {
