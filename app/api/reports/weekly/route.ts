@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 import { fetchEurUsd } from "@/lib/fetchEurUsd";
+import { checkAdminAuth, ADMIN_WWW_AUTH } from "@/lib/adminAuth";
 
 const ADMIN_EMAIL = "fintechcheckadmin1@gmail.com";
 
@@ -357,6 +358,18 @@ export async function POST(request: Request) {
       }
       if (request.headers.get("x-cron-secret") !== secret) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
+    // Manual sends (from the admin page) require Basic auth.
+    // Same realm as middleware so the browser reuses its cached credentials.
+    if (!isAutomated) {
+      const deny = checkAdminAuth(request.headers.get("authorization"));
+      if (deny) {
+        return NextResponse.json(
+          { error: deny.error },
+          { status: deny.status, headers: { "WWW-Authenticate": ADMIN_WWW_AUTH } }
+        );
       }
     }
 

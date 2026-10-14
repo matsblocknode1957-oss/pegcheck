@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { checkAdminAuth } from "@/lib/adminAuth";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,7 +11,16 @@ const supabase = createClient(
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Only protect /api/v1 routes
+  // ── Admin area (/admin/* pages and /api/admin/* routes) ──────────────────
+  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
+    const deny = checkAdminAuth(request.headers.get("authorization"));
+    if (deny) {
+      return new Response(deny.error, { status: deny.status, headers: deny.headers });
+    }
+    return NextResponse.next();
+  }
+
+  // ── Public API v1 (existing API-key auth) ────────────────────────────────
   if (!pathname.startsWith("/api/v1")) {
     return NextResponse.next();
   }
@@ -71,5 +81,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/api/v1/:path*",
+  matcher: ["/admin/:path*", "/api/admin/:path*", "/api/v1/:path*"],
 };
