@@ -38,12 +38,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for static assets (hashed filenames, images, fonts)
-  if (
-    url.pathname.startsWith('/_next/static/') ||
-    url.pathname.startsWith('/icons/') ||
-    /\.(svg|png|jpg|jpeg|webp|woff2?|ico)$/.test(url.pathname)
-  ) {
+  // Cache-first for hashed Next.js bundles (content hash = new URL on every change)
+  if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
       caches.match(request).then(
         (cached) =>
@@ -56,6 +52,33 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
       )
+    );
+    return;
+  }
+
+  // Stale-while-revalidate for coin icons and same-origin images —
+  // serve the cached copy instantly, then refresh the cache in the background
+  // so updated icons are picked up on the next load without any user action.
+  if (
+    url.pathname.startsWith('/icons/') ||
+    /\.(svg|png|jpg|jpeg|webp|woff2?|ico)$/.test(url.pathname)
+  ) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        const networkFetch = fetch(request).then((response) => {
+          if (response.ok) {
+            cache.put(request, response.clone());
+          }
+          return response;
+        });
+
+        // Keep the SW alive until the background refresh settles
+        event.waitUntil(networkFetch.catch(() => {}));
+
+        // Return cached copy immediately; if nothing cached, await the network
+        // (natural network error if offline with no cache — same as before)
+        return cache.match(request).then((cached) => cached ?? networkFetch);
+      })
     );
     return;
   }
