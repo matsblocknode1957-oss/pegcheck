@@ -49,6 +49,9 @@ next-env.d.ts
 /hardhat-artifacts/
 /hardhat-cache/
 
+# replay tool — downloaded price history (never commit)
+/replay/data/
+
 # Android TWA project (android-twa/)
 android-twa/android.keystore
 android-twa/app/src/
