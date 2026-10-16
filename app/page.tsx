@@ -61,6 +61,7 @@ export default function Home() {
   const stablecoins = [
     { name: "USDT",   issuer: "Tether",         peg: 1.0,   icon: "/icons/usdt.png",   slug: "usdt",   bgColor: "#26a17b" },
     { name: "USDC",   issuer: "Circle",          peg: 1.0,   icon: "/icons/usdc.png",   slug: "usdc",   bgColor: "#2775ca" },
+    { name: "DAI",    issuer: "Sky (MakerDAO)",  peg: 1.0,   icon: "/icons/dai.png",    slug: "dai",    bgColor: "#F5A623" },
     { name: "USDS",   issuer: "Sky",              peg: 0.999, icon: "/icons/usds.png",   slug: "usds",   bgColor: "#f4b731" },
     { name: "Ethena", issuer: "Ethena Labs",     peg: 1.0,   icon: "/icons/ethena.png", slug: "ethena", bgColor: "#1a1a2e" },
     { name: "PYUSD",  issuer: "PayPal",          peg: 1.0,   icon: "/icons/pyusd.png",  slug: "pyusd",  bgColor: "#003087" },

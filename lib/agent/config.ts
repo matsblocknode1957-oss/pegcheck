@@ -18,7 +18,7 @@ export const RULES_VERSION = "v3.1";
 // v3: coin tiers — everything not in BACKED is treated as STRICT
 export const BACKED_COINS = new Set([
   "usdc", "usdt", "pyusd", "rlusd", "fdusd", "usdp", "tusd",
-  "lusd", "bold", "mkusd", "crvusd", "gho", "usds",
+  "lusd", "bold", "mkusd", "crvusd", "gho", "dai", "usds",
 ]);
 
 export function getCoinTier(coin: string): "BACKED" | "STRICT" {
