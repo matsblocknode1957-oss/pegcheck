@@ -9,6 +9,7 @@ const ERC20_ABI = [
 const TOKENS: Record<string, string> = {
   usdt:   "0xdac17f958d2ee523a2206206994597c13d831ec7",
   usdc:   "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  dai:    "0x6B175474E89094C44Da98b954EedeAC495271d0F",
   usds:   "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
   ethena: "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
   pyusd:  "0x6c3ea9036406852006290770bedfcaba0e23a0e8",

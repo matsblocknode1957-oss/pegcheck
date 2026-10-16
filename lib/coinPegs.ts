@@ -1,6 +1,7 @@
 export const COIN_PEGS: Record<string, number> = {
   usdt: 1.0,
   usdc: 1.0,
+  dai:  1.0,
   usds: 1.0,
   ethena: 1.0,
   pyusd: 1.0,

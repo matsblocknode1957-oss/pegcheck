@@ -53,6 +53,7 @@ function median(values: number[]): number | null {
 const CHAINLINK_FEEDS: Record<string, string> = {
   usdt: "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D",
   usdc: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
+  dai:  "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9",
   usds: "0xfF30586cD0F29eD462364C7e81375FC0C71219b1",
   tusd: "0xec746eCF986E2927Abd291a2A1716c940100f8Ba",
   frax: "0x9B4a96210bc8D9D55b1908B465D8B0de68B7fF83",
@@ -136,7 +137,7 @@ export async function GET(request: Request) {
     let cgData: Record<string, { usd?: number }> = {};
     try {
       const cgRes = await fetch(
-        "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax-usd,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar&vs_currencies=usd",
+        "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,dai,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax-usd,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar&vs_currencies=usd",
         {
           signal: AbortSignal.timeout(10000),
           ...(cgKey ? { headers: { "x-cg-demo-api-key": cgKey } } : {}),
@@ -149,7 +150,7 @@ export async function GET(request: Request) {
     }
 
     // Coinbase
-    const cbSlugs = ["USDT-USD","USDC-USD","USDS-USD","PYUSD-USD"];
+    const cbSlugs = ["USDT-USD","USDC-USD","DAI-USD","USDS-USD","PYUSD-USD"];
     const cbResults: Record<string, number> = {};
     await Promise.allSettled(
       cbSlugs.map(async (pair) => {
@@ -177,6 +178,7 @@ export async function GET(request: Request) {
     const krPairs: [string, string][] = [
       ["usdt",  "USDTUSD"],
       ["usdc",  "USDCUSD"],
+      ["dai",   "DAIUSD"],
       ["usds",  "USDSUSD"],
       ["pyusd", "PYUSDUSD"],
     ];
@@ -245,6 +247,7 @@ export async function GET(request: Request) {
     const contracts: { slug: string; address: string; decimals: number }[] = [
       { slug: "usdt",   address: "0xdac17f958d2ee523a2206206994597c13d831ec7", decimals: 6  },
       { slug: "usdc",   address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals: 6  },
+      { slug: "dai",    address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals: 18 },
       { slug: "usds",   address: "0xdc035d45d973e3ec169d2276ddab16f1e407384f", decimals: 18 },
       { slug: "ethena", address: "0x4c9edd5852cd905f086c759e8383e09bff1e68b3", decimals: 18 },
       { slug: "pyusd",  address: "0x6c3ea9036406852006290770bedfcaba0e23a0e8", decimals: 6  },
@@ -312,6 +315,7 @@ export async function GET(request: Request) {
     const sourcePrices: Record<string, Record<string, number>> = {
       usdt:   { coingecko: cgData["tether"]?.usd ?? 0,           coinbase: cbResults["USDT-USD"] ?? 0,                                   kraken: krResults["usdt"]  ?? 0, defillama: dlResults["usdt"]  ?? 0, chainlink: clResults["usdt"]  ?? 0 },
       usdc:   { coingecko: cgData["usd-coin"]?.usd ?? 0,         coinbase: cbResults["USDC-USD"] ?? 0,  binance: bnResults["usdc"]  ?? 0, kraken: krResults["usdc"]  ?? 0, defillama: dlResults["usdc"]  ?? 0, chainlink: clResults["usdc"]  ?? 0 },
+      dai:    { coingecko: cgData["dai"]?.usd ?? 0,                                                      coinbase: cbResults["DAI-USD"]  ?? 0,                                   kraken: krResults["dai"]   ?? 0, defillama: dlResults["dai"]   ?? 0, chainlink: clResults["dai"]   ?? 0 },
       usds:   { coingecko: cgData["usds"]?.usd ?? 0,             coinbase: cbResults["USDS-USD"] ?? 0,  binance: bnResults["usds"]  ?? 0, kraken: krResults["usds"]  ?? 0, defillama: dlResults["usds"]  ?? 0, chainlink: clResults["usds"]  ?? 0 },
       ethena: { coingecko: cgData["ethena-usde"]?.usd ?? 0,                                                                                                                  defillama: dlResults["usde"]  ?? 0 },
       pyusd:  { coingecko: cgData["paypal-usd"]?.usd ?? 0,       coinbase: cbResults["PYUSD-USD"] ?? 0, binance: bnResults["pyusd"] ?? 0, kraken: krResults["pyusd"] ?? 0, defillama: dlResults["pyusd"] ?? 0, chainlink: clResults["pyusd"] ?? 0 },
@@ -342,6 +346,7 @@ export async function GET(request: Request) {
     const coinNames: Record<string, string> = {
       usdt: "USDT (Tether)",
       usdc: "USDC (Circle)",
+      dai:  "DAI (Sky/MakerDAO)",
       usds: "USDS (Sky)",
       ethena: "Ethena",
       pyusd: "PYUSD (PayPal)",

@@ -6,7 +6,7 @@ import { checkAdminAuth, ADMIN_WWW_AUTH } from "@/lib/adminAuth";
 const ADMIN_EMAIL = "fintechcheckadmin1@gmail.com";
 
 const COIN_NAMES: Record<string, string> = {
-  usdt:   "USDT",   usdc:   "USDC",   usds:   "USDS",
+  usdt:   "USDT",   usdc:   "USDC",   dai:    "DAI",    usds:   "USDS",
   ethena: "USDe",   pyusd:  "PYUSD",  fdusd:  "FDUSD",
   rlusd:  "RLUSD",  tusd:   "TUSD",   frax:   "frxUSD",
   gho:    "GHO",    crvusd: "crvUSD", lusd:   "LUSD",
@@ -16,7 +16,7 @@ const COIN_NAMES: Record<string, string> = {
 };
 
 const COIN_ISSUERS: Record<string, string> = {
-  usdt:   "Tether",         usdc:   "Circle",        usds:   "Sky",
+  usdt:   "Tether",         usdc:   "Circle",        dai:    "Sky (MakerDAO)", usds:   "Sky",
   ethena: "Ethena Labs",    pyusd:  "PayPal",         fdusd:  "First Digital",
   rlusd:  "Ripple",         tusd:   "TrueUSD",        frax:   "Frax Finance",
   gho:    "Aave",           crvusd: "Curve Finance",  lusd:   "Liquity",

@@ -31,7 +31,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 
 const COINS = [
   "mkusd", "usdp", "bold", "alusd", "frax",
-  "lusd", "usdc", "usdt", "gho", "crvusd",
+  "lusd", "usdc", "usdt", "dai", "gho", "crvusd",
 ];
 
 const DAYS   = 60;
