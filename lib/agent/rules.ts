@@ -1,7 +1,6 @@
 import {
   DIP_ZONE_START_PCT,
   DEEP_DEPEG_PCT,
-  TAKE_PROFIT_DISTANCE_PCT,
   STOP_LOSS_PCT,
   MAX_OPEN_POSITIONS,
   MAX_POSITION_USD,
@@ -17,8 +16,7 @@ import {
   REPEAT_DIP_WINDOW_HOURS,
   REPEAT_DIP_BACKED_MIN_PCT,
   LIVES_BELOW_PEG_THRESHOLD,
-  STALE_EXIT_HOURS,
-  STALE_EXIT_MIN_PROFIT_PCT,
+  tunables,
 } from "./config";
 
 export interface HistoryStats {
@@ -323,7 +321,7 @@ export function decide(evidence: Evidence): DecideResult {
     result.buy = {
       sizeUsd: MAX_POSITION_USD,
       entry,
-      takeProfit: peg * (1 - TAKE_PROFIT_DISTANCE_PCT),
+      takeProfit: peg * (1 - tunables.TAKE_PROFIT_DISTANCE_PCT),
       stopLoss: entry * (1 - STOP_LOSS_PCT),
     };
   }
@@ -338,7 +336,7 @@ export function checkExit(
 ): ExitResult {
   const { peg, entry, sizeUsd, openedAt, rulesVersion } = openTrade;
   const units = sizeUsd / entry;
-  const takeProfitPrice = peg * (1 - TAKE_PROFIT_DISTANCE_PCT);
+  const takeProfitPrice = peg * (1 - tunables.TAKE_PROFIT_DISTANCE_PCT);
   const stopLossPrice = entry * (1 - STOP_LOSS_PCT);
   const maxMs = MAX_TRADE_DAYS * 24 * 60 * 60 * 1000;
   const pnl = (price: number) => units * price - sizeUsd;
@@ -359,8 +357,8 @@ export function checkExit(
   if (!isNaN(majorVersion) && majorVersion >= 3) {
     const hoursOpen = (now.getTime() - openedAt.getTime()) / 3_600_000;
     if (
-      hoursOpen >= STALE_EXIT_HOURS &&
-      currentPrice >= entry * (1 + STALE_EXIT_MIN_PROFIT_PCT)
+      hoursOpen >= tunables.STALE_EXIT_HOURS &&
+      currentPrice >= entry * (1 + tunables.STALE_EXIT_MIN_PROFIT_PCT)
     ) {
       return { status: "stale_exit", exitPrice: currentPrice, profitUsd: pnl(currentPrice) };
     }

@@ -18,10 +18,10 @@ import {
   LIVES_BELOW_PEG_THRESHOLD,
   RULES_VERSION,
   getCoinTier,
-  STALE_EXIT_HOURS,
-  STALE_EXIT_MIN_PROFIT_PCT,
-  TAKE_PROFIT_DISTANCE_PCT,
+  tunables,
 } from "@/lib/agent/config";
+
+const TUNABLES_DEFAULTS = { ...tunables };
 import { COIN_PEGS } from "@/lib/coinPegs";
 
 // 5-minute grid mirrors live cron cadence
@@ -188,16 +188,16 @@ function ceilIdx(rows: PhRow[], target: number): number {
 // ── Override application and self-check ───────────────────────────────────────
 
 export function applyAndVerifyOverrides(overrides: ReplayOverrides): void {
+  // Always reset so compare-mode runs start clean
+  Object.assign(tunables, TUNABLES_DEFAULTS);
+
   if (Object.keys(overrides).filter(k => overrides[k as keyof ReplayOverrides] !== undefined).length === 0) {
     return;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const cfg = require("@/lib/agent/config") as Record<string, unknown>;
-
-  if (overrides.STALE_EXIT_HOURS !== undefined)          cfg["STALE_EXIT_HOURS"]           = overrides.STALE_EXIT_HOURS;
-  if (overrides.TAKE_PROFIT_DISTANCE_PCT !== undefined)  cfg["TAKE_PROFIT_DISTANCE_PCT"]   = overrides.TAKE_PROFIT_DISTANCE_PCT;
-  if (overrides.STALE_EXIT_MIN_PROFIT_PCT !== undefined) cfg["STALE_EXIT_MIN_PROFIT_PCT"]  = overrides.STALE_EXIT_MIN_PROFIT_PCT;
+  if (overrides.STALE_EXIT_HOURS !== undefined)          tunables.STALE_EXIT_HOURS           = overrides.STALE_EXIT_HOURS;
+  if (overrides.TAKE_PROFIT_DISTANCE_PCT !== undefined)  tunables.TAKE_PROFIT_DISTANCE_PCT   = overrides.TAKE_PROFIT_DISTANCE_PCT;
+  if (overrides.STALE_EXIT_MIN_PROFIT_PCT !== undefined) tunables.STALE_EXIT_MIN_PROFIT_PCT  = overrides.STALE_EXIT_MIN_PROFIT_PCT;
 
   // ── Self-check probes — one per overridden field ──────────────────────────
   //
@@ -225,7 +225,7 @@ export function applyAndVerifyOverrides(overrides: ReplayOverrides): void {
   if (overrides.STALE_EXIT_HOURS !== undefined) {
     const hoursToProbe = overrides.STALE_EXIT_HOURS + 0.1;
     const entry        = 0.9950;
-    const minProfit    = (overrides.STALE_EXIT_MIN_PROFIT_PCT ?? STALE_EXIT_MIN_PROFIT_PCT) + 0.0001;
+    const minProfit    = tunables.STALE_EXIT_MIN_PROFIT_PCT + 0.0001;
     const probePrice   = entry * (1 + minProfit);
     const probeOpened  = new Date(probeNow.getTime() - hoursToProbe * 3_600_000);
 
@@ -264,7 +264,7 @@ export function applyAndVerifyOverrides(overrides: ReplayOverrides): void {
   // 3. STALE_EXIT_MIN_PROFIT_PCT — hold past stale threshold, price = entry*(1+override+ε) → stale_exit
   //    Uses the already-overridden STALE_EXIT_HOURS if set, otherwise the pre-patch default.
   if (overrides.STALE_EXIT_MIN_PROFIT_PCT !== undefined) {
-    const staleHours  = (overrides.STALE_EXIT_HOURS ?? STALE_EXIT_HOURS) + 0.1;
+    const staleHours  = tunables.STALE_EXIT_HOURS + 0.1;
     const entry       = 0.9950;
     const probePrice  = entry * (1 + overrides.STALE_EXIT_MIN_PROFIT_PCT + 0.0001);
     const probeOpened = new Date(probeNow.getTime() - staleHours * 3_600_000);
