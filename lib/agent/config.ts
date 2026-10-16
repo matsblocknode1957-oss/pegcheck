@@ -35,3 +35,10 @@ export const REPEAT_DIP_BACKED_MIN_PCT = 0.015; // BACKED coins: only block at �
 
 // v3: lives-below-peg guard — coin's 7-day median must be above this to buy
 export const LIVES_BELOW_PEG_THRESHOLD = 0.996;
+
+// Mutable defaults for replay overrides — live code must never write to this.
+export const tunables = {
+  STALE_EXIT_HOURS,
+  STALE_EXIT_MIN_PROFIT_PCT,
+  TAKE_PROFIT_DISTANCE_PCT,
+};
