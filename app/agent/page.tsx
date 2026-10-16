@@ -26,7 +26,7 @@ export interface AgentTrade {
   evidence: Record<string, unknown>;
   rules_version: string;
   summary: string;
-  status: "open" | "none" | "won" | "lost" | "timed_out";
+  status: "open" | "none" | "won" | "lost" | "timed_out" | "stale_exit";
   size_usd: number | null;
   entry_price: number | null;
   target_price: number | null;
@@ -64,7 +64,7 @@ export default async function AgentPage() {
 
   const openCount = trades.filter((t) => t.status === "open").length;
   const closedTrades = trades.filter((t) =>
-    ["won", "lost", "timed_out"].includes(t.status)
+    ["won", "lost", "timed_out", "stale_exit"].includes(t.status)
   );
   const realisedPnl = closedTrades.reduce((acc, t) => acc + (t.pnl_usd ?? 0), 0);
 

@@ -17,6 +17,8 @@ import {
   REPEAT_DIP_WINDOW_HOURS,
   REPEAT_DIP_BACKED_MIN_PCT,
   LIVES_BELOW_PEG_THRESHOLD,
+  STALE_EXIT_HOURS,
+  STALE_EXIT_MIN_PROFIT_PCT,
 } from "./config";
 
 export interface HistoryStats {
@@ -74,9 +76,10 @@ export interface OpenTrade {
   entry: number;
   sizeUsd: number;
   openedAt: Date;
+  rulesVersion?: string;
 }
 
-export type ExitStatus = "won" | "lost" | "timed_out" | "open";
+export type ExitStatus = "won" | "lost" | "timed_out" | "stale_exit" | "open";
 
 export interface ExitResult {
   status: ExitStatus;
@@ -333,7 +336,7 @@ export function checkExit(
   currentPrice: number,
   now: Date
 ): ExitResult {
-  const { peg, entry, sizeUsd, openedAt } = openTrade;
+  const { peg, entry, sizeUsd, openedAt, rulesVersion } = openTrade;
   const units = sizeUsd / entry;
   const takeProfitPrice = peg * (1 - TAKE_PROFIT_DISTANCE_PCT);
   const stopLossPrice = entry * (1 - STOP_LOSS_PCT);
@@ -346,6 +349,23 @@ export function checkExit(
   if (currentPrice <= stopLossPrice) {
     return { status: "lost", exitPrice: currentPrice, profitUsd: pnl(currentPrice) };
   }
+
+  // v3.1: stale exit — only for trades opened under rules v3+.
+  // Strip leading "v"/"V" before parsing; if the version is missing or doesn't
+  // parse to a number >= 3, skip silently (fail safe, no exit).
+  const majorVersion = rulesVersion
+    ? parseInt(rulesVersion.replace(/^v/i, ""), 10)
+    : NaN;
+  if (!isNaN(majorVersion) && majorVersion >= 3) {
+    const hoursOpen = (now.getTime() - openedAt.getTime()) / 3_600_000;
+    if (
+      hoursOpen >= STALE_EXIT_HOURS &&
+      currentPrice >= entry * (1 + STALE_EXIT_MIN_PROFIT_PCT)
+    ) {
+      return { status: "stale_exit", exitPrice: currentPrice, profitUsd: pnl(currentPrice) };
+    }
+  }
+
   if (now.getTime() - openedAt.getTime() >= maxMs) {
     return { status: "timed_out", exitPrice: currentPrice, profitUsd: pnl(currentPrice) };
   }

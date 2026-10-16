@@ -87,7 +87,7 @@ export async function runAgent({
     // Step 1: Close open trades
     const { data: openTrades, error: openTradesError } = await supabase
       .from("agent_trades")
-      .select("id, coin, peg, entry_price, size_usd, decided_at")
+      .select("id, coin, peg, entry_price, size_usd, decided_at, rules_version")
       .eq("mode", "live")
       .eq("status", "open");
 
@@ -112,6 +112,7 @@ export async function runAgent({
             entry: trade.entry_price,
             sizeUsd: trade.size_usd,
             openedAt: new Date(trade.decided_at),
+            rulesVersion: trade.rules_version ?? undefined,
           },
           currentPrice,
           now

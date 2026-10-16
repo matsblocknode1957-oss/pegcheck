@@ -55,8 +55,9 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   open:      { bg: "#1e3a5f", color: "#60a5fa" },
   won:       { bg: "#052e16", color: "#4ade80" },
   lost:      { bg: "#450a0a", color: "#f87171" },
-  timed_out: { bg: "#431407", color: "#fb923c" },
-  none:      { bg: "#1e293b", color: "#475569" },
+  timed_out:  { bg: "#431407", color: "#fb923c" },
+  stale_exit: { bg: "#0d2d2d", color: "#2dd4bf" },
+  none:       { bg: "#1e293b", color: "#475569" },
 };
 
 function Badge({ label, style }: { label: string; style: { bg: string; color: string } }) {

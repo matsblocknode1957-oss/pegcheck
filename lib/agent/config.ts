@@ -13,7 +13,7 @@ export const FALLING_FAST_PCT = 0.01;
 export const FALLING_PCT = 0.005;
 export const BOUNCE_PCT = 0.003;
 export const MIN_HISTORY_DAYS = 2;
-export const RULES_VERSION = "v3";
+export const RULES_VERSION = "v3.1";
 
 // v3: coin tiers — everything not in BACKED is treated as STRICT
 export const BACKED_COINS = new Set([
@@ -24,6 +24,10 @@ export const BACKED_COINS = new Set([
 export function getCoinTier(coin: string): "BACKED" | "STRICT" {
   return BACKED_COINS.has(coin.toLowerCase()) ? "BACKED" : "STRICT";
 }
+
+// v3.1: stale exit — close a v3+ trade after STALE_EXIT_HOURS if it's in profit by at least STALE_EXIT_MIN_PROFIT_PCT
+export const STALE_EXIT_HOURS           = 36;
+export const STALE_EXIT_MIN_PROFIT_PCT  = 0.0005; // 0.05%
 
 // v3: repeat-dip guard (Rule B)
 export const REPEAT_DIP_WINDOW_HOURS = 72;
