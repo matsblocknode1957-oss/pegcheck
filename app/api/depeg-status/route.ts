@@ -1,34 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { fetchEurUsd } from "@/lib/fetchEurUsd";
+import { COINGECKO_IDS } from "@/lib/coingeckoIds";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-const COINGECKO_IDS: Record<string, string> = {
-  usdt:   "tether",
-  usdc:   "usd-coin",
-  dai:    "dai",
-  usds:   "dai",
-  ethena: "ethena-usde",
-  pyusd:  "paypal-usd",
-  fdusd:  "first-digital-usd",
-  rlusd:  "ripple-usd",
-  tusd:   "true-usd",
-  frax:   "frax-usd",
-  gho:    "gho",
-  crvusd: "crvusd",
-  lusd:   "liquity-usd",
-  usdp:   "paxos-standard",
-  usdd:   "usdd",
-  mkusd:  "prisma-mkusd",
-  eurc:   "euro-coin",
-  dola:   "dola-usd",
-  alusd:  "alchemix-usd",
-  bold:   "bold",
-};
 
 // CoinMarketCap IDs — used as an optional third source when CMC_API_KEY is set
 const CMC_IDS: Record<string, number> = {

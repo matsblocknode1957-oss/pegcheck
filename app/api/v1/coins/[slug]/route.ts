@@ -2,44 +2,17 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 import { fetchEurUsd } from "@/lib/fetchEurUsd";
+import { fetchChainlinkPoR } from "@/lib/chainlinkPoR";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Chainlink Proof of Reserve feed contracts (Ethereum Mainnet, 8 decimals)
+// Chainlink Proof of Reserve feed contracts (Ethereum Mainnet)
 const POR_FEEDS: Record<string, string> = {
   tusd: "0xBE456fd14720C3aCCc30A2013Bffd782c9Cb75D5",
 };
-
-async function fetchChainlinkPoR(
-  contract: string,
-  rpcUrl: string
-): Promise<{ reserves: number; updated_at: string } | null> {
-  try {
-    const res = await fetch(rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method: "eth_call",
-        params: [{ to: contract, data: "0xfeaf968c" }, "latest"],
-        id: 1,
-      }),
-    });
-    const json = await res.json();
-    if (!json.result || json.result === "0x") return null;
-    const hex = json.result.slice(2);
-    // ABI slot 1 — int256 answer (reserves, 8 decimals)
-    const reserves = Number(BigInt("0x" + hex.slice(64, 128))) / 1e8;
-    // ABI slot 3 — uint256 updatedAt
-    const updatedAt = Number(BigInt("0x" + hex.slice(192, 256)));
-    return { reserves, updated_at: new Date(updatedAt * 1000).toISOString() };
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(
   request: Request,

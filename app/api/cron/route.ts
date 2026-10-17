@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { COIN_PEGS } from "@/lib/coinPegs";
 import { fetchEurUsd } from "@/lib/fetchEurUsd";
+import { fetchChainlinkPoR } from "@/lib/chainlinkPoR";
+import { COINGECKO_IDS } from "@/lib/coingeckoIds";
 
 // Temporarily excluded from alerts — persistent depeg, remove when recovered
 const EXCLUDED_FROM_ALERTS: string[] = [];
@@ -76,27 +78,6 @@ async function fetchChainlinkPrice(contract: string, rpcUrl: string): Promise<nu
   return Number(BigInt("0x" + answerHex)) / 1e8;
 }
 
-async function fetchChainlinkPoR(
-  contract: string,
-  rpcUrl: string
-): Promise<{ reserves: number; updated_at: string } | null> {
-  try {
-    // decimals() = 0x313ce567 — TUSD PoR feed has 18 decimals, not 8
-    const decimalsHex = await ethCallWithRetry(contract, "0x313ce567", rpcUrl);
-    const decimals = decimalsHex ? Number(BigInt(decimalsHex)) : 8;
-    const result = await callLatestRoundData(contract, rpcUrl);
-    if (!result) return null;
-    const hex = result.slice(2);
-    // ABI slot 1 — int256 answer (reserves)
-    const reserves = Number(BigInt("0x" + hex.slice(64, 128))) / Math.pow(10, decimals);
-    // ABI slot 3 — uint256 updatedAt
-    const updatedAt = Number(BigInt("0x" + hex.slice(192, 256)));
-    if (reserves <= 0) return null;
-    return { reserves, updated_at: new Date(updatedAt * 1000).toISOString() };
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(request: Request) {
   try {
@@ -137,7 +118,7 @@ export async function GET(request: Request) {
     let cgData: Record<string, { usd?: number }> = {};
     try {
       const cgRes = await fetch(
-        "https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,dai,usds,ethena-usde,paypal-usd,first-digital-usd,ripple-usd,true-usd,frax-usd,gho,crvusd,liquity-usd,paxos-standard,usdd,prisma-mkusd,euro-coin,dola-usd,alchemix-usd,liquity-bold-2,global-dollar&vs_currencies=usd",
+        `https://api.coingecko.com/api/v3/simple/price?ids=${Object.values(COINGECKO_IDS).join(",")}&vs_currencies=usd`,
         {
           signal: AbortSignal.timeout(10000),
           ...(cgKey ? { headers: { "x-cg-demo-api-key": cgKey } } : {}),
@@ -312,28 +293,29 @@ export async function GET(request: Request) {
     }
 
     // Compute Median Prices
+    const cg = (slug: string) => cgData[COINGECKO_IDS[slug]]?.usd ?? 0;
     const sourcePrices: Record<string, Record<string, number>> = {
-      usdt:   { coingecko: cgData["tether"]?.usd ?? 0,           coinbase: cbResults["USDT-USD"] ?? 0,                                   kraken: krResults["usdt"]  ?? 0, defillama: dlResults["usdt"]  ?? 0, chainlink: clResults["usdt"]  ?? 0 },
-      usdc:   { coingecko: cgData["usd-coin"]?.usd ?? 0,         coinbase: cbResults["USDC-USD"] ?? 0,  binance: bnResults["usdc"]  ?? 0, kraken: krResults["usdc"]  ?? 0, defillama: dlResults["usdc"]  ?? 0, chainlink: clResults["usdc"]  ?? 0 },
-      dai:    { coingecko: cgData["dai"]?.usd ?? 0,                                                      coinbase: cbResults["DAI-USD"]  ?? 0,                                   kraken: krResults["dai"]   ?? 0, defillama: dlResults["dai"]   ?? 0, chainlink: clResults["dai"]   ?? 0 },
-      usds:   { coingecko: cgData["usds"]?.usd ?? 0,             coinbase: cbResults["USDS-USD"] ?? 0,  binance: bnResults["usds"]  ?? 0, kraken: krResults["usds"]  ?? 0, defillama: dlResults["usds"]  ?? 0, chainlink: clResults["usds"]  ?? 0 },
-      ethena: { coingecko: cgData["ethena-usde"]?.usd ?? 0,                                                                                                                  defillama: dlResults["usde"]  ?? 0 },
-      pyusd:  { coingecko: cgData["paypal-usd"]?.usd ?? 0,       coinbase: cbResults["PYUSD-USD"] ?? 0, binance: bnResults["pyusd"] ?? 0, kraken: krResults["pyusd"] ?? 0, defillama: dlResults["pyusd"] ?? 0, chainlink: clResults["pyusd"] ?? 0 },
-      fdusd:  { coingecko: cgData["first-digital-usd"]?.usd ?? 0,                                                                                                            defillama: dlResults["fdusd"] ?? 0 },
-      rlusd:  { coingecko: cgData["ripple-usd"]?.usd ?? 0,                                                                                                                   defillama: dlResults["rlusd"] ?? 0 },
-      tusd:   { coingecko: cgData["true-usd"]?.usd ?? 0,                                                 binance: bnResults["tusd"]  ?? 0,                                   defillama: dlResults["tusd"]  ?? 0, chainlink: clResults["tusd"]  ?? 0 },
-      frax:   { coingecko: cgData["frax-usd"]?.usd ?? 0,                                                                                                                     defillama: dlResults["frax"]  ?? 0, chainlink: clResults["frax"]  ?? 0 },
-      gho:    { coingecko: cgData["gho"]?.usd ?? 0,                                                                                                                          defillama: dlResults["gho"]   ?? 0 },
-      crvusd: { coingecko: cgData["crvusd"]?.usd ?? 0,                                                                                                                       defillama: dlResults["crvusd"] ?? 0 },
-      lusd:   { coingecko: cgData["liquity-usd"]?.usd ?? 0,                                                                                                                  defillama: dlResults["lusd"]  ?? 0 },
-      usdp:   { coingecko: cgData["paxos-standard"]?.usd ?? 0,                                                                                                               defillama: dlResults["usdp"]  ?? 0 },
-      usdd:   { coingecko: cgData["usdd"]?.usd ?? 0,                                                                                                                         defillama: dlResults["usdd"]  ?? 0 },
-      mkusd:  { coingecko: cgData["prisma-mkusd"]?.usd ?? 0,                                                                                                                 defillama: dlResults["mkusd"] ?? 0 },
-      eurc:   { coingecko: cgData["euro-coin"]?.usd ?? 0,                                                                                                                    defillama: dlResults["eurc"]  ?? 0 },
-      dola:   { coingecko: cgData["dola-usd"]?.usd ?? 0,                                                                                                                     defillama: dlResults["dola"]  ?? 0 },
-      alusd:  { coingecko: cgData["alchemix-usd"]?.usd ?? 0,                                                                                                                 defillama: dlResults["alusd"] ?? 0 },
-      bold:   { coingecko: cgData["liquity-bold-2"]?.usd ?? 0,                                                                                                               defillama: dlResults["bold"]  ?? 0 },
-      usdg:   { coingecko: cgData["global-dollar"]?.usd ?? 0,                                                                                                                defillama: dlResults["usdg"]  ?? 0 },
+      usdt:   { coingecko: cg("usdt"),   coinbase: cbResults["USDT-USD"] ?? 0,                                   kraken: krResults["usdt"]  ?? 0, defillama: dlResults["usdt"]  ?? 0, chainlink: clResults["usdt"]  ?? 0 },
+      usdc:   { coingecko: cg("usdc"),   coinbase: cbResults["USDC-USD"] ?? 0,  binance: bnResults["usdc"]  ?? 0, kraken: krResults["usdc"]  ?? 0, defillama: dlResults["usdc"]  ?? 0, chainlink: clResults["usdc"]  ?? 0 },
+      dai:    { coingecko: cg("dai"),                                            coinbase: cbResults["DAI-USD"]  ?? 0,                                   kraken: krResults["dai"]   ?? 0, defillama: dlResults["dai"]   ?? 0, chainlink: clResults["dai"]   ?? 0 },
+      usds:   { coingecko: cg("usds"),   coinbase: cbResults["USDS-USD"] ?? 0,  binance: bnResults["usds"]  ?? 0, kraken: krResults["usds"]  ?? 0, defillama: dlResults["usds"]  ?? 0, chainlink: clResults["usds"]  ?? 0 },
+      ethena: { coingecko: cg("ethena"),                                                                                                             defillama: dlResults["usde"]  ?? 0 },
+      pyusd:  { coingecko: cg("pyusd"),  coinbase: cbResults["PYUSD-USD"] ?? 0, binance: bnResults["pyusd"] ?? 0, kraken: krResults["pyusd"] ?? 0, defillama: dlResults["pyusd"] ?? 0, chainlink: clResults["pyusd"] ?? 0 },
+      fdusd:  { coingecko: cg("fdusd"),                                                                                                              defillama: dlResults["fdusd"] ?? 0 },
+      rlusd:  { coingecko: cg("rlusd"),                                                                                                              defillama: dlResults["rlusd"] ?? 0 },
+      tusd:   { coingecko: cg("tusd"),                                           binance: bnResults["tusd"]  ?? 0,                                   defillama: dlResults["tusd"]  ?? 0, chainlink: clResults["tusd"]  ?? 0 },
+      frax:   { coingecko: cg("frax"),                                                                                                               defillama: dlResults["frax"]  ?? 0, chainlink: clResults["frax"]  ?? 0 },
+      gho:    { coingecko: cg("gho"),                                                                                                                defillama: dlResults["gho"]   ?? 0 },
+      crvusd: { coingecko: cg("crvusd"),                                                                                                             defillama: dlResults["crvusd"] ?? 0 },
+      lusd:   { coingecko: cg("lusd"),                                                                                                               defillama: dlResults["lusd"]  ?? 0 },
+      usdp:   { coingecko: cg("usdp"),                                                                                                               defillama: dlResults["usdp"]  ?? 0 },
+      usdd:   { coingecko: cg("usdd"),                                                                                                               defillama: dlResults["usdd"]  ?? 0 },
+      mkusd:  { coingecko: cg("mkusd"),                                                                                                              defillama: dlResults["mkusd"] ?? 0 },
+      eurc:   { coingecko: cg("eurc"),                                                                                                               defillama: dlResults["eurc"]  ?? 0 },
+      dola:   { coingecko: cg("dola"),                                                                                                               defillama: dlResults["dola"]  ?? 0 },
+      alusd:  { coingecko: cg("alusd"),                                                                                                              defillama: dlResults["alusd"] ?? 0 },
+      bold:   { coingecko: cg("bold"),                                                                                                               defillama: dlResults["bold"]  ?? 0 },
+      usdg:   { coingecko: cg("usdg"),                                                                                                               defillama: dlResults["usdg"]  ?? 0 },
     };
     const prices: Record<string, number | null> = Object.fromEntries(
       Object.keys(sourcePrices).map(slug => [slug, median(Object.values(sourcePrices[slug]))])
