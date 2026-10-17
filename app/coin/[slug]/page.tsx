@@ -8,16 +8,15 @@ import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 const COIN_DATA: Record<string, {
   name: string; issuer: string; icon: string; bgColor: string;
   collateral: string; collateralRatio: string; reserveAudit: string;
-  auditDate: string; auditScore: number; description: string;
+  auditDate: string; description: string;
   contractAddress: string;
 }> = {
   usdt: {
     name: "USDT", issuer: "Tether", icon: "/icons/usdt.png", bgColor: "#26a17b",
     collateral: "Cash & Cash Equivalents, T-Bills, Other",
-    collateralRatio: "100.4%",
+    collateralRatio: "Fully backed (per issuer)",
     reserveAudit: "BDO Italia",
     auditDate: "Q4 2024",
-    auditScore: 85,
     description: "USDT is the world's largest stablecoin by market cap, issued by Tether. It is pegged 1:1 to the US Dollar and backed by reserves including cash, cash equivalents, and short-term US Treasury bills.",
     contractAddress: "0xdac17f958d2ee523a2206206994597c13d831ec7",
   },
@@ -27,7 +26,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: "100%",
     reserveAudit: "Deloitte",
     auditDate: "Monthly",
-    auditScore: 97,
     description: "USDC is issued by Circle and is one of the most transparent stablecoins. Reserves are held in segregated accounts at regulated US financial institutions and audited monthly.",
     contractAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
   },
@@ -37,27 +35,24 @@ const COIN_DATA: Record<string, {
     collateralRatio: ">150%",
     reserveAudit: "On-chain (public)",
     auditDate: "Real-time",
-    auditScore: 88,
     description: "DAI is a decentralised stablecoin issued by MakerDAO (now Sky). It is over-collateralised by a diversified basket of crypto assets locked in smart contracts, with all positions verifiable on-chain. DAI can be upgraded 1:1 to USDS via the Sky protocol.",
     contractAddress: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
   },
   usds: {
     name: "USDS", issuer: "Sky", icon: "/icons/usds.png", bgColor: "#f4b731",
     collateral: "Crypto-collateralised (ETH, BTC, RWA)",
-    collateralRatio: "147%",
+    collateralRatio: "Over-collateralised",
     reserveAudit: "On-chain (public)",
     auditDate: "Real-time",
-    auditScore: 92,
     description: "USDS is a decentralised stablecoin issued by Sky (formerly MakerDAO). It is over-collateralised with a mix of crypto assets and real-world assets, with all collateral verifiable on-chain. DAI holders can convert 1:1 to USDS via Sky's official upgrade path.",
     contractAddress: "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
   },
   ethena: {
     name: "Ethena (USDe)", issuer: "Ethena Labs", icon: "/icons/ethena.png", bgColor: "#1a1a2e",
     collateral: "ETH + Perpetual Short Hedges",
-    collateralRatio: "101.2%",
+    collateralRatio: "Delta-neutral (per issuer)",
     reserveAudit: "On-chain (public)",
     auditDate: "Real-time",
-    auditScore: 78,
     description: "USDe is a synthetic dollar backed by staked ETH and delta-neutral perpetual short positions. It generates yield from staking rewards and funding rates, but carries unique smart contract and exchange counterparty risks.",
     contractAddress: "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
   },
@@ -67,7 +62,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: "100%",
     reserveAudit: "Grant Thornton",
     auditDate: "Monthly",
-    auditScore: 90,
     description: "PYUSD is issued by Paxos Trust Company on behalf of PayPal. It is fully backed by US dollar deposits, short-term treasuries, and similar cash equivalents, with monthly attestations.",
     contractAddress: "0x6c3ea9036406852006290770bedfcaba0e23a0e8",
   },
@@ -77,7 +71,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: "100%",
     reserveAudit: "Prescient Assurance",
     auditDate: "Monthly",
-    auditScore: 80,
     description: "FDUSD is issued by First Digital Trust, a Hong Kong-based qualified custodian. It is backed 1:1 by cash and cash equivalents held in segregated accounts.",
     contractAddress: "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409",
   },
@@ -87,17 +80,15 @@ const COIN_DATA: Record<string, {
     collateralRatio: "100%",
     reserveAudit: "Independent Attestation",
     auditDate: "Monthly",
-    auditScore: 88,
     description: "RLUSD is issued by Ripple and runs on the XRP Ledger and Ethereum. It is fully backed by US dollar deposits and cash equivalents, designed for enterprise and cross-border payments.",
     contractAddress: "0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD",
   },
   tusd: {
     name: "TUSD", issuer: "TrueUSD", icon: "/icons/tusd.png", bgColor: "#1a3a5c",
     collateral: "US Dollar Deposits",
-    collateralRatio: "99.7%",
+    collateralRatio: "Backed (per issuer)",
     reserveAudit: "Armanino (paused)",
     auditDate: "Last: 2023",
-    auditScore: 55,
     description: "TUSD is one of the original regulated stablecoins. It was historically fully backed by USD deposits with real-time attestations, but reserve verification has been paused since 2023, introducing uncertainty.",
     contractAddress: "0x0000000000085d4780B73119b644AE5ecd22b376",
   },
@@ -107,7 +98,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: "100%",
     reserveAudit: "Custodian-held reserves",
     auditDate: "—",
-    auditScore: 72,
     description: "frxUSD is Frax Finance's fiat-redeemable, fully-collateralised stablecoin. Each token is backed 1:1 by cash-equivalent reserves (including tokenised U.S. Treasury funds) held by governance-approved enshrined custodians.",
     contractAddress: "0xcacd6fd266af91b8aed52accc382b4e165586e29",
   },
@@ -117,7 +107,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: ">100%",
     reserveAudit: "On-chain (Aave protocol)",
     auditDate: "Real-time",
-    auditScore: 80,
     description: "GHO is a decentralised stablecoin native to the Aave protocol. It is minted by over-collateralised borrowers using assets supplied to Aave V3, with governance managed by Aave DAO.",
     contractAddress: "0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f",
   },
@@ -127,7 +116,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: ">100%",
     reserveAudit: "On-chain (public)",
     auditDate: "Real-time",
-    auditScore: 75,
     description: "crvUSD is the native stablecoin of Curve Finance, using the LLAMMA (Lending-Liquidating AMM Algorithm) system to gradually liquidate collateral rather than via sudden liquidations.",
     contractAddress: "0xf939E0A03FB07F59A73314E73794be0E57ac1b4E",
   },
@@ -137,7 +125,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: ">110%",
     reserveAudit: "On-chain (public)",
     auditDate: "Real-time",
-    auditScore: 88,
     description: "LUSD is the stablecoin of Liquity V1, backed purely by ETH. The protocol is fully immutable with no governance and no admin keys, making it one of the most trust-minimised stablecoins in DeFi.",
     contractAddress: "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0",
   },
@@ -147,7 +134,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: "100%",
     reserveAudit: "Withum Smith+Brown",
     auditDate: "Monthly",
-    auditScore: 90,
     description: "USDP (Pax Dollar, formerly PAX) is issued by Paxos Trust Company, regulated by the NYDFS. It is fully backed by USD deposits and short-term US Treasuries held at US-regulated financial institutions.",
     contractAddress: "0x8E870D67F660D95d5be530380D0eC0bd388289E1",
   },
@@ -157,7 +143,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: ">200%",
     reserveAudit: "TRON DAO Reserve",
     auditDate: "Real-time",
-    auditScore: 50,
     description: "USDD is a decentralised stablecoin managed by the TRON DAO Reserve, backed by a basket of BTC, ETH, and TRX. It has experienced significant depegging events and carries elevated counterparty risk.",
     contractAddress: "0x0C10bF8FcB7Bf5412187A595ab97a3609160b5c6",
   },
@@ -167,7 +152,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: ">100%",
     reserveAudit: "On-chain (public)",
     auditDate: "Real-time",
-    auditScore: 63,
     description: "mkUSD is the stablecoin of Prisma Finance, minted against liquid staking tokens. The protocol was affected by a security exploit in 2024, and is managed by the Prisma DAO.",
     contractAddress: "0x4591DBfF62656E7859Afe5e45f6f47D3669fBB28",
   },
@@ -177,7 +161,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: "100%",
     reserveAudit: "Deloitte",
     auditDate: "Monthly",
-    auditScore: 95,
     description: "EURC (Euro Coin) is issued by Circle, pegged 1:1 to the Euro. It is fully backed by Euro-denominated reserves at regulated European financial institutions. Note: EURC trades above $1 USD, reflecting EUR/USD exchange rates.",
     contractAddress: "0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c",
   },
@@ -187,7 +170,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: "~100%",
     reserveAudit: "On-chain (public)",
     auditDate: "Real-time",
-    auditScore: 58,
     description: "DOLA is the stablecoin of Inverse Finance. It has been affected by multiple protocol exploits, and the team has been working to repay outstanding bad debt and strengthen security measures.",
     contractAddress: "0x865377367054516e17014CcDed1e7d814EDC9ce4",
   },
@@ -197,7 +179,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: "~100%",
     reserveAudit: "On-chain (public)",
     auditDate: "Real-time",
-    auditScore: 72,
     description: "alUSD is a self-repaying synthetic stablecoin from Alchemix. It is minted against yield-bearing collateral and repays itself over time as the underlying collateral generates yield.",
     contractAddress: "0xBC6DA0FE9aD5f3b0d58160288917AA56653660e9",
   },
@@ -207,7 +188,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: ">100%",
     reserveAudit: "On-chain (public)",
     auditDate: "Real-time",
-    auditScore: 85,
     description: "BOLD is the stablecoin of Liquity V2, supporting ETH and major liquid staking tokens as collateral. Like V1, the protocol is immutable and governance-free, while enabling multi-collateral positions.",
     contractAddress: "0x6440f144b7e50d6a8439336510312d2f54beb01d",
   },
@@ -217,7 +197,6 @@ const COIN_DATA: Record<string, {
     collateralRatio: "100%",
     reserveAudit: "Monthly Attestation",
     auditDate: "Monthly",
-    auditScore: 88,
     description: "USDG (Global Dollar) is issued by Paxos Digital Singapore Pte. Ltd., regulated by the Monetary Authority of Singapore (MAS). Reserves are held in cash and short-term US Treasuries, attested monthly by an independent auditor.",
     contractAddress: "0xe343167631d89B6Ffc58B88d6b7fB0228795491D",
   },
@@ -632,12 +611,9 @@ export default function CoinDetailPage() {
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
         <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Collateralisation</div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-          <span style={{ fontSize: "12px", color: textSecondary }}>Collateral Ratio</span>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+          <span style={{ fontSize: "12px", color: textSecondary }}>Backing</span>
           <span style={{ fontSize: "12px", fontWeight: "700", color: textPrimary }}>{coin.collateralRatio}</span>
-        </div>
-        <div style={{ height: "8px", background: dark ? "#1e2a40" : "#f3f4f6", borderRadius: "4px", overflow: "hidden", marginBottom: "12px" }}>
-          <div style={{ height: "100%", width: `${Math.min(parseFloat(coin.collateralRatio) || 0, 150) / 150 * 100}%`, background: "linear-gradient(90deg, #1a56db, #10b981)", borderRadius: "4px" }}></div>
         </div>
         <div style={{ fontSize: "12px", color: textSecondary }}>{coin.collateral}</div>
         {sevenDayHistory.length >= 4 && (
@@ -676,19 +652,12 @@ export default function CoinDetailPage() {
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
         <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>Reserve Transparency</div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-          <span style={{ fontSize: "12px", color: textSecondary }}>Audit Score</span>
-          <span style={{ fontSize: "12px", fontWeight: "700", color: textPrimary }}>{coin.auditScore}/100</span>
-        </div>
-        <div style={{ height: "8px", background: dark ? "#1e2a40" : "#f3f4f6", borderRadius: "4px", overflow: "hidden", marginBottom: "12px" }}>
-          <div style={{ height: "100%", width: `${coin.auditScore}%`, background: coin.auditScore >= 80 ? "linear-gradient(90deg, #1a56db, #10b981)" : coin.auditScore >= 60 ? "linear-gradient(90deg, #f59e0b, #d97706)" : "linear-gradient(90deg, #ef4444, #dc2626)", borderRadius: "4px" }}></div>
-        </div>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span style={{ fontSize: "12px", color: textSecondary }}>Auditor</span>
           <span style={{ fontSize: "12px", color: textPrimary }}>{coin.reserveAudit}</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px" }}>
-          <span style={{ fontSize: "12px", color: textSecondary }}>Last Audit</span>
+          <span style={{ fontSize: "12px", color: textSecondary }}>Last known attestation</span>
           <span style={{ fontSize: "12px", color: textPrimary }}>{coin.auditDate}</span>
         </div>
       </div>
@@ -705,7 +674,11 @@ export default function CoinDetailPage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
             <span style={{ fontSize: "12px", color: textSecondary }}>On-chain Reserves</span>
             <span style={{ fontSize: "14px", fontWeight: "700", color: "#10b981" }}>
-              ${(chainlinkPor.reserves / 1e8).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {chainlinkPor.reserves >= 1e9
+                ? `$${(chainlinkPor.reserves / 1e9).toFixed(2)}B`
+                : chainlinkPor.reserves >= 1e6
+                ? `$${(chainlinkPor.reserves / 1e6).toFixed(2)}M`
+                : `$${chainlinkPor.reserves.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
