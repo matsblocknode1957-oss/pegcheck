@@ -1,0 +1,12 @@
+{
+  "_strategy": "Bot B (Bold) — split buys, depth-based patience, trailing exit",
+  "SWAP_FEE_PCT": 0.0005,
+  "SPLIT_BUY_DROP_PCT": 0.003,
+  "DEEP_ENTRY_PCT": 0.008,
+  "SHALLOW_STALE_EXIT_HOURS": 25,
+  "DEEP_STALE_EXIT_HOURS": 48,
+  "STALE_EXIT_MIN_PROFIT_PCT": 0.0005,
+  "SHALLOW_TAKE_PROFIT_DISTANCE_PCT": 0.002,
+  "DEEP_TAKE_PROFIT_DISTANCE_PCT": 0.001,
+  "TRAILING_PULLBACK_PCT": 0.001
+}

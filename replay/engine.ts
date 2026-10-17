@@ -39,6 +39,7 @@ export interface DebugDecision {
 
 export interface RunReplayOptions {
   debug?: boolean;
+  swapFeePct?: number; // 0.05% per buy + sell for fair bot comparison; default 0
 }
 
 export interface ReplayOverrides {
@@ -73,6 +74,7 @@ export interface ReplayResult {
   stillOpen: SimTrade[];
   slotFullTicks: number;
   postWarmupTicks: number;
+  maxCapitalUsd: number;
   debugDecisions: DebugDecision[]; // populated only when RunReplayOptions.debug is true
 }
 
@@ -290,6 +292,7 @@ export function runReplay(
 ): ReplayResult {
   applyAndVerifyOverrides(overrides);
   const debugDecisions: DebugDecision[] = [];
+  const swapFee = options.swapFeePct ?? 0;
 
   // Build 5-minute grid across all coins' data range (mirrors live cron cadence)
   let gridStart = Infinity, gridEnd = -Infinity;
@@ -323,6 +326,7 @@ export function runReplay(
 
   let slotFullTicks   = 0;
   let postWarmupTicks = 0;
+  let maxCapitalUsd   = 0;
 
   for (const tickMs of ticks) {
     const now = new Date(tickMs);
@@ -365,6 +369,8 @@ export function runReplay(
       const exit = checkExit(openTrade, currentPrice, now);
       if (exit.status !== "open") {
         openTrades.delete(slug);
+        const exitValue = (trade.sizeUsd / trade.entry) * exit.exitPrice;
+        const feeUsd    = swapFee > 0 ? swapFee * (trade.sizeUsd + exitValue) : 0;
         closed.push({
           coin:        slug,
           entryTs:     trade.openedAt,
@@ -373,7 +379,7 @@ export function runReplay(
           exitPrice:   exit.exitPrice,
           hoursHeld:   (tickMs - trade.openedAt.getTime()) / 3_600_000,
           sizeUsd:     trade.sizeUsd,
-          pnlUsd:      exit.profitUsd,
+          pnlUsd:      exit.profitUsd - feeUsd,
           exitReason:  exit.status,
         });
       }
@@ -526,6 +532,11 @@ export function runReplay(
         openPositionsCount++;
       }
     }
+
+    // Track peak capital after all opens this tick
+    let tickCap = 0;
+    for (const [, t] of openTrades) tickCap += t.sizeUsd;
+    if (tickCap > maxCapitalUsd) maxCapitalUsd = tickCap;
   }
 
   return {
@@ -533,6 +544,7 @@ export function runReplay(
     stillOpen:      [...openTrades.values()],
     slotFullTicks,
     postWarmupTicks,
+    maxCapitalUsd,
     debugDecisions,
   };
 }

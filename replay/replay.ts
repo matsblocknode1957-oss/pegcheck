@@ -6,14 +6,17 @@
  * npx tsx replay/replay.ts --overrides '{"STALE_EXIT_HOURS":48}'
  * npx tsx replay/replay.ts --overrides replay/configs/stale48.json
  * npx tsx replay/replay.ts --compare  replay/configs/stale48.json
+ * npx tsx replay/replay.ts --bot-b                    # Bot A vs Bot B side-by-side
  * npx tsx replay/replay.ts --debug                    # diagnose zero-trade issues
  */
 
-import * as fs from "fs";
+import * as fs   from "fs";
+import * as path from "path";
 import {
   loadDatasets, runReplay,
   ReplayOverrides, ClosedTrade, ReplayResult, DebugDecision,
 } from "./engine";
+import { runReplayBotB, BotBConfig, ClosedBotBTrade, BotBReplayResult } from "./engineBotB";
 
 const COINS = [
   "mkusd", "usdp", "bold", "alusd", "frax",
@@ -28,17 +31,21 @@ function parseOverridesArg(raw: string): ReplayOverrides {
   return JSON.parse(fs.readFileSync(s, "utf8")) as ReplayOverrides;
 }
 
-function parseArgs(): { overrides: ReplayOverrides; compare: ReplayOverrides | null; debug: boolean } {
+function parseArgs(): {
+  overrides: ReplayOverrides; compare: ReplayOverrides | null; debug: boolean; botB: boolean;
+} {
   const argv = process.argv.slice(2);
   let overrides: ReplayOverrides = {};
   let compare: ReplayOverrides | null = null;
   let debug = false;
+  let botB  = false;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--overrides" && argv[i + 1]) overrides = parseOverridesArg(argv[++i]!);
     if (argv[i] === "--compare"   && argv[i + 1]) compare   = parseOverridesArg(argv[++i]!);
     if (argv[i] === "--debug") debug = true;
+    if (argv[i] === "--bot-b") botB  = true;
   }
-  return { overrides, compare, debug };
+  return { overrides, compare, debug, botB };
 }
 
 // ── Formatting helpers ────────────────────────────────────────────────────────
@@ -266,14 +273,229 @@ function printDebugReport(decisions: DebugDecision[]): void {
   }
 }
 
+// ── Bot B comparison helpers ──────────────────────────────────────────────────
+
+interface BotBSummary {
+  trades: number; wins: number; losses: number; stale: number; timedOut: number;
+  pnl: number; avgH: number; maxCapital: number;
+  slotFull: number; postWarmup: number; open: number; doubled: number;
+}
+
+function summariseBotB(r: BotBReplayResult): BotBSummary {
+  const wins    = r.closed.filter(t => t.exitReason === "won").length;
+  const losses  = r.closed.filter(t => t.exitReason === "lost").length;
+  const stale   = r.closed.filter(t => t.exitReason === "stale_exit").length;
+  const timedOut = r.closed.filter(t => t.exitReason === "timed_out").length;
+  const doubled = r.closed.filter(t => t.doubled).length;
+  const pnl     = r.closed.reduce((s, t) => s + t.pnlUsd, 0);
+  const avgH    = r.closed.length > 0
+    ? r.closed.reduce((s, t) => s + t.hoursHeld, 0) / r.closed.length : 0;
+  return {
+    trades: r.closed.length, wins, losses, stale, timedOut,
+    pnl, avgH, maxCapital: r.maxCapitalUsd,
+    slotFull: r.slotFullTicks, postWarmup: r.postWarmupTicks,
+    open: r.stillOpen.length, doubled,
+  };
+}
+
+interface BotASummaryFull {
+  trades: number; wins: number; losses: number; stale: number; timedOut: number;
+  pnl: number; avgH: number; maxCapital: number;
+  slotFull: number; postWarmup: number; open: number;
+}
+
+function summariseBotA(r: ReplayResult): BotASummaryFull {
+  const wins    = r.closed.filter(t => t.exitReason === "won").length;
+  const losses  = r.closed.filter(t => t.exitReason === "lost").length;
+  const stale   = r.closed.filter(t => t.exitReason === "stale_exit").length;
+  const timedOut = r.closed.filter(t => t.exitReason === "timed_out").length;
+  const pnl     = r.closed.reduce((s, t) => s + t.pnlUsd, 0);
+  const avgH    = r.closed.length > 0
+    ? r.closed.reduce((s, t) => s + t.hoursHeld, 0) / r.closed.length : 0;
+  return {
+    trades: r.closed.length, wins, losses, stale, timedOut,
+    pnl, avgH, maxCapital: r.maxCapitalUsd,
+    slotFull: r.slotFullTicks, postWarmup: r.postWarmupTicks,
+    open: r.stillOpen.length,
+  };
+}
+
+function worstTrade(trades: ClosedTrade[]): string {
+  if (trades.length === 0) return "—";
+  const w = trades.reduce((a, b) => a.pnlUsd < b.pnlUsd ? a : b);
+  return `${w.coin} opened ${fmtTs(w.entryTs)} @ ${fmtPrice(w.entryPrice)} → ${fmtPrice(w.exitPrice)} (${fmtPnl(w.pnlUsd)}, ${w.exitReason})`;
+}
+
+function printBotAPanel(s: BotASummaryFull, closed: ClosedTrade[], label: string): void {
+  const avgPnl = s.trades > 0 ? s.pnl / s.trades : 0;
+  const slotStr = s.postWarmup > 0
+    ? ((s.slotFull / s.postWarmup) * 100).toFixed(1) + "%" : "—";
+  console.log(`\n=== ${label} ===`);
+  console.log(`  Closed trades  : ${s.trades}  (${s.open} still open)`);
+  console.log(`  Wins           : ${s.wins}/${s.trades} (${fmtPct(s.wins, s.trades)})`);
+  console.log(`  Losses         : ${s.losses}`);
+  console.log(`  Stale exits    : ${s.stale}`);
+  console.log(`  Timed out      : ${s.timedOut}`);
+  console.log(`  Total P&L      : ${fmtPnl(s.pnl)}`);
+  console.log(`  Avg P&L/trade  : ${fmtPnl(avgPnl)}`);
+  console.log(`  Avg hold       : ${s.avgH.toFixed(1)}h`);
+  console.log(`  Max capital    : $${s.maxCapital.toFixed(0)}`);
+  console.log(`  Slot-full      : ${slotStr}`);
+  console.log(`  Worst trade    : ${worstTrade(closed)}`);
+}
+
+function printBotBPanel(s: BotBSummary, closed: ClosedBotBTrade[], label: string): void {
+  const avgPnl = s.trades > 0 ? s.pnl / s.trades : 0;
+  const slotStr = s.postWarmup > 0
+    ? ((s.slotFull / s.postWarmup) * 100).toFixed(1) + "%" : "—";
+  console.log(`\n=== ${label} ===`);
+  console.log(`  Closed trades  : ${s.trades}  (${s.open} still open)  [${s.doubled} doubled]`);
+  console.log(`  Wins           : ${s.wins}/${s.trades} (${fmtPct(s.wins, s.trades)})`);
+  console.log(`  Losses         : ${s.losses}`);
+  console.log(`  Stale exits    : ${s.stale}`);
+  console.log(`  Timed out      : ${s.timedOut}`);
+  console.log(`  Total P&L      : ${fmtPnl(s.pnl)}`);
+  console.log(`  Avg P&L/trade  : ${fmtPnl(avgPnl)}`);
+  console.log(`  Avg hold       : ${s.avgH.toFixed(1)}h`);
+  console.log(`  Max capital    : $${s.maxCapital.toFixed(0)}`);
+  console.log(`  Slot-full      : ${slotStr}`);
+  console.log(`  Worst trade    : ${worstTrade(closed)}`);
+}
+
+function printBotBSideBySide(
+  sA: BotASummaryFull, sB: BotBSummary,
+): void {
+  const lw = 18, vw = 20;
+  const row = (label: string, a: string, b: string) =>
+    `  ${label.padEnd(lw)}  ${a.padEnd(vw)}  ${b}`;
+  console.log("\n=== SIDE BY SIDE ===");
+  console.log(row("Metric", "Bot A (v3.1 + fee)", "Bot B (Bold + fee)"));
+  console.log("  " + "-".repeat(lw + 2 + vw + 2 + vw));
+  console.log(row("Closed trades",  String(sA.trades),                  String(sB.trades)));
+  console.log(row("Still open",     String(sA.open),                    String(sB.open)));
+  console.log(row("Wins",           `${sA.wins} (${fmtPct(sA.wins, sA.trades)})`, `${sB.wins} (${fmtPct(sB.wins, sB.trades)})`));
+  console.log(row("Losses",         String(sA.losses),                  String(sB.losses)));
+  console.log(row("Stale exits",    String(sA.stale),                   String(sB.stale)));
+  console.log(row("Timed out",      String(sA.timedOut),                String(sB.timedOut)));
+  console.log(row("Total P&L",      fmtPnl(sA.pnl),                    fmtPnl(sB.pnl)));
+  console.log(row("Avg P&L/trade",  fmtPnl(sA.trades > 0 ? sA.pnl / sA.trades : 0),
+                                    fmtPnl(sB.trades > 0 ? sB.pnl / sB.trades : 0)));
+  console.log(row("Avg hold",       sA.avgH.toFixed(1) + "h",          sB.avgH.toFixed(1) + "h"));
+  console.log(row("Max capital",    "$" + sA.maxCapital.toFixed(0),     "$" + sB.maxCapital.toFixed(0)));
+}
+
+function printBotBPerCoin(
+  aClosedIn: ClosedTrade[],
+  bClosedIn: ClosedBotBTrade[],
+): void {
+  const allCoins = new Set([
+    ...aClosedIn.map(t => t.coin),
+    ...bClosedIn.map(t => t.coin),
+  ]);
+  const cols = [8, 22, 22];
+  const hdrs = ["coin", "Bot A (trades/pnl/win%)", "Bot B (trades/pnl/win%/doubled)"];
+  console.log("\n=== PER-COIN BREAKDOWN ===");
+  console.log("  " + hdrs.map((h, i) => h.padEnd(cols[i]!)).join("  "));
+  console.log("  " + cols.map(w => "-".repeat(w)).join("  "));
+  for (const coin of [...allCoins].sort()) {
+    const aTs  = aClosedIn.filter(t => t.coin === coin);
+    const bTs  = bClosedIn.filter(t => t.coin === coin);
+    const aWins = aTs.filter(t => t.exitReason === "won").length;
+    const bWins = bTs.filter(t => t.exitReason === "won").length;
+    const aPnl  = aTs.reduce((s, t) => s + t.pnlUsd, 0);
+    const bPnl  = bTs.reduce((s, t) => s + t.pnlUsd, 0);
+    const bDbl  = bTs.filter(t => t.doubled).length;
+    const aStr  = aTs.length > 0
+      ? `${aTs.length} trades  ${fmtPnl(aPnl)}  ${fmtPct(aWins, aTs.length)}`
+      : "—";
+    const bStr  = bTs.length > 0
+      ? `${bTs.length} trades  ${fmtPnl(bPnl)}  ${fmtPct(bWins, bTs.length)}  ${bDbl}×dbl`
+      : "—";
+    console.log("  " + [coin, aStr, bStr].map((v, i) => v.padEnd(cols[i]!)).join("  "));
+  }
+}
+
+function explainDivergence(a: ClosedTrade, b: ClosedBotBTrade): string {
+  const parts: string[] = [];
+  if (b.doubled) parts.push(`B doubled (2nd $500 at ${fmtPrice(b.entryPrice)})`);
+  if (a.exitReason !== b.exitReason) parts.push(`A exited via ${a.exitReason}, B via ${b.exitReason}`);
+  if (Math.abs(a.hoursHeld - b.hoursHeld) > 2) {
+    const longer = a.hoursHeld > b.hoursHeld ? "A" : "B";
+    parts.push(`${longer} held ${Math.abs(a.hoursHeld - b.hoursHeld).toFixed(0)}h longer`);
+  }
+  if (Math.abs(a.exitPrice - b.exitPrice) > 0.0001) {
+    parts.push(`different exit prices (A ${fmtPrice(a.exitPrice)}, B ${fmtPrice(b.exitPrice)})`);
+  }
+  return parts.length > 0 ? parts.join("; ") : "similar outcomes, small fee difference";
+}
+
+function printTopDivergences(aClosed: ClosedTrade[], bClosed: ClosedBotBTrade[]): void {
+  type Pair = { a: ClosedTrade; b: ClosedBotBTrade; diff: number };
+  const pairs: Pair[] = [];
+
+  for (const a of aClosed) {
+    // Find closest Bot B trade for same coin within 6h
+    const candidates = bClosed.filter(
+      b => b.coin === a.coin && Math.abs(b.entryTs.getTime() - a.entryTs.getTime()) < 6 * 3_600_000,
+    );
+    if (candidates.length === 0) continue;
+    const b = candidates.reduce((best, c) =>
+      Math.abs(c.entryTs.getTime() - a.entryTs.getTime()) <
+      Math.abs(best.entryTs.getTime() - a.entryTs.getTime()) ? c : best,
+    );
+    pairs.push({ a, b, diff: Math.abs(a.pnlUsd - b.pnlUsd) });
+  }
+
+  pairs.sort((x, y) => y.diff - x.diff);
+  const top = pairs.slice(0, 5);
+
+  console.log("\n=== TOP 5 DIVERGENCES (A vs B) ===");
+  if (top.length === 0) {
+    console.log("  (no matched pairs — all trades had large entry-time gaps)");
+    return;
+  }
+  for (let i = 0; i < top.length; i++) {
+    const { a, b, diff } = top[i]!;
+    console.log(`\n  ${i + 1}. ${a.coin.toUpperCase()}  opened ${fmtTs(a.entryTs)}`);
+    console.log(`     Bot A: ${fmtPnl(a.pnlUsd).padEnd(10)} ${a.exitReason}  ${a.hoursHeld.toFixed(1)}h  @${fmtPrice(a.entryPrice)}→${fmtPrice(a.exitPrice)}`);
+    console.log(`     Bot B: ${fmtPnl(b.pnlUsd).padEnd(10)} ${b.exitReason}  ${b.hoursHeld.toFixed(1)}h  @${fmtPrice(b.entryPrice)}→${fmtPrice(b.exitPrice)}${b.doubled ? "  [doubled]" : ""}`);
+    console.log(`     Δ P&L: ${fmtPnl(b.pnlUsd - a.pnlUsd)} — ${explainDivergence(a, b)}`);
+  }
+}
+
+function runBotBComparison(datasets: ReturnType<typeof loadDatasets>): void {
+  const cfgPath = path.resolve(process.cwd(), "replay/configs/botB.json");
+  const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8")) as BotBConfig;
+
+  console.log(`\nRunning Bot A (live v3.1 rules, ${(cfg.SWAP_FEE_PCT * 100).toFixed(2)}% fee)...`);
+  const aResult = runReplay(datasets, {}, { swapFeePct: cfg.SWAP_FEE_PCT });
+
+  console.log(`Running Bot B (Bold: split buys + trailing, ${(cfg.SWAP_FEE_PCT * 100).toFixed(2)}% fee)...`);
+  const bResult = runReplayBotB(datasets, cfg);
+
+  const sA = summariseBotA(aResult);
+  const sB = summariseBotB(bResult);
+
+  printBotAPanel(sA, aResult.closed, `BOT A — v3.1 + ${(cfg.SWAP_FEE_PCT * 100).toFixed(2)}% fee`);
+  printBotBPanel(sB, bResult.closed, `BOT B — Bold + ${(cfg.SWAP_FEE_PCT * 100).toFixed(2)}% fee`);
+  printBotBSideBySide(sA, sB);
+  printBotBPerCoin(aResult.closed, bResult.closed);
+  printTopDivergences(aResult.closed, bResult.closed);
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function main(): void {
-  const { overrides, compare, debug } = parseArgs();
+  const { overrides, compare, debug, botB } = parseArgs();
 
   console.log("Loading datasets...");
   const datasets = loadDatasets(COINS);
   printDatasetStats(datasets);
+
+  if (botB) {
+    runBotBComparison(datasets);
+    return;
+  }
 
   if (compare !== null) {
     if (Object.keys(overrides).length > 0) {
