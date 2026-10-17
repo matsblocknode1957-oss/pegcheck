@@ -45,6 +45,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # hardhat build output
 /hardhat-artifacts/
 /hardhat-cache/
