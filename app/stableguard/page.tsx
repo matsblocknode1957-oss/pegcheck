@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import BottomNav from "@/components/BottomNav";
 
 const CONTRACTS: [string, string][] = [
   ["ExposureRegistry",       "0xC60Ceb4faB3B63495534B2a9A5EB3F6C3f668789"],
@@ -23,7 +23,6 @@ const CONTRACTS_ARB: [string, string][] = [
 const ARBISCAN_BASE = "https://sepolia.arbiscan.io/address/";
 
 export default function StableGuardPage() {
-  const pathname = usePathname();
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [lastUpdated, setLastUpdated] = useState("Loading...");
   const [dark, setDark] = useState(() => {
@@ -74,8 +73,6 @@ export default function StableGuardPage() {
     if (dark) return s === "Healthy" ? "#052e16" : s === "Caution" ? "#451a03" : "#450a0a";
     return s === "Healthy" ? "#f0fdf4" : s === "Caution" ? "#fffbeb" : "#fef2f2";
   };
-
-  const navColor = (href: string) => pathname === href ? "#1a56db" : textSecondary;
 
   const monitoredCoins = [
     { slug: "usdt", name: "USDT", icon: "/icons/usdt.png", bgColor: "#26a17b" },
@@ -251,29 +248,7 @@ export default function StableGuardPage() {
         <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af" }}>Not financial advice</div>
       </div>
 
-      {/* Nav */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: navBg, borderTop: `1px solid ${navBorder}`, display: "flex", padding: "8px 0", zIndex: 100, transition: "background 0.2s ease" }}>
-        <a href="/" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={navColor("/")} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <span style={{ fontSize: "9px", fontWeight: "600", color: navColor("/") }}>Home</span>
-        </a>
-        <a href="/alerts" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={navColor("/alerts")} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span style={{ fontSize: "9px", fontWeight: "600", color: navColor("/alerts") }}>Alerts</span>
-        </a>
-        <a href="/about" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={navColor("/about")} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span style={{ fontSize: "9px", fontWeight: "600", color: navColor("/about") }}>About</span>
-        </a>
-        <a href="/history" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={navColor("/history")} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span style={{ fontSize: "9px", fontWeight: "600", color: navColor("/history") }}>History</span>
-        </a>
-        <a href="/stableguard" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={navColor("/stableguard")} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span style={{ fontSize: "9px", fontWeight: "600", color: navColor("/stableguard") }}>Guard</span>
-        </a>
-      </div>
+      <BottomNav dark={dark} />
     </main>
   );
 }
