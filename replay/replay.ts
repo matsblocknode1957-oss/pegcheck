@@ -6,7 +6,7 @@
  * npx tsx replay/replay.ts --overrides '{"STALE_EXIT_HOURS":48}'
  * npx tsx replay/replay.ts --overrides replay/configs/stale48.json
  * npx tsx replay/replay.ts --compare  replay/configs/stale48.json
- * npx tsx replay/replay.ts --bot-b                    # Bot A vs Bot B side-by-side
+ * npx tsx replay/replay.ts --bot-b                    # Bot A vs Bot B + monthly + ex-MKUSD
  * npx tsx replay/replay.ts --debug                    # diagnose zero-trade issues
  */
 
@@ -56,38 +56,122 @@ const fmtPnl   = (n: number) => (n >= 0 ? "+" : "-") + "$" + Math.abs(n).toFixed
 const fmtPct   = (wins: number, total: number) =>
   total > 0 ? ((wins / total) * 100).toFixed(1) + "%" : "—";
 
-// ── Dataset statistics (always printed after load) ────────────────────────────
+// ── Data-quality helpers ──────────────────────────────────────────────────────
 
-function avgGapMin(rows: Array<{ tsMs: number }>, utcYear: number, utcMonth: number): string {
-  const ts = rows
-    .filter(r => {
-      const d = new Date(r.tsMs);
-      return d.getUTCFullYear() === utcYear && d.getUTCMonth() === utcMonth;
-    })
-    .map(r => r.tsMs);
-  if (ts.length < 2) return "—";
-  let total = 0;
-  for (let i = 1; i < ts.length; i++) total += ts[i]! - ts[i - 1]!;
-  return (total / (ts.length - 1) / 60_000).toFixed(1) + "m";
+interface MonthStats {
+  rowCount: number;
+  avgGapMin: number | null;
+  longGapCount: number;   // gaps > 2h
+  longestGapMin: number;
 }
 
-function printDatasetStats(datasets: ReturnType<typeof loadDatasets>): void {
-  const cols = [8, 7, 16, 16, 9, 9];
-  const hdrs = ["coin", "rows", "first", "last", "gap_aug", "gap_oct"];
-  console.log("  " + hdrs.map((h, i) => h.padEnd(cols[i]!)).join("  "));
-  console.log("  " + cols.map(w => "-".repeat(w)).join("  "));
+function computeMonthStats(rows: Array<{ tsMs: number }>): Map<string, MonthStats> {
+  const buckets = new Map<string, number[]>();
+  for (const row of rows) {
+    const d   = new Date(row.tsMs);
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    const b   = buckets.get(key);
+    if (b) b.push(row.tsMs);
+    else buckets.set(key, [row.tsMs]);
+  }
+
+  const result = new Map<string, MonthStats>();
+  for (const [key, ts] of buckets) {
+    let totalMs = 0, longGapCount = 0, longestGapMin = 0;
+    for (let i = 1; i < ts.length; i++) {
+      const gapMs  = ts[i]! - ts[i - 1]!;
+      totalMs     += gapMs;
+      const gapMin = gapMs / 60_000;
+      if (gapMin > 120) {
+        longGapCount++;
+        if (gapMin > longestGapMin) longestGapMin = gapMin;
+      }
+    }
+    result.set(key, {
+      rowCount:      ts.length,
+      avgGapMin:     ts.length > 1 ? totalMs / (ts.length - 1) / 60_000 : null,
+      longGapCount,
+      longestGapMin,
+    });
+  }
+  return result;
+}
+
+function printDataQuality(datasets: ReturnType<typeof loadDatasets>): void {
+  const allStats  = new Map<string, Map<string, MonthStats>>();
+  const monthSet  = new Set<string>();
+
+  for (const ds of datasets) {
+    const s = computeMonthStats(ds.rows);
+    allStats.set(ds.slug, s);
+    for (const k of s.keys()) monthSet.add(k);
+  }
+  const months = [...monthSet].sort();
+
+  // ── Summary per coin ────────────────────────────────────────────────────────
+  const sCols = [8, 7, 16, 16, 8];
+  const sHdrs = ["coin", "rows", "first", "last", "avg_gap"];
+  console.log("  " + sHdrs.map((h, i) => h.padEnd(sCols[i]!)).join("  "));
+  console.log("  " + sCols.map(w => "-".repeat(w)).join("  "));
   for (const ds of datasets) {
     const first = ds.rows[0]?.tsMs;
     const last  = ds.rows[ds.rows.length - 1]?.tsMs;
+    let totalMs = 0;
+    for (let i = 1; i < ds.rows.length; i++) totalMs += ds.rows[i].tsMs - ds.rows[i - 1].tsMs;
+    const avgMin = ds.rows.length > 1
+      ? (totalMs / (ds.rows.length - 1) / 60_000).toFixed(1) + "m" : "—";
     const vals = [
       ds.slug,
-      String(ds.rows.length),
+      ds.rows.length.toLocaleString(),
       first != null ? new Date(first).toISOString().slice(0, 16).replace("T", " ") : "—",
       last  != null ? new Date(last ).toISOString().slice(0, 16).replace("T", " ") : "—",
-      avgGapMin(ds.rows, 2026, 7),  // August  (month 7, 0-indexed)
-      avgGapMin(ds.rows, 2026, 9),  // October (month 9, 0-indexed)
+      avgMin,
     ];
-    console.log("  " + vals.map((v, i) => v.padEnd(cols[i]!)).join("  "));
+    console.log("  " + vals.map((v, i) => v.padEnd(sCols[i]!)).join("  "));
+  }
+  console.log();
+
+  // ── Monthly avg gap matrix ──────────────────────────────────────────────────
+  const MONTH_NAMES = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+  const mLabels = months.map(mk => MONTH_NAMES[Number(mk.slice(5)) - 1] ?? mk.slice(5));
+  const mw = 6, coinW = 8;
+  console.log("  avg gap per month (minutes):");
+  console.log("  " + "".padEnd(coinW) + "  " + mLabels.map(l => l.padEnd(mw)).join("  "));
+  console.log("  " + "-".repeat(coinW) + "  " + months.map(() => "-".repeat(mw)).join("  "));
+  for (const ds of datasets) {
+    const s    = allStats.get(ds.slug)!;
+    const vals = months.map(mk => {
+      const ms = s.get(mk);
+      return ms && ms.avgGapMin != null ? ms.avgGapMin.toFixed(1) + "m" : "—";
+    });
+    console.log("  " + ds.slug.padEnd(coinW) + "  " + vals.map(v => v.padEnd(mw)).join("  "));
+  }
+  console.log();
+
+  // ── Gaps > 2h ──────────────────────────────────────────────────────────────
+  const longGaps: Array<{ coin: string; month: string; count: number; longestMin: number }> = [];
+  for (const ds of datasets) {
+    for (const mk of months) {
+      const ms = allStats.get(ds.slug)?.get(mk);
+      if (ms && ms.longGapCount > 0) {
+        longGaps.push({ coin: ds.slug, month: mk, count: ms.longGapCount, longestMin: ms.longestGapMin });
+      }
+    }
+  }
+  console.log("  gaps > 2h:");
+  if (longGaps.length === 0) {
+    console.log("  (none — data is clean)");
+  } else {
+    const gCols = [8, 8, 7, 10];
+    const gHdrs = ["coin", "month", "count", "longest"];
+    console.log("  " + gHdrs.map((h, i) => h.padEnd(gCols[i]!)).join("  "));
+    console.log("  " + gCols.map(w => "-".repeat(w)).join("  "));
+    for (const g of longGaps) {
+      const longest = g.longestMin >= 60
+        ? (g.longestMin / 60).toFixed(1) + "h" : g.longestMin.toFixed(0) + "m";
+      const vals = [g.coin, g.month, String(g.count), longest];
+      console.log("  " + vals.map((v, i) => v.padEnd(gCols[i]!)).join("  "));
+    }
   }
   console.log();
 }
@@ -463,6 +547,33 @@ function printTopDivergences(aClosed: ClosedTrade[], bClosed: ClosedBotBTrade[])
   }
 }
 
+function printMonthlyBreakdown(aClosed: ClosedTrade[], bClosed: ClosedBotBTrade[]): void {
+  const monthSet = new Set<string>();
+  for (const t of [...aClosed, ...bClosed]) monthSet.add(t.entryTs.toISOString().slice(0, 7));
+  if (monthSet.size === 0) return;
+  const months = [...monthSet].sort();
+
+  const lw = 8, aw = 28;
+  console.log("\n=== MONTHLY BREAKDOWN ===");
+  console.log(
+    `  ${"month".padEnd(lw)}  ${"Bot A (n / P&L / win%)".padEnd(aw)}  Bot B (n / P&L / win% / dbl)`,
+  );
+  console.log("  " + "-".repeat(lw + 2 + aw + 2 + 30));
+  for (const mk of months) {
+    const aM   = aClosed.filter(t => t.entryTs.toISOString().slice(0, 7) === mk);
+    const bM   = bClosed.filter(t => t.entryTs.toISOString().slice(0, 7) === mk);
+    const aWin = aM.filter(t => t.exitReason === "won").length;
+    const bWin = bM.filter(t => t.exitReason === "won").length;
+    const aPnl = aM.reduce((s, t) => s + t.pnlUsd, 0);
+    const bPnl = bM.reduce((s, t) => s + t.pnlUsd, 0);
+    const bDbl = bM.filter(t => t.doubled).length;
+    const n    = (n: number) => n === 1 ? "1 trade " : `${n} trades`;
+    const aStr = aM.length > 0 ? `${n(aM.length)} ${fmtPnl(aPnl)}  ${fmtPct(aWin, aM.length)}` : "—";
+    const bStr = bM.length > 0 ? `${n(bM.length)} ${fmtPnl(bPnl)}  ${fmtPct(bWin, bM.length)}  ${bDbl}×dbl` : "—";
+    console.log(`  ${mk.padEnd(lw)}  ${aStr.padEnd(aw)}  ${bStr}`);
+  }
+}
+
 function runBotBComparison(datasets: ReturnType<typeof loadDatasets>): void {
   const cfgPath = path.resolve(process.cwd(), "replay/configs/botB.json");
   const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8")) as BotBConfig;
@@ -476,11 +587,35 @@ function runBotBComparison(datasets: ReturnType<typeof loadDatasets>): void {
   const sA = summariseBotA(aResult);
   const sB = summariseBotB(bResult);
 
-  printBotAPanel(sA, aResult.closed, `BOT A — v3.1 + ${(cfg.SWAP_FEE_PCT * 100).toFixed(2)}% fee`);
-  printBotBPanel(sB, bResult.closed, `BOT B — Bold + ${(cfg.SWAP_FEE_PCT * 100).toFixed(2)}% fee`);
+  const feePct = (cfg.SWAP_FEE_PCT * 100).toFixed(2);
+
+  console.log("\n" + "─".repeat(60));
+  console.log("ALL COINS");
+  console.log("─".repeat(60));
+  printBotAPanel(sA, aResult.closed, `BOT A — v3.1 + ${feePct}% fee`);
+  printBotBPanel(sB, bResult.closed, `BOT B — Bold + ${feePct}% fee`);
   printBotBSideBySide(sA, sB);
   printBotBPerCoin(aResult.closed, bResult.closed);
   printTopDivergences(aResult.closed, bResult.closed);
+  printMonthlyBreakdown(aResult.closed, bResult.closed);
+
+  // ── Without MKUSD ──────────────────────────────────────────────────────────
+  const datasetsNoMkusd = datasets.filter(d => d.slug !== "mkusd");
+  console.log("\n" + "─".repeat(60));
+  console.log("WITHOUT MKUSD");
+  console.log("─".repeat(60));
+  console.log(`\nRunning Bot A (ex-MKUSD, ${feePct}% fee)...`);
+  const aX = runReplay(datasetsNoMkusd, {}, { swapFeePct: cfg.SWAP_FEE_PCT });
+  console.log(`Running Bot B (ex-MKUSD, ${feePct}% fee)...`);
+  const bX = runReplayBotB(datasetsNoMkusd, cfg);
+  const sAx = summariseBotA(aX);
+  const sBx = summariseBotB(bX);
+  printBotAPanel(sAx, aX.closed, `BOT A — ex-MKUSD + ${feePct}% fee`);
+  printBotBPanel(sBx, bX.closed, `BOT B — ex-MKUSD + ${feePct}% fee`);
+  printBotBSideBySide(sAx, sBx);
+  printBotBPerCoin(aX.closed, bX.closed);
+  printTopDivergences(aX.closed, bX.closed);
+  printMonthlyBreakdown(aX.closed, bX.closed);
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -490,7 +625,7 @@ function main(): void {
 
   console.log("Loading datasets...");
   const datasets = loadDatasets(COINS);
-  printDatasetStats(datasets);
+  printDataQuality(datasets);
 
   if (botB) {
     runBotBComparison(datasets);

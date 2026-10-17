@@ -2,7 +2,8 @@
  * Downloads price_history from Supabase into replay/data/ for offline replay.
  *
  * Run from the project root:
- *   npx tsx replay/download.ts
+ *   npx tsx replay/download.ts                    # last 60 days (default)
+ *   npx tsx replay/download.ts --since 2026-05-22 # from a specific date
  *
  * Reads NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY from .env.local.
  * Creates replay/data/{coin}.jsonl (one JSON object per line) and replay/data/seeds.json.
@@ -133,9 +134,20 @@ async function fetchSeeds(slug: string, since: string): Promise<Seeds> {
 async function main() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
+  // Parse --since YYYY-MM-DD; default to last DAYS days
+  let sinceArg: string | null = null;
+  for (let i = 2; i < process.argv.length; i++) {
+    if (process.argv[i] === "--since" && process.argv[i + 1]) {
+      sinceArg = process.argv[++i]!;
+    }
+  }
+
   const now   = new Date();
-  const since = new Date(now.getTime() - DAYS * 24 * 60 * 60 * 1000).toISOString();
-  console.log(`Downloading ${DAYS} days of price_history (since ${since.slice(0, 10)}) for ${COINS.length} coins...\n`);
+  const since = sinceArg
+    ? new Date(sinceArg + "T00:00:00Z").toISOString()
+    : new Date(now.getTime() - DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const windowDays = Math.round((now.getTime() - new Date(since).getTime()) / 86_400_000);
+  console.log(`Downloading ${windowDays} days of price_history (since ${since.slice(0, 10)}) for ${COINS.length} coins...\n`);
 
   const allSeeds: Record<string, Seeds> = {};
 
