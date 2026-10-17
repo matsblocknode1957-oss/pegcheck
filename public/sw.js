@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pegcheck-v2';
+const CACHE_NAME = 'pegcheck-v3';
 
 const PRECACHE_URLS = [
   '/',
