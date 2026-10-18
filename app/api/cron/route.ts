@@ -356,6 +356,9 @@ export async function GET(request: Request) {
         slug,
         price,
         deviation_bps: Math.round((price - effectivePeg(slug)) / effectivePeg(slug) * 10000),
+        source_prices: Object.fromEntries(
+          Object.entries(sourcePrices[slug] ?? {}).filter(([, v]) => v > 0)
+        ),
       }));
     const { error: priceError } = await supabase.from("price_history").insert(snapshots);
     if (priceError) console.error("Price history insert error:", priceError);
@@ -410,6 +413,16 @@ export async function GET(request: Request) {
       seasoningResults.filter(c => c.seasoned).map(c => c.slug)
     );
 
+    type DepegKind = "confirmed" | "unconfirmed" | "single_source";
+    const classifyDepeg = (slug: string): DepegKind => {
+      const vals = Object.values(sourcePrices[slug] ?? {}).filter(v => v > 0);
+      if (vals.length <= 1) return "single_source";
+      if (vals.length >= 3) return "confirmed";
+      const lo = Math.min(...vals);
+      const hi = Math.max(...vals);
+      return (hi - lo) / lo < 0.01 ? "confirmed" : "unconfirmed";
+    };
+
     // Check for Depegs — only alert if coin has ≥2 history records AND wasn't already depegged last cycle
     const currentlyDepegged = Object.entries(prices).filter(
       (e): e is [string, number] => e[1] !== null && e[1] < effectivePeg(e[0]) * 0.975
@@ -431,9 +444,18 @@ export async function GET(request: Request) {
       })
     );
     const alertableSlugs = new Set(depegChecks.filter(Boolean));
-    const depegged = currentlyDepegged.filter(([slug]) =>
-      alertableSlugs.has(slug) && !EXCLUDED_FROM_ALERTS.includes(slug)
-    );
+    const depeggedConfirmed: [string, number][] = [];
+    const depeggedUnconfirmed: [string, number][] = [];
+    const depeggedSingleSource: [string, number][] = [];
+    for (const entry of currentlyDepegged) {
+      const [slug] = entry;
+      if (!alertableSlugs.has(slug) || EXCLUDED_FROM_ALERTS.includes(slug)) continue;
+      const kind = classifyDepeg(slug);
+      if (kind === "confirmed") depeggedConfirmed.push(entry);
+      else if (kind === "unconfirmed") depeggedUnconfirmed.push(entry);
+      else depeggedSingleSource.push(entry);
+    }
+    const depegged = [...depeggedConfirmed, ...depeggedSingleSource, ...depeggedUnconfirmed];
 
     // Recovery detection — was depegged last cycle, now back above 2.5% threshold
     const recoveryResults = await Promise.all(
@@ -483,8 +505,19 @@ export async function GET(request: Request) {
 
     // Fire webhooks for all event types (runs regardless of email eligibility)
     await Promise.allSettled([
-      ...depegged.map(([slug, price]) =>
-        fireWebhooks(supabase, "depeg", slug, price, effectivePeg(slug))
+      ...depeggedConfirmed.map(([slug, price]) =>
+        fireWebhooks(supabase, "depeg", slug, price, effectivePeg(slug), { confirmed: true })
+      ),
+      ...depeggedSingleSource.map(([slug, price]) =>
+        fireWebhooks(supabase, "depeg", slug, price, effectivePeg(slug), { confirmed: true, single_source: true })
+      ),
+      ...depeggedUnconfirmed.map(([slug, price]) =>
+        fireWebhooks(supabase, "depeg", slug, price, effectivePeg(slug), {
+          confirmed: false,
+          source_prices: Object.fromEntries(
+            Object.entries(sourcePrices[slug] ?? {}).filter(([, v]) => v > 0)
+          ),
+        })
       ),
       ...cautioned.map(([slug, price]) =>
         fireWebhooks(supabase, "caution", slug, price, effectivePeg(slug))
@@ -494,8 +527,9 @@ export async function GET(request: Request) {
       ),
     ]);
 
-    // Log confirmed depegs on-chain via Sepolia smart contract
-    if (depegged.length > 0) {
+    // Log on-chain via Sepolia — confirmed and single-source only (skip unconfirmed)
+    const onChainDepegged = [...depeggedConfirmed, ...depeggedSingleSource];
+    if (onChainDepegged.length > 0) {
       const sepoliaRpc = process.env.SEPOLIA_RPC_URL ?? "";
       const deployerKey = process.env.DEPLOYER_PRIVATE_KEY ?? "";
       if (sepoliaRpc && deployerKey) {
@@ -506,7 +540,7 @@ export async function GET(request: Request) {
           const abi = ["function logDepegEvent(string symbol, uint256 price, string severity) external"];
           const contract = new ethers.Contract("0xA00cbfF342F9009B23f08A0ED3c9918D2B5C86fa", abi, wallet);
           await Promise.allSettled(
-            depegged.map(async ([slug, p]) => {
+            onChainDepegged.map(async ([slug, p]) => {
               try {
                 const priceUint = BigInt(Math.round(p * 1e8));
                 const tx = await contract.logDepegEvent(slug.toUpperCase(), priceUint, "depegged");
@@ -540,15 +574,30 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: "No premium subscribers to alert" });
     }
 
-    const depegList = depegged.map(([slug, price]) => `<li><strong>${coinNames[slug]}</strong> — $${price.toFixed(4)}</li>`).join("");
     const alertBaseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://pegcheck.uk";
+
+    // Build confirmed+single-source list (standard alert)
+    const confirmedAlerts = [...depeggedConfirmed, ...depeggedSingleSource];
+    const singleSourceSlugs = new Set(depeggedSingleSource.map(([s]) => s));
 
     for (const subscriber of subscribers) {
       const unsubscribeUrl = subscriber.unsubscribe_token
         ? `${alertBaseUrl}/api/unsubscribe?token=${subscriber.unsubscribe_token}`
         : `${alertBaseUrl}/api/unsubscribe`;
 
-      const emailHtml = `
+      // Email 1: confirmed + single-source depegs (standard blue header)
+      if (confirmedAlerts.length > 0) {
+        const confirmedList = confirmedAlerts.map(([slug, price]) => {
+          const note = singleSourceSlugs.has(slug)
+            ? ` <span style="color:#6b7280; font-size:12px;">(single source)</span>`
+            : "";
+          return `<li><strong>${coinNames[slug]}</strong> — $${price.toFixed(4)}${note}</li>`;
+        }).join("");
+        const singleSourceNote = singleSourceSlugs.size > 0
+          ? `<p style="color:#6b7280; font-size:13px; margin-top:16px;">* Based on a single price source.</p>`
+          : "";
+
+        const emailHtml = `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 500px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #1a56db, #0e3fa8); padding: 24px; border-radius: 12px 12px 0 0;">
           <h2 style="color: white; margin: 0; font-size: 20px;">PegCheck — Stablecoin Alert</h2>
@@ -556,24 +605,64 @@ export async function GET(request: Request) {
         <div style="background: #ffffff; padding: 24px; border: 1px solid #eaecf0; border-top: none; border-radius: 0 0 12px 12px;">
           <p style="color: #374151; margin-top: 0;">The following stablecoins have dropped below $0.975:</p>
           <ul style="color: #374151; padding-left: 20px;">
-            ${depegList}
+            ${confirmedList}
           </ul>
+          ${singleSourceNote}
           <a href="https://pegcheck.uk" style="display: inline-block; background: linear-gradient(135deg, #1a56db, #0e3fa8); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; margin-top: 8px;">View Live Data →</a>
           <p style="color: #9ca3af; font-size: 12px; margin-top: 24px; margin-bottom: 0;">PegCheck premium alert. Not financial advice. <a href="${unsubscribeUrl}" style="color: #9ca3af;">Unsubscribe</a></p>
         </div>
       </div>
     `;
 
-      await resend.emails.send({
-        from: "PegCheck <alerts@fintechcheck.uk>",
-        to: subscriber.email,
-        subject: `PegCheck — Stablecoin price alert`,
-        html: emailHtml,
-        headers: {
-          "List-Unsubscribe": `<${unsubscribeUrl}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        },
-      });
+        await resend.emails.send({
+          from: "PegCheck <alerts@fintechcheck.uk>",
+          to: subscriber.email,
+          subject: `PegCheck — Stablecoin price alert`,
+          html: emailHtml,
+          headers: {
+            "List-Unsubscribe": `<${unsubscribeUrl}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
+        });
+      }
+
+      // Email 2: unconfirmed depegs (amber header, source prices shown)
+      if (depeggedUnconfirmed.length > 0) {
+        const unconfirmedList = depeggedUnconfirmed.map(([slug, price]) => {
+          const srcs = Object.entries(sourcePrices[slug] ?? {})
+            .filter(([, v]) => v > 0)
+            .map(([k, v]) => `${k} $${(v as number).toFixed(4)}`)
+            .join(", ");
+          return `<li><strong>${coinNames[slug]}</strong> — $${price.toFixed(4)}<br><span style="color:#6b7280; font-size:12px;">Sources: ${srcs}</span></li>`;
+        }).join("");
+
+        const unconfirmedHtml = `
+      <div style="font-family: 'Segoe UI', sans-serif; max-width: 500px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #d97706, #b45309); padding: 24px; border-radius: 12px 12px 0 0;">
+          <h2 style="color: white; margin: 0; font-size: 20px;">PegCheck — Unconfirmed Alert</h2>
+        </div>
+        <div style="background: #ffffff; padding: 24px; border: 1px solid #eaecf0; border-top: none; border-radius: 0 0 12px 12px;">
+          <p style="color: #374151; margin-top: 0;">The following stablecoins appear to have dropped below $0.975, but <strong>our price sources disagree</strong>. Treat with caution.</p>
+          <ul style="color: #374151; padding-left: 20px;">
+            ${unconfirmedList}
+          </ul>
+          <a href="https://pegcheck.uk" style="display: inline-block; background: linear-gradient(135deg, #d97706, #b45309); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; margin-top: 8px;">View Live Data →</a>
+          <p style="color: #9ca3af; font-size: 12px; margin-top: 24px; margin-bottom: 0;">PegCheck premium alert. Not financial advice. <a href="${unsubscribeUrl}" style="color: #9ca3af;">Unsubscribe</a></p>
+        </div>
+      </div>
+    `;
+
+        await resend.emails.send({
+          from: "PegCheck <alerts@fintechcheck.uk>",
+          to: subscriber.email,
+          subject: `Unconfirmed: PegCheck — Stablecoin price alert`,
+          html: unconfirmedHtml,
+          headers: {
+            "List-Unsubscribe": `<${unsubscribeUrl}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
+        });
+      }
     }
 
     return NextResponse.json({
@@ -596,7 +685,8 @@ async function fireWebhooks(
   event: "depeg" | "caution" | "recovery",
   slug: string,
   price: number,
-  peg: number
+  peg: number,
+  extras?: Record<string, unknown>
 ): Promise<void> {
   const { data: hooks } = await db
     .from("webhooks")
@@ -613,6 +703,7 @@ async function fireWebhooks(
     peg,
     deviation_pct: parseFloat((((price - peg) / peg) * 100).toFixed(4)),
     triggered_at: new Date().toISOString(),
+    ...extras,
   };
 
   await Promise.allSettled(

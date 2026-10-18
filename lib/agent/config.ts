@@ -13,7 +13,7 @@ export const FALLING_FAST_PCT = 0.01;
 export const FALLING_PCT = 0.005;
 export const BOUNCE_PCT = 0.003;
 export const MIN_HISTORY_DAYS = 2;
-export const RULES_VERSION = "v3.1";
+export const RULES_VERSION = "v3.2";
 
 // v3: coin tiers — everything not in BACKED is treated as STRICT
 export const BACKED_COINS = new Set([

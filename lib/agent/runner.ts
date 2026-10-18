@@ -1,11 +1,15 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { decide, checkExit, shouldRecord, Evidence } from "./rules";
+import { decide, checkExit, shouldRecord, Evidence, ExitResult } from "./rules";
 import {
   RULES_VERSION,
   DIP_ZONE_START_PCT,
   DEEP_DEPEG_PCT,
   LIVES_BELOW_PEG_THRESHOLD,
   getCoinTier,
+  SOURCE_DISAGREE_SPREAD_PCT,
+  MAX_TRADE_DAYS,
+  STOP_LOSS_PCT,
+  tunables,
 } from "./config";
 import { computeMedian, computeHadPriorDipCycle } from "./history";
 
@@ -50,6 +54,184 @@ export async function runAgent({
       for (const trade of openTrades) {
         const currentPrice = prices[trade.coin];
         if (currentPrice === null || currentPrice === undefined) {
+          openCoinSlugs.add(trade.coin);
+          continue;
+        }
+
+        // Source-agreement guard — conservative exits when sources contradict (v3.2)
+        const exitSources = sourcePrices[trade.coin] ?? {};
+        const exitSourceVals = Object.entries(exitSources)
+          .filter(([, v]) => v > 0)
+          .map(([, v]) => v);
+        const exitSourceCount = exitSourceVals.length;
+        const exitSpread = exitSourceCount >= 2
+          ? (Math.max(...exitSourceVals) - Math.min(...exitSourceVals)) / Math.min(...exitSourceVals)
+          : 0;
+        const exitSourcesAgree = exitSourceCount >= 2 && exitSpread < SOURCE_DISAGREE_SPREAD_PCT;
+        const ageMs = now.getTime() - new Date(trade.decided_at).getTime();
+        const maxMs = MAX_TRADE_DAYS * 24 * 60 * 60 * 1000;
+        const lowestSourcePrice = exitSourceVals.length > 0 ? Math.min(...exitSourceVals) : currentPrice;
+
+        if (exitSourceCount <= 1) {
+          // Single source — never exit on price; MAX_TRADE_DAYS still applies
+          if (ageMs >= maxMs) {
+            const units = trade.size_usd / trade.entry_price;
+            const forcedExit: ExitResult = {
+              status: "timed_out",
+              exitPrice: lowestSourcePrice,
+              profitUsd: units * lowestSourcePrice - trade.size_usd,
+            };
+            const { error: singleTimeoutErr } = await supabase
+              .from("agent_trades")
+              .update({
+                status: forcedExit.status,
+                closed_at: now.toISOString(),
+                exit_price: forcedExit.exitPrice,
+                pnl_usd: forcedExit.profitUsd,
+              })
+              .eq("id", trade.id);
+            if (singleTimeoutErr) {
+              console.error(`Failed to force-close trade ${trade.id}:`, singleTimeoutErr);
+              openCoinSlugs.add(trade.coin);
+            } else {
+              closed++;
+            }
+            continue;
+          }
+          const srcName = Object.entries(exitSources).find(([, v]) => v > 0)?.[0] ?? "unknown";
+          console.log(
+            `${trade.coin} exit skipped: only 1 source (${srcName} $${lowestSourcePrice.toFixed(4)}), can't cross-check, holding`
+          );
+          openCoinSlugs.add(trade.coin);
+          continue;
+        }
+
+        if (!exitSourcesAgree) {
+          // 2+ sources disagree — conservative exits only, priced at the lowest source
+          const highestSourcePrice = Math.max(...exitSourceVals);
+          const stopLossPrice = trade.entry_price * (1 - STOP_LOSS_PCT);
+          const takeProfitPrice = trade.peg * (1 - tunables.TAKE_PROFIT_DISTANCE_PCT);
+
+          // MAX_TRADE_DAYS always applies, priced at lowest source
+          if (ageMs >= maxMs) {
+            const units = trade.size_usd / trade.entry_price;
+            const forcedExit: ExitResult = {
+              status: "timed_out",
+              exitPrice: lowestSourcePrice,
+              profitUsd: units * lowestSourcePrice - trade.size_usd,
+            };
+            const { error: disagreeTimeoutErr } = await supabase
+              .from("agent_trades")
+              .update({
+                status: forcedExit.status,
+                closed_at: now.toISOString(),
+                exit_price: forcedExit.exitPrice,
+                pnl_usd: forcedExit.profitUsd,
+              })
+              .eq("id", trade.id);
+            if (disagreeTimeoutErr) {
+              console.error(`Failed to force-close trade ${trade.id}:`, disagreeTimeoutErr);
+              openCoinSlugs.add(trade.coin);
+            } else {
+              closed++;
+            }
+            continue;
+          }
+
+          // Stop-loss: only if even the highest source is below the stop price
+          if (highestSourcePrice <= stopLossPrice) {
+            const units = trade.size_usd / trade.entry_price;
+            const forcedExit: ExitResult = {
+              status: "lost",
+              exitPrice: lowestSourcePrice,
+              profitUsd: units * lowestSourcePrice - trade.size_usd,
+            };
+            const { error: stopErr } = await supabase
+              .from("agent_trades")
+              .update({
+                status: forcedExit.status,
+                closed_at: now.toISOString(),
+                exit_price: forcedExit.exitPrice,
+                pnl_usd: forcedExit.profitUsd,
+              })
+              .eq("id", trade.id);
+            if (stopErr) {
+              console.error(`Failed to close trade ${trade.id}:`, stopErr);
+              openCoinSlugs.add(trade.coin);
+            } else {
+              closed++;
+            }
+            continue;
+          }
+
+          // Take-profit: only if even the lowest source has reached the target
+          if (lowestSourcePrice >= takeProfitPrice) {
+            const units = trade.size_usd / trade.entry_price;
+            const forcedExit: ExitResult = {
+              status: "won",
+              exitPrice: lowestSourcePrice,
+              profitUsd: units * lowestSourcePrice - trade.size_usd,
+            };
+            const { error: tpErr } = await supabase
+              .from("agent_trades")
+              .update({
+                status: forcedExit.status,
+                closed_at: now.toISOString(),
+                exit_price: forcedExit.exitPrice,
+                pnl_usd: forcedExit.profitUsd,
+              })
+              .eq("id", trade.id);
+            if (tpErr) {
+              console.error(`Failed to close trade ${trade.id}:`, tpErr);
+              openCoinSlugs.add(trade.coin);
+            } else {
+              closed++;
+            }
+            continue;
+          }
+
+          // Stale exit (v3+): conservative — only if lowest source is sufficiently in profit
+          const majorVer = trade.rules_version
+            ? parseInt(trade.rules_version.replace(/^v/i, ""), 10)
+            : NaN;
+          if (!isNaN(majorVer) && majorVer >= 3) {
+            const hoursOpen = ageMs / 3_600_000;
+            if (
+              hoursOpen >= tunables.STALE_EXIT_HOURS &&
+              lowestSourcePrice >= trade.entry_price * (1 + tunables.STALE_EXIT_MIN_PROFIT_PCT)
+            ) {
+              const units = trade.size_usd / trade.entry_price;
+              const forcedExit: ExitResult = {
+                status: "stale_exit",
+                exitPrice: lowestSourcePrice,
+                profitUsd: units * lowestSourcePrice - trade.size_usd,
+              };
+              const { error: staleErr } = await supabase
+                .from("agent_trades")
+                .update({
+                  status: forcedExit.status,
+                  closed_at: now.toISOString(),
+                  exit_price: forcedExit.exitPrice,
+                  pnl_usd: forcedExit.profitUsd,
+                })
+                .eq("id", trade.id);
+              if (staleErr) {
+                console.error(`Failed to close trade ${trade.id}:`, staleErr);
+                openCoinSlugs.add(trade.coin);
+              } else {
+                closed++;
+              }
+              continue;
+            }
+          }
+
+          const srcSummary = Object.entries(exitSources)
+            .filter(([, v]) => v > 0)
+            .map(([k, v]) => `${k} $${(v as number).toFixed(4)}`)
+            .join(" / ");
+          console.log(
+            `${trade.coin} exit skipped: sources disagree (spread ${(exitSpread * 100).toFixed(1)}%, ${srcSummary}), holding`
+          );
           openCoinSlugs.add(trade.coin);
           continue;
         }
