@@ -31,6 +31,16 @@ function pnlStr(v: number | null): string {
   return `${sign}$${v.toFixed(2)}`;
 }
 
+function tradeResultStr(trade: AgentTrade): string | null {
+  if (trade.decision !== "buy" || trade.size_usd === null) return null;
+  const sizeStr = `$${trade.size_usd.toLocaleString()}`;
+  if (trade.status === "open") return `${sizeStr} · OPEN`;
+  if (trade.pnl_usd === null) return sizeStr;
+  const pct = (trade.pnl_usd / trade.size_usd) * 100;
+  const pctSign = pct >= 0 ? "+" : "";
+  return `${sizeStr} → ${pnlStr(trade.pnl_usd)} (${pctSign}${pct.toFixed(2)}%)`;
+}
+
 function timeAgo(dateStr: string, now: number): string {
   const diff = now - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60_000);
@@ -212,17 +222,87 @@ function ExpandedDetail({ trade, now }: { trade: AgentTrade; now: number }) {
           }}
         >
           Open for {openDuration(trade.decided_at, now)}
-          {trade.entry_price !== null && (
-            <span style={{ color: "#94a3b8", marginLeft: "8px" }}>
-              · Entry ${price4(trade.entry_price)}
+        </div>
+      )}
+
+      {/* Position box — all buy rows */}
+      {trade.decision === "buy" &&
+        (trade.size_usd !== null ||
+          trade.entry_price !== null ||
+          trade.target_price !== null ||
+          trade.stop_price !== null) && (
+          <div
+            style={{
+              background: "#0f172a",
+              borderRadius: "6px",
+              padding: "10px 14px",
+              marginBottom: "14px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                color: "#4b5563",
+                letterSpacing: "1px",
+                textTransform: "uppercase",
+                marginBottom: "6px",
+              }}
+            >
+              Position
+            </div>
+            <div style={{ display: "flex", gap: "8px 24px", flexWrap: "wrap" }}>
+              {trade.size_usd !== null && (
+                <span style={{ fontSize: "12px", color: "#cbd5e1" }}>
+                  Size{" "}
+                  <span style={{ color: "#f1f5f9", fontVariantNumeric: "tabular-nums" }}>
+                    ${trade.size_usd.toFixed(0)}
+                  </span>
+                </span>
+              )}
+              {trade.entry_price !== null && (
+                <span style={{ fontSize: "12px", color: "#cbd5e1" }}>
+                  Entry{" "}
+                  <span style={{ color: "#f1f5f9", fontVariantNumeric: "tabular-nums" }}>
+                    ${price4(trade.entry_price)}
+                  </span>
+                </span>
+              )}
               {trade.target_price !== null && (
-                <span style={{ color: "#4ade80" }}> → target ${price4(trade.target_price)}</span>
+                <span style={{ fontSize: "12px", color: "#cbd5e1" }}>
+                  Target{" "}
+                  <span style={{ color: "#4ade80", fontVariantNumeric: "tabular-nums" }}>
+                    ${price4(trade.target_price)}
+                  </span>
+                </span>
               )}
               {trade.stop_price !== null && (
-                <span style={{ color: "#f87171" }}> · stop ${price4(trade.stop_price)}</span>
+                <span style={{ fontSize: "12px", color: "#cbd5e1" }}>
+                  Stop{" "}
+                  <span style={{ color: "#f87171", fontVariantNumeric: "tabular-nums" }}>
+                    ${price4(trade.stop_price)}
+                  </span>
+                </span>
               )}
-            </span>
-          )}
+            </div>
+          </div>
+        )}
+
+      {/* mkUSD liquidity disclaimer */}
+      {trade.coin === "mkusd" && (
+        <div
+          style={{
+            background: "#111827",
+            borderRadius: "6px",
+            padding: "10px 14px",
+            marginBottom: "14px",
+            fontSize: "11px",
+            color: "#6b7280",
+            lineHeight: "1.6",
+          }}
+        >
+          mkUSD has very low real liquidity (no major exchange listings), so these trades
+          couldn&apos;t be filled at size in practice. Counted as practice only.
         </div>
       )}
 
@@ -409,6 +489,22 @@ function TradeCard({
           <span style={{ fontSize: "14px", fontWeight: 700, color: "#e2e8f0" }}>
             {trade.coin.toUpperCase()}
           </span>
+          {trade.coin === "mkusd" && (
+            <span
+              style={{
+                fontSize: "9px",
+                fontWeight: 700,
+                padding: "1px 5px",
+                borderRadius: "3px",
+                letterSpacing: "0.5px",
+                background: "#1e293b",
+                color: "#475569",
+                border: "1px solid #334155",
+              }}
+            >
+              PAPER ONLY
+            </span>
+          )}
           <Badge label={trade.decision.toUpperCase()} style={decStyle} />
           {trade.status !== "none" && (
             <Badge
@@ -423,7 +519,7 @@ function TradeCard({
           </span>
         </div>
 
-        {/* Price + time + P&L row */}
+        {/* Price + time row */}
         <div
           style={{
             display: "flex",
@@ -431,20 +527,30 @@ function TradeCard({
             gap: "12px",
             fontSize: "12px",
             color: "#64748b",
-            flexWrap: "wrap",
           }}
         >
           <span>${price4(trade.price)}</span>
           <span>{timeAgo(trade.decided_at, now)}</span>
-          {isBuy && trade.pnl_usd !== null && (
-            <span style={{ color: pnlColor, fontWeight: 600, marginLeft: "auto" }}>
-              {pnlStr(trade.pnl_usd)}
-            </span>
-          )}
-          {isBuy && trade.status === "open" && trade.pnl_usd === null && (
-            <span style={{ color: "#60a5fa", fontWeight: 600, marginLeft: "auto" }}>OPEN</span>
-          )}
         </div>
+        {/* Trade result row — buy rows only */}
+        {isBuy && (() => {
+          const result = tradeResultStr(trade);
+          if (!result) return null;
+          const resultColor = trade.status === "open" ? "#60a5fa" : pnlColor;
+          return (
+            <div
+              style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: resultColor,
+                marginTop: "4px",
+                wordBreak: "break-word",
+              }}
+            >
+              {result}
+            </div>
+          );
+        })()}
       </div>
 
       {isExpanded && <ExpandedDetail trade={trade} now={now} />}
@@ -522,6 +628,30 @@ export default function AgentTradesTable({
 
   const pnlColor = summary.realisedPnl >= 0 ? "#4ade80" : "#f87171";
 
+  const nonMkusdStats = useMemo(() => {
+    const rows = trades.filter(
+      (t) => t.decision === "buy" && t.coin !== "mkusd" && t.status !== "none"
+    );
+    return {
+      total:    rows.length,
+      won:      rows.filter((t) => t.status === "won").length,
+      lost:     rows.filter((t) => t.status === "lost").length,
+      timedOut: rows.filter((t) => t.status === "timed_out" || t.status === "stale_exit").length,
+      pnl:      rows.reduce((acc, t) => acc + (t.pnl_usd ?? 0), 0),
+    };
+  }, [trades]);
+
+  const tradeSizeLabel = useMemo(() => {
+    const sizes = trades
+      .filter((t) => t.decision === "buy" && t.size_usd !== null)
+      .map((t) => t.size_usd as number);
+    if (sizes.length === 0) return null;
+    const max = Math.max(...sizes);
+    const min = Math.min(...sizes);
+    if (max === min) return `$${max.toLocaleString()} per trade`;
+    return `up to $${max.toLocaleString()} per trade`;
+  }, [trades]);
+
   return (
     <main
       style={{
@@ -548,12 +678,17 @@ export default function AgentTradesTable({
 
         {/* Summary cards */}
         <div className="agent-summary-grid">
-          {[
-            { label: "Bankroll",      value: `$${summary.bankroll.toLocaleString()}`, color: "#f1f5f9" },
-            { label: "Open trades",   value: String(summary.openCount),               color: "#60a5fa" },
-            { label: "Closed trades", value: String(summary.closedCount),             color: "#94a3b8" },
-            { label: "Realised P&L",  value: pnlStr(summary.realisedPnl),            color: pnlColor  },
-          ].map(({ label, value, color }) => (
+          {(() => {
+            const pnlPct = summary.bankroll > 0
+              ? (summary.realisedPnl / summary.bankroll) * 100 : 0;
+            const pnlPctStr = `${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(1)}% of bankroll`;
+            return [
+              { label: "Bankroll",      value: `$${summary.bankroll.toLocaleString()}`, color: "#f1f5f9", sub: tradeSizeLabel,  subColor: "#4b5563" },
+              { label: "Open trades",   value: String(summary.openCount),               color: "#60a5fa", sub: null,            subColor: null      },
+              { label: "Closed trades", value: String(summary.closedCount),             color: "#94a3b8", sub: null,            subColor: null      },
+              { label: "Realised P&L",  value: pnlStr(summary.realisedPnl),            color: pnlColor,  sub: pnlPctStr,       subColor: pnlColor  },
+            ];
+          })().map(({ label, value, color, sub, subColor }) => (
             <div
               key={label}
               style={{
@@ -585,9 +720,45 @@ export default function AgentTradesTable({
               >
                 {value}
               </div>
+              {sub && (
+                <div style={{ fontSize: "11px", color: subColor ?? "#4b5563", marginTop: "4px" }}>
+                  {sub}
+                </div>
+              )}
             </div>
           ))}
         </div>
+
+        {/* Honest headline — non-mkusd stats */}
+        {nonMkusdStats.total > 0 && (
+          <p
+            style={{
+              fontSize: "11px",
+              color: "#475569",
+              margin: "-16px 0 20px",
+              lineHeight: "1.6",
+            }}
+          >
+            Excluding mkUSD:{" "}
+            <span style={{ color: "#94a3b8" }}>{nonMkusdStats.total} trades</span>,{" "}
+            <span style={{ color: "#4ade80" }}>{nonMkusdStats.won} won</span>,{" "}
+            <span style={{ color: "#f87171" }}>{nonMkusdStats.lost} lost</span>
+            {nonMkusdStats.timedOut > 0 && (
+              <span style={{ color: "#fb923c" }}> ({nonMkusdStats.timedOut} timed out)</span>
+            )},{" "}
+            <span style={{ color: nonMkusdStats.pnl >= 0 ? "#4ade80" : "#f87171" }}>
+              {pnlStr(nonMkusdStats.pnl)}
+            </span>
+            {summary.bankroll > 0 && (
+              <span style={{ color: "#4b5563" }}>
+                {" "}({(() => {
+                  const p = (nonMkusdStats.pnl / summary.bankroll) * 100;
+                  return `${p >= 0 ? "+" : ""}${p.toFixed(1)}%`;
+                })()} of bankroll)
+              </span>
+            )}
+          </p>
+        )}
 
         {/* Tab buttons */}
         <div
@@ -702,6 +873,12 @@ export default function AgentTradesTable({
                       const isBuy = trade.decision === "buy";
                       const decStyle = DECISION_STYLE[trade.decision] ?? DECISION_STYLE.watch;
                       const statStyle = STATUS_STYLE[trade.status] ?? STATUS_STYLE.none;
+                      const rowPnlColor =
+                        trade.pnl_usd === null ? "#4b5563"
+                        : trade.pnl_usd >= 0   ? "#4ade80"
+                        :                        "#f87171";
+                      const rowResult = tradeResultStr(trade);
+                      const rowResultColor = isBuy && trade.status === "open" ? "#60a5fa" : rowPnlColor;
 
                       return (
                         <Fragment key={trade.id}>
@@ -730,6 +907,23 @@ export default function AgentTradesTable({
                                 {isExpanded ? "▼" : "▶"}
                               </span>
                               {trade.coin.toUpperCase()}
+                              {trade.coin === "mkusd" && (
+                                <span
+                                  style={{
+                                    marginLeft: "6px",
+                                    fontSize: "9px",
+                                    fontWeight: 700,
+                                    padding: "1px 5px",
+                                    borderRadius: "3px",
+                                    letterSpacing: "0.5px",
+                                    background: "#0f172a",
+                                    color: "#475569",
+                                    border: "1px solid #334155",
+                                  }}
+                                >
+                                  PAPER ONLY
+                                </span>
+                              )}
                             </td>
                             <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
                               <Badge label={trade.decision.toUpperCase()} style={decStyle} />
@@ -776,16 +970,10 @@ export default function AgentTradesTable({
                                 padding: "12px 14px",
                                 fontSize: "12px",
                                 fontVariantNumeric: "tabular-nums",
-                                whiteSpace: "nowrap",
-                                color:
-                                  trade.pnl_usd === null
-                                    ? "#4b5563"
-                                    : trade.pnl_usd >= 0
-                                    ? "#4ade80"
-                                    : "#f87171",
+                                color: rowResultColor,
                               }}
                             >
-                              {pnlStr(trade.pnl_usd)}
+                              {rowResult ?? pnlStr(trade.pnl_usd)}
                             </td>
                             <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
                               <Badge
