@@ -3,7 +3,9 @@
 import { Fragment, useState, useMemo } from "react";
 import type { AgentTrade, AgentSummary } from "./page";
 
-type Filter = "all" | "trades" | "avoid";
+type Filter = "trades" | "skipped" | "all";
+
+const PAGE_SIZE = 50;
 
 interface EvidenceShape {
   pricesBySource?: Record<string, number>;
@@ -45,6 +47,44 @@ function openDuration(dateStr: string, now: number): string {
   return `${(hrs / 24).toFixed(1)} days`;
 }
 
+function formatExact(dateStr: string): string {
+  return new Date(dateStr).toISOString().replace("T", " ").slice(0, 19) + " UTC";
+}
+
+function holdTime(trade: AgentTrade): string | null {
+  if (!trade.closed_at) return null;
+  const diff =
+    new Date(trade.closed_at).getTime() - new Date(trade.decided_at).getTime();
+  if (diff <= 0) return null;
+  const hrs = diff / 3_600_000;
+  if (hrs < 1) return `${Math.round(hrs * 60)}m`;
+  if (hrs < 24) return `${hrs.toFixed(1)}h`;
+  return `${(hrs / 24).toFixed(1)} days`;
+}
+
+function exitLine(trade: AgentTrade): string | null {
+  if (trade.decision !== "buy") return null;
+  if (!["won", "lost", "timed_out", "stale_exit"].includes(trade.status)) return null;
+
+  const exitP = `$${price4(trade.exit_price)}`;
+  const when = trade.closed_at ? ` (${formatExact(trade.closed_at)})` : "";
+  const hold = holdTime(trade);
+  const duration = hold ? ` · held ${hold}` : "";
+
+  switch (trade.status) {
+    case "won":
+      return `Sold at ${exitP} — hit target $${price4(trade.target_price)}${when}${duration}`;
+    case "lost":
+      return `Stopped out at ${exitP}${when}${duration}`;
+    case "timed_out":
+      return `Closed after 7-day time limit at ${exitP}${when}`;
+    case "stale_exit":
+      return `Stale exit at ${exitP}${when}${duration}`;
+    default:
+      return null;
+  }
+}
+
 const DECISION_STYLE: Record<string, { bg: string; color: string }> = {
   buy:   { bg: "#052e16", color: "#4ade80" },
   watch: { bg: "#2d2500", color: "#fbbf24" },
@@ -52,9 +92,9 @@ const DECISION_STYLE: Record<string, { bg: string; color: string }> = {
 };
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  open:      { bg: "#1e3a5f", color: "#60a5fa" },
-  won:       { bg: "#052e16", color: "#4ade80" },
-  lost:      { bg: "#450a0a", color: "#f87171" },
+  open:       { bg: "#1e3a5f", color: "#60a5fa" },
+  won:        { bg: "#052e16", color: "#4ade80" },
+  lost:       { bg: "#450a0a", color: "#f87171" },
   timed_out:  { bg: "#431407", color: "#fb923c" },
   stale_exit: { bg: "#0d2d2d", color: "#2dd4bf" },
   none:       { bg: "#1e293b", color: "#475569" },
@@ -62,15 +102,18 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
 
 function Badge({ label, style }: { label: string; style: { bg: string; color: string } }) {
   return (
-    <span style={{
-      fontSize: "10px",
-      fontWeight: 700,
-      padding: "2px 7px",
-      borderRadius: "4px",
-      letterSpacing: "0.5px",
-      background: style.bg,
-      color: style.color,
-    }}>
+    <span
+      style={{
+        fontSize: "10px",
+        fontWeight: 700,
+        padding: "2px 7px",
+        borderRadius: "4px",
+        letterSpacing: "0.5px",
+        background: style.bg,
+        color: style.color,
+        whiteSpace: "nowrap",
+      }}
+    >
       {label}
     </span>
   );
@@ -79,22 +122,26 @@ function Badge({ label, style }: { label: string; style: { bg: string; color: st
 function ScoreBar({ score, color }: { score: number; color: string }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-      <span style={{
-        display: "inline-block",
-        width: "60px",
-        height: "5px",
-        background: "#0f172a",
-        borderRadius: "3px",
-        overflow: "hidden",
-        verticalAlign: "middle",
-      }}>
-        <span style={{
-          display: "block",
-          width: `${score}%`,
-          height: "100%",
-          background: color,
+      <span
+        style={{
+          display: "inline-block",
+          width: "60px",
+          height: "5px",
+          background: "#0f172a",
           borderRadius: "3px",
-        }} />
+          overflow: "hidden",
+          verticalAlign: "middle",
+        }}
+      >
+        <span
+          style={{
+            display: "block",
+            width: `${score}%`,
+            height: "100%",
+            background: color,
+            borderRadius: "3px",
+          }}
+        />
       </span>
       <span style={{ fontSize: "11px", color: "#94a3b8", fontVariantNumeric: "tabular-nums" }}>
         {score}/100
@@ -103,26 +150,97 @@ function ScoreBar({ score, color }: { score: number; color: string }) {
   );
 }
 
-function ExpandedRow({ trade, now }: { trade: AgentTrade; now: number }) {
+function ExpandedDetail({ trade, now }: { trade: AgentTrade; now: number }) {
   const ev = trade.evidence as EvidenceShape;
   const dangerReasons: string[] = Array.isArray(trade.danger_reasons) ? trade.danger_reasons : [];
-  const oppReasons: string[] = Array.isArray(trade.opportunity_reasons) ? trade.opportunity_reasons : [];
+  const oppReasons: string[] = Array.isArray(trade.opportunity_reasons)
+    ? trade.opportunity_reasons
+    : [];
   const sources = ev?.pricesBySource ?? {};
   const hist = ev?.history;
   const sourceEntries = Object.entries(sources);
+  const exit = exitLine(trade);
 
   return (
-    <div style={{
-      background: "#0d1829",
-      borderTop: "1px solid #1e293b",
-      padding: "16px 20px 20px",
-    }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+    <div
+      style={{
+        background: "#0d1829",
+        borderTop: "1px solid #1e293b",
+        padding: "16px 20px 20px",
+      }}
+    >
+      {/* Exact decision time */}
+      <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "12px" }}>
+        Decided {formatExact(trade.decided_at)}
+      </div>
 
-        {/* Danger */}
+      {/* Exit explanation (closed buy trades) */}
+      {exit && (
+        <div
+          style={{
+            background: "#0f172a",
+            borderRadius: "6px",
+            padding: "10px 14px",
+            marginBottom: "14px",
+            fontSize: "12px",
+            color: "#94a3b8",
+            wordBreak: "break-word",
+            lineHeight: "1.6",
+          }}
+        >
+          {trade.entry_price !== null && (
+            <span style={{ color: "#cbd5e1" }}>
+              Entry ${price4(trade.entry_price)} →{" "}
+            </span>
+          )}
+          {exit}
+        </div>
+      )}
+
+      {/* Open trade status */}
+      {trade.status === "open" && trade.decision === "buy" && (
+        <div
+          style={{
+            background: "#0f172a",
+            borderRadius: "6px",
+            padding: "10px 14px",
+            marginBottom: "14px",
+            fontSize: "12px",
+            color: "#60a5fa",
+            wordBreak: "break-word",
+            lineHeight: "1.6",
+          }}
+        >
+          Open for {openDuration(trade.decided_at, now)}
+          {trade.entry_price !== null && (
+            <span style={{ color: "#94a3b8", marginLeft: "8px" }}>
+              · Entry ${price4(trade.entry_price)}
+              {trade.target_price !== null && (
+                <span style={{ color: "#4ade80" }}> → target ${price4(trade.target_price)}</span>
+              )}
+              {trade.stop_price !== null && (
+                <span style={{ color: "#f87171" }}> · stop ${price4(trade.stop_price)}</span>
+              )}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Danger + Opportunity — 2-col on desktop, 1-col on mobile */}
+      <div className="agent-expanded-grid">
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "#f87171", letterSpacing: "0.5px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginBottom: "8px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{ fontSize: "11px", fontWeight: 700, color: "#f87171", letterSpacing: "0.5px" }}
+            >
               DANGER
             </span>
             <ScoreBar score={trade.danger_score} color="#f87171" />
@@ -132,16 +250,27 @@ function ExpandedRow({ trade, now }: { trade: AgentTrade; now: number }) {
           ) : (
             <ul style={{ margin: 0, paddingLeft: "16px" }}>
               {dangerReasons.map((r, i) => (
-                <li key={i} style={{ fontSize: "11px", color: "#94a3b8", marginBottom: "3px" }}>{r}</li>
+                <li key={i} style={{ fontSize: "11px", color: "#94a3b8", marginBottom: "3px" }}>
+                  {r}
+                </li>
               ))}
             </ul>
           )}
         </div>
 
-        {/* Opportunity */}
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "#4ade80", letterSpacing: "0.5px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginBottom: "8px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{ fontSize: "11px", fontWeight: 700, color: "#4ade80", letterSpacing: "0.5px" }}
+            >
               OPPORTUNITY
             </span>
             <ScoreBar score={trade.opportunity_score} color="#4ade80" />
@@ -151,69 +280,32 @@ function ExpandedRow({ trade, now }: { trade: AgentTrade; now: number }) {
           ) : (
             <ul style={{ margin: 0, paddingLeft: "16px" }}>
               {oppReasons.map((r, i) => (
-                <li key={i} style={{ fontSize: "11px", color: "#94a3b8", marginBottom: "3px" }}>{r}</li>
+                <li key={i} style={{ fontSize: "11px", color: "#94a3b8", marginBottom: "3px" }}>
+                  {r}
+                </li>
               ))}
             </ul>
           )}
         </div>
       </div>
 
-      {/* Position details (buy rows only) */}
-      {trade.decision === "buy" && (
-        <div style={{ borderTop: "1px solid #1e293b", marginTop: "14px", paddingTop: "12px" }}>
-          <div style={{ fontSize: "10px", fontWeight: 700, color: "#4b5563", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "8px" }}>
-            Position
-          </div>
-          <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
-            {trade.size_usd !== null && (
-              <span style={{ fontSize: "12px", color: "#cbd5e1" }}>
-                Size{" "}
-                <span style={{ color: "#f1f5f9", fontVariantNumeric: "tabular-nums" }}>
-                  ${trade.size_usd.toFixed(0)}
-                </span>
-              </span>
-            )}
-            {trade.entry_price !== null && (
-              <span style={{ fontSize: "12px", color: "#cbd5e1" }}>
-                Entry{" "}
-                <span style={{ color: "#f1f5f9", fontVariantNumeric: "tabular-nums" }}>
-                  ${price4(trade.entry_price)}
-                </span>
-              </span>
-            )}
-            {trade.target_price !== null && (
-              <span style={{ fontSize: "12px", color: "#cbd5e1" }}>
-                Target{" "}
-                <span style={{ color: "#4ade80", fontVariantNumeric: "tabular-nums" }}>
-                  ${price4(trade.target_price)}
-                </span>
-              </span>
-            )}
-            {trade.stop_price !== null && (
-              <span style={{ fontSize: "12px", color: "#cbd5e1" }}>
-                Stop{" "}
-                <span style={{ color: "#f87171", fontVariantNumeric: "tabular-nums" }}>
-                  ${price4(trade.stop_price)}
-                </span>
-              </span>
-            )}
-            {trade.status === "open" && (
-              <span style={{ fontSize: "12px", color: "#60a5fa" }}>
-                Open {openDuration(trade.decided_at, now)}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Evidence */}
       <div style={{ borderTop: "1px solid #1e293b", marginTop: "14px", paddingTop: "12px" }}>
-        <div style={{ fontSize: "10px", fontWeight: 700, color: "#4b5563", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "8px" }}>
+        <div
+          style={{
+            fontSize: "10px",
+            fontWeight: 700,
+            color: "#4b5563",
+            letterSpacing: "1px",
+            textTransform: "uppercase",
+            marginBottom: "8px",
+          }}
+        >
           Evidence
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
           {sourceEntries.length > 0 && (
-            <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+            <div style={{ fontSize: "11px", color: "#94a3b8", wordBreak: "break-word" }}>
               <span style={{ color: "#4b5563" }}>Sources: </span>
               {sourceEntries.map(([src, val], i) => (
                 <span key={src}>
@@ -231,7 +323,7 @@ function ExpandedRow({ trade, now }: { trade: AgentTrade; now: number }) {
               <span style={{ color: "#fbbf24" }}>{ev.largeTransferCount24h}</span>
               {ev.largeTransferTotalUsd24h !== undefined && (
                 <span style={{ color: "#64748b" }}>
-                  {" "}(${((ev.largeTransferTotalUsd24h) / 1_000_000).toFixed(0)}M)
+                  {" "}(${(ev.largeTransferTotalUsd24h / 1_000_000).toFixed(0)}M)
                 </span>
               )}
             </div>
@@ -245,12 +337,14 @@ function ExpandedRow({ trade, now }: { trade: AgentTrade; now: number }) {
               )}
               {hist.change1hPct !== null && (
                 <span style={{ color: hist.change1hPct >= 0 ? "#4ade80" : "#f87171" }}>
-                  {" · "}1h {hist.change1hPct >= 0 ? "+" : ""}{(hist.change1hPct * 100).toFixed(2)}%
+                  {" · "}1h {hist.change1hPct >= 0 ? "+" : ""}
+                  {(hist.change1hPct * 100).toFixed(2)}%
                 </span>
               )}
               {hist.change24hPct !== null && (
                 <span style={{ color: hist.change24hPct >= 0 ? "#4ade80" : "#f87171" }}>
-                  {" · "}24h {hist.change24hPct >= 0 ? "+" : ""}{(hist.change24hPct * 100).toFixed(2)}%
+                  {" · "}24h {hist.change24hPct >= 0 ? "+" : ""}
+                  {(hist.change24hPct * 100).toFixed(2)}%
                 </span>
               )}
               {hist.bounceFromLowPct !== null && hist.bounceFromLowPct > 0 && (
@@ -266,14 +360,137 @@ function ExpandedRow({ trade, now }: { trade: AgentTrade; now: number }) {
             </div>
           )}
 
-          <div style={{ fontSize: "11px", color: "#334155" }}>
-            rules {trade.rules_version}
-          </div>
+          <div style={{ fontSize: "11px", color: "#334155" }}>rules {trade.rules_version}</div>
         </div>
       </div>
     </div>
   );
 }
+
+function TradeCard({
+  trade,
+  now,
+  isExpanded,
+  onToggle,
+}: {
+  trade: AgentTrade;
+  now: number;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const isBuy = trade.decision === "buy";
+  const decStyle = DECISION_STYLE[trade.decision] ?? DECISION_STYLE.watch;
+  const statStyle = STATUS_STYLE[trade.status] ?? STATUS_STYLE.none;
+  const pnlColor =
+    trade.pnl_usd === null ? "#4b5563" : trade.pnl_usd >= 0 ? "#4ade80" : "#f87171";
+
+  return (
+    <div
+      style={{
+        background: isExpanded ? "#162032" : "#1e293b",
+        border: "1px solid #334155",
+        borderRadius: "8px",
+        marginBottom: "8px",
+        opacity: isBuy ? 1 : 0.55,
+        overflow: "hidden",
+      }}
+    >
+      <div onClick={onToggle} style={{ padding: "12px 14px", cursor: "pointer" }}>
+        {/* Coin + badges row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "6px",
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ fontSize: "14px", fontWeight: 700, color: "#e2e8f0" }}>
+            {trade.coin.toUpperCase()}
+          </span>
+          <Badge label={trade.decision.toUpperCase()} style={decStyle} />
+          {trade.status !== "none" && (
+            <Badge
+              label={trade.status.replace("_", " ").toUpperCase()}
+              style={statStyle}
+            />
+          )}
+          <span
+            style={{ marginLeft: "auto", fontSize: "10px", color: "#4b5563", flexShrink: 0 }}
+          >
+            {isExpanded ? "▼" : "▶"}
+          </span>
+        </div>
+
+        {/* Price + time + P&L row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            fontSize: "12px",
+            color: "#64748b",
+            flexWrap: "wrap",
+          }}
+        >
+          <span>${price4(trade.price)}</span>
+          <span>{timeAgo(trade.decided_at, now)}</span>
+          {isBuy && trade.pnl_usd !== null && (
+            <span style={{ color: pnlColor, fontWeight: 600, marginLeft: "auto" }}>
+              {pnlStr(trade.pnl_usd)}
+            </span>
+          )}
+          {isBuy && trade.status === "open" && trade.pnl_usd === null && (
+            <span style={{ color: "#60a5fa", fontWeight: 600, marginLeft: "auto" }}>OPEN</span>
+          )}
+        </div>
+      </div>
+
+      {isExpanded && <ExpandedDetail trade={trade} now={now} />}
+    </div>
+  );
+}
+
+const TAB_LABELS: Record<Filter, string> = {
+  trades:  "Trades",
+  skipped: "Skipped",
+  all:     "All",
+};
+
+const RESPONSIVE_CSS = `
+  .agent-page-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 24px;
+  }
+  .agent-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .agent-table-wrapper { display: block; }
+  .agent-card-list     { display: none;  }
+  .agent-expanded-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 639px) {
+    .agent-page-inner {
+      padding: 24px 16px;
+    }
+    .agent-summary-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .agent-table-wrapper { display: none;  }
+    .agent-card-list     { display: block; }
+    .agent-expanded-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+`;
 
 export default function AgentTradesTable({
   trades,
@@ -282,29 +499,44 @@ export default function AgentTradesTable({
   trades: AgentTrade[];
   summary: AgentSummary;
 }) {
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>("trades");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const now = Date.now();
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const now = useMemo(() => Date.now(), []);
 
   const filtered = useMemo(() => {
     if (filter === "trades") return trades.filter((t) => t.decision === "buy");
-    if (filter === "avoid") return trades.filter((t) => t.decision === "avoid");
+    if (filter === "skipped")
+      return trades.filter((t) => t.decision === "avoid" || t.decision === "watch");
     return trades;
   }, [trades, filter]);
+
+  const visible = filtered.slice(0, visibleCount);
+  const hasMore = filtered.length > visibleCount;
+
+  const handleFilterChange = (f: Filter) => {
+    setFilter(f);
+    setExpandedId(null);
+    setVisibleCount(PAGE_SIZE);
+  };
 
   const pnlColor = summary.realisedPnl >= 0 ? "#4ade80" : "#f87171";
 
   return (
-    <main style={{
-      minHeight: "100vh",
-      background: "#0f172a",
-      color: "#f1f5f9",
-      fontFamily: "monospace",
-      padding: "48px 24px",
-    }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#0f172a",
+        color: "#f1f5f9",
+        fontFamily: "monospace",
+        overflowX: "hidden",
+      }}
+    >
+      {/* eslint-disable-next-line react/no-danger */}
+      <style dangerouslySetInnerHTML={{ __html: RESPONSIVE_CSS }} />
 
-        {/* Title + banner */}
+      <div className="agent-page-inner">
+        {/* Title */}
         <div style={{ marginBottom: "28px" }}>
           <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#f8fafc", margin: "0 0 6px" }}>
             PegCheck Agent — Practice Trades
@@ -315,52 +547,62 @@ export default function AgentTradesTable({
         </div>
 
         {/* Summary cards */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "12px",
-          marginBottom: "28px",
-        }}>
+        <div className="agent-summary-grid">
           {[
-            { label: "Bankroll",       value: `$${summary.bankroll.toLocaleString()}`, color: "#f1f5f9" },
-            { label: "Open trades",    value: String(summary.openCount),               color: "#60a5fa" },
-            { label: "Closed trades",  value: String(summary.closedCount),             color: "#94a3b8" },
-            { label: "Realised P&L",   value: pnlStr(summary.realisedPnl),            color: pnlColor  },
+            { label: "Bankroll",      value: `$${summary.bankroll.toLocaleString()}`, color: "#f1f5f9" },
+            { label: "Open trades",   value: String(summary.openCount),               color: "#60a5fa" },
+            { label: "Closed trades", value: String(summary.closedCount),             color: "#94a3b8" },
+            { label: "Realised P&L",  value: pnlStr(summary.realisedPnl),            color: pnlColor  },
           ].map(({ label, value, color }) => (
-            <div key={label} style={{
-              background: "#1e293b",
-              borderRadius: "10px",
-              padding: "16px 20px",
-              border: "1px solid #334155",
-            }}>
-              <div style={{
-                fontSize: "10px",
-                fontWeight: 700,
-                color: "#4b5563",
-                letterSpacing: "1px",
-                textTransform: "uppercase",
-                marginBottom: "6px",
-              }}>
+            <div
+              key={label}
+              style={{
+                background: "#1e293b",
+                borderRadius: "10px",
+                padding: "16px 20px",
+                border: "1px solid #334155",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: "#4b5563",
+                  letterSpacing: "1px",
+                  textTransform: "uppercase",
+                  marginBottom: "6px",
+                }}
+              >
                 {label}
               </div>
-              <div style={{
-                fontSize: "20px",
-                fontWeight: 700,
-                color,
-                fontVariantNumeric: "tabular-nums",
-              }}>
+              <div
+                style={{
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  color,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
                 {value}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Filter buttons */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-          {(["all", "trades", "avoid"] as Filter[]).map((f) => (
+        {/* Tab buttons */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "16px",
+            flexWrap: "wrap",
+          }}
+        >
+          {(["trades", "skipped", "all"] as Filter[]).map((f) => (
             <button
               key={f}
-              onClick={() => { setFilter(f); setExpandedId(null); }}
+              onClick={() => handleFilterChange(f)}
               style={{
                 fontSize: "12px",
                 fontWeight: 600,
@@ -375,115 +617,235 @@ export default function AgentTradesTable({
                 fontFamily: "monospace",
               }}
             >
-              {f === "all" ? "All" : f === "trades" ? "Trades only" : "Avoid"}
+              {TAB_LABELS[f]}
             </button>
           ))}
           <span style={{ marginLeft: "auto", fontSize: "12px", color: "#4b5563" }}>
-            {filtered.length} row{filtered.length !== 1 ? "s" : ""}
+            {visible.length} of {filtered.length}
           </span>
         </div>
 
-        {/* Table */}
-        {filtered.length === 0 ? (
-          <p style={{ fontSize: "13px", color: "#4b5563", textAlign: "center", marginTop: "48px" }}>
-            No records yet.
-          </p>
-        ) : (
-          <div style={{
-            background: "#1e293b",
-            borderRadius: "10px",
-            border: "1px solid #334155",
-            overflow: "hidden",
-          }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "720px" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid #334155" }}>
-                    {["Coin", "Decision", "Price", "Entry", "Exit", "P&L", "Status", "Time"].map((h) => (
-                      <th key={h} style={{
-                        textAlign: "left",
-                        fontSize: "10px",
-                        fontWeight: 700,
-                        color: "#4b5563",
-                        letterSpacing: "1px",
-                        textTransform: "uppercase",
-                        padding: "12px 14px",
-                        whiteSpace: "nowrap",
-                      }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((trade) => {
-                    const isExpanded = expandedId === trade.id;
-                    const isBuy = trade.decision === "buy";
-                    const decStyle = DECISION_STYLE[trade.decision] ?? DECISION_STYLE.watch;
-                    const statStyle = STATUS_STYLE[trade.status] ?? STATUS_STYLE.none;
+        {/* ── Card list (mobile ≤639px) ── */}
+        <div className="agent-card-list">
+          {visible.length === 0 ? (
+            <p
+              style={{ fontSize: "13px", color: "#4b5563", textAlign: "center", marginTop: "48px" }}
+            >
+              No records yet.
+            </p>
+          ) : (
+            visible.map((trade) => (
+              <TradeCard
+                key={trade.id}
+                trade={trade}
+                now={now}
+                isExpanded={expandedId === trade.id}
+                onToggle={() =>
+                  setExpandedId(expandedId === trade.id ? null : trade.id)
+                }
+              />
+            ))
+          )}
+        </div>
 
-                    return (
-                      <Fragment key={trade.id}>
-                        <tr
-                          onClick={() => setExpandedId(isExpanded ? null : trade.id)}
-                          style={{
-                            borderBottom: isExpanded ? "none" : "1px solid #1e293b",
-                            cursor: "pointer",
-                            opacity: isBuy ? 1 : 0.45,
-                            background: isExpanded ? "#162032" : "transparent",
-                            transition: "background 0.1s",
-                          }}
-                        >
-                          <td style={{ padding: "12px 14px", fontSize: "13px", color: "#e2e8f0", fontWeight: 600, whiteSpace: "nowrap" }}>
-                            <span style={{ marginRight: "6px", fontSize: "9px", color: "#4b5563" }}>
-                              {isExpanded ? "▼" : "▶"}
-                            </span>
-                            {trade.coin.toUpperCase()}
-                          </td>
-                          <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
-                            <Badge label={trade.decision.toUpperCase()} style={decStyle} />
-                          </td>
-                          <td style={{ padding: "12px 14px", fontSize: "12px", color: "#94a3b8", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-                            ${price4(trade.price)}
-                          </td>
-                          <td style={{ padding: "12px 14px", fontSize: "12px", color: "#cbd5e1", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-                            {trade.entry_price !== null ? `$${price4(trade.entry_price)}` : "—"}
-                          </td>
-                          <td style={{ padding: "12px 14px", fontSize: "12px", color: "#cbd5e1", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-                            {trade.exit_price !== null ? `$${price4(trade.exit_price)}` : "—"}
-                          </td>
-                          <td style={{
-                            padding: "12px 14px",
-                            fontSize: "12px",
-                            fontVariantNumeric: "tabular-nums",
-                            whiteSpace: "nowrap",
-                            color: trade.pnl_usd === null ? "#4b5563" : trade.pnl_usd >= 0 ? "#4ade80" : "#f87171",
-                          }}>
-                            {pnlStr(trade.pnl_usd)}
-                          </td>
-                          <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
-                            <Badge
-                              label={trade.status.replace("_", " ").toUpperCase()}
-                              style={statStyle}
-                            />
-                          </td>
-                          <td style={{ padding: "12px 14px", fontSize: "11px", color: "#4b5563", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-                            {timeAgo(trade.decided_at, now)}
-                          </td>
-                        </tr>
-                        {isExpanded && (
-                          <tr style={{ borderBottom: "1px solid #1e293b", opacity: isBuy ? 1 : 0.45 }}>
-                            <td colSpan={8} style={{ padding: 0 }}>
-                              <ExpandedRow trade={trade} now={now} />
+        {/* ── Table (desktop ≥640px) ── */}
+        <div className="agent-table-wrapper">
+          {visible.length === 0 ? (
+            <p
+              style={{ fontSize: "13px", color: "#4b5563", textAlign: "center", marginTop: "48px" }}
+            >
+              No records yet.
+            </p>
+          ) : (
+            <div
+              style={{
+                background: "#1e293b",
+                borderRadius: "10px",
+                border: "1px solid #334155",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ overflowX: "auto" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    minWidth: "720px",
+                  }}
+                >
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid #334155" }}>
+                      {["Coin", "Decision", "Price", "Entry", "Exit", "P&L", "Status", "Time"].map(
+                        (h) => (
+                          <th
+                            key={h}
+                            style={{
+                              textAlign: "left",
+                              fontSize: "10px",
+                              fontWeight: 700,
+                              color: "#4b5563",
+                              letterSpacing: "1px",
+                              textTransform: "uppercase",
+                              padding: "12px 14px",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {h}
+                          </th>
+                        )
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visible.map((trade) => {
+                      const isExpanded = expandedId === trade.id;
+                      const isBuy = trade.decision === "buy";
+                      const decStyle = DECISION_STYLE[trade.decision] ?? DECISION_STYLE.watch;
+                      const statStyle = STATUS_STYLE[trade.status] ?? STATUS_STYLE.none;
+
+                      return (
+                        <Fragment key={trade.id}>
+                          <tr
+                            onClick={() =>
+                              setExpandedId(isExpanded ? null : trade.id)
+                            }
+                            style={{
+                              borderBottom: isExpanded ? "none" : "1px solid #1e293b",
+                              cursor: "pointer",
+                              opacity: isBuy ? 1 : 0.45,
+                              background: isExpanded ? "#162032" : "transparent",
+                              transition: "background 0.1s",
+                            }}
+                          >
+                            <td
+                              style={{
+                                padding: "12px 14px",
+                                fontSize: "13px",
+                                color: "#e2e8f0",
+                                fontWeight: 600,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              <span style={{ marginRight: "6px", fontSize: "9px", color: "#4b5563" }}>
+                                {isExpanded ? "▼" : "▶"}
+                              </span>
+                              {trade.coin.toUpperCase()}
+                            </td>
+                            <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
+                              <Badge label={trade.decision.toUpperCase()} style={decStyle} />
+                            </td>
+                            <td
+                              style={{
+                                padding: "12px 14px",
+                                fontSize: "12px",
+                                color: "#94a3b8",
+                                fontVariantNumeric: "tabular-nums",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              ${price4(trade.price)}
+                            </td>
+                            <td
+                              style={{
+                                padding: "12px 14px",
+                                fontSize: "12px",
+                                color: "#cbd5e1",
+                                fontVariantNumeric: "tabular-nums",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {trade.entry_price !== null
+                                ? `$${price4(trade.entry_price)}`
+                                : "—"}
+                            </td>
+                            <td
+                              style={{
+                                padding: "12px 14px",
+                                fontSize: "12px",
+                                color: "#cbd5e1",
+                                fontVariantNumeric: "tabular-nums",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {trade.exit_price !== null
+                                ? `$${price4(trade.exit_price)}`
+                                : "—"}
+                            </td>
+                            <td
+                              style={{
+                                padding: "12px 14px",
+                                fontSize: "12px",
+                                fontVariantNumeric: "tabular-nums",
+                                whiteSpace: "nowrap",
+                                color:
+                                  trade.pnl_usd === null
+                                    ? "#4b5563"
+                                    : trade.pnl_usd >= 0
+                                    ? "#4ade80"
+                                    : "#f87171",
+                              }}
+                            >
+                              {pnlStr(trade.pnl_usd)}
+                            </td>
+                            <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
+                              <Badge
+                                label={trade.status.replace("_", " ").toUpperCase()}
+                                style={statStyle}
+                              />
+                            </td>
+                            <td
+                              style={{
+                                padding: "12px 14px",
+                                fontSize: "11px",
+                                color: "#4b5563",
+                                fontVariantNumeric: "tabular-nums",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {timeAgo(trade.decided_at, now)}
                             </td>
                           </tr>
-                        )}
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          {isExpanded && (
+                            <tr
+                              style={{
+                                borderBottom: "1px solid #1e293b",
+                                opacity: isBuy ? 1 : 0.45,
+                              }}
+                            >
+                              <td colSpan={8} style={{ padding: 0 }}>
+                                <ExpandedDetail trade={trade} now={now} />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
+          )}
+        </div>
+
+        {/* Load more */}
+        {hasMore && (
+          <div style={{ textAlign: "center", marginTop: "16px" }}>
+            <button
+              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              style={{
+                fontSize: "13px",
+                fontWeight: 600,
+                padding: "10px 24px",
+                borderRadius: "8px",
+                border: "1px solid #334155",
+                background: "#1e293b",
+                color: "#94a3b8",
+                cursor: "pointer",
+                fontFamily: "monospace",
+              }}
+            >
+              Load more ({filtered.length - visibleCount} remaining)
+            </button>
           </div>
         )}
       </div>

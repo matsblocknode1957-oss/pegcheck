@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import AgentTradesTable from "./AgentTradesTable";
 import { BANKROLL_USD } from "@/lib/agent/config";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Agent Practice Trades | PegCheck",
@@ -49,31 +49,59 @@ export default async function AgentPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const { data, error } = await supabase
+  // Summary from ALL rows (no limit), status <> 'none' — gives correct totals
+  const { data: summaryRows, error: summaryError } = await supabase
     .from("agent_trades")
-    .select(
-      "id, decided_at, coin, chain, peg, price, decision, danger_score, opportunity_score, danger_reasons, opportunity_reasons, evidence, rules_version, summary, status, size_usd, entry_price, target_price, stop_price, exit_price, pnl_usd, closed_at"
-    )
+    .select("status, pnl_usd")
     .eq("mode", "live")
-    .order("decided_at", { ascending: false })
-    .limit(200);
+    .neq("status", "none");
 
-  if (error) console.error("agent_trades error:", JSON.stringify(error));
+  if (summaryError) console.error("agent_trades summary error:", JSON.stringify(summaryError));
 
-  const trades: AgentTrade[] = (data ?? []) as AgentTrade[];
-
-  const openCount = trades.filter((t) => t.status === "open").length;
-  const closedTrades = trades.filter((t) =>
-    ["won", "lost", "timed_out", "stale_exit"].includes(t.status)
+  const allRows = summaryRows ?? [];
+  const openCount = allRows.filter((r) => r.status === "open").length;
+  const closedRows = allRows.filter((r) =>
+    ["won", "lost", "timed_out", "stale_exit"].includes(r.status)
   );
-  const realisedPnl = closedTrades.reduce((acc, t) => acc + (t.pnl_usd ?? 0), 0);
+  const realisedPnl = closedRows.reduce((acc: number, r) => acc + ((r.pnl_usd as number) ?? 0), 0);
 
   const summary: AgentSummary = {
     bankroll: BANKROLL_USD,
     openCount,
-    closedCount: closedTrades.length,
+    closedCount: closedRows.length,
     realisedPnl,
   };
+
+  const DISPLAY_COLS =
+    "id, decided_at, coin, chain, peg, price, decision, danger_score, opportunity_score, danger_reasons, opportunity_reasons, evidence, rules_version, summary, status, size_usd, entry_price, target_price, stop_price, exit_price, pnl_usd, closed_at";
+
+  // ALL buy rows — no limit so every trade ever made is visible on the Trades tab
+  const { data: buyData, error: buyError } = await supabase
+    .from("agent_trades")
+    .select(DISPLAY_COLS)
+    .eq("mode", "live")
+    .eq("decision", "buy")
+    .order("decided_at", { ascending: false });
+
+  if (buyError) console.error("agent_trades buy error:", JSON.stringify(buyError));
+
+  // Newest 200 skip rows (avoid / watch)
+  const { data: skipData, error: skipError } = await supabase
+    .from("agent_trades")
+    .select(DISPLAY_COLS)
+    .eq("mode", "live")
+    .in("decision", ["avoid", "watch"])
+    .order("decided_at", { ascending: false })
+    .limit(200);
+
+  if (skipError) console.error("agent_trades skip error:", JSON.stringify(skipError));
+
+  // Merge and sort newest-first for the All tab
+  const merged = [...(buyData ?? []), ...(skipData ?? [])].sort(
+    (a, b) => new Date(b.decided_at).getTime() - new Date(a.decided_at).getTime()
+  );
+
+  const trades: AgentTrade[] = merged as AgentTrade[];
 
   return <AgentTradesTable trades={trades} summary={summary} />;
 }
