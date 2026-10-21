@@ -44,9 +44,12 @@ async function main() {
   const arbProvider      = new ethers.JsonRpcProvider(
     process.env.ARB_SEPOLIA_RPC_URL  || "https://sepolia-rollup.arbitrum.io/rpc"
   );
-  const sepoliaProvider  = new ethers.JsonRpcProvider(
-    process.env.SEPOLIA_RPC_URL      || "https://eth-sepolia.g.alchemy.com/v2/J55OLMq9Jt9zmd6GcP0MO"
-  );
+  const _sepoliaRpc = process.env.SEPOLIA_RPC_URL;
+  if (!_sepoliaRpc) {
+    console.error("Error: SEPOLIA_RPC_URL is not set in environment");
+    process.exit(1);
+  }
+  const sepoliaProvider  = new ethers.JsonRpcProvider(_sepoliaRpc);
   const robinhoodProvider = new ethers.JsonRpcProvider(
     process.env.ROBINHOOD_RPC_URL    || "https://rpc.testnet.chain.robinhood.com"
   );
