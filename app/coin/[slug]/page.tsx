@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import BottomNav from "@/components/BottomNav";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
 
 const COIN_DATA: Record<string, {
@@ -261,7 +261,6 @@ function LargeTransactions({ slug, dark, cardBorder, textSecondary, textPrimary 
 export default function CoinDetailPage() {
   const params = useParams();
   const slug = params?.slug as string;
-  const pathname = usePathname();
   const coin = COIN_DATA[slug];
 
   const [price, setPrice] = useState<number | null>(null);
@@ -366,9 +365,6 @@ export default function CoinDetailPage() {
   const cardBorder = dark ? "#1e2a40" : "#f3f4f6";
   const textPrimary = dark ? "#f9fafb" : "#111827";
   const textSecondary = dark ? "#6b7280" : "#9ca3af";
-  const navBg = dark ? "#0d1628" : "#ffffff";
-  const navBorder = dark ? "#1e2a40" : "#eaecf0";
-
   if (!coin) {
     return (
       <main style={{ background: bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI', sans-serif" }}>
@@ -714,43 +710,7 @@ export default function CoinDetailPage() {
         </div>
       </div>
 
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: navBg, borderTop: `1px solid ${navBorder}`, display: "flex", padding: "8px 0", zIndex: 100 }}>
-        <a href="/" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={dark ? "#6b7280" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-          <span style={{ fontSize: "9px", fontWeight: "600", color: dark ? "#6b7280" : "#9ca3af" }}>Home</span>
-        </a>
-        <a href="/alerts" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={dark ? "#6b7280" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-          </svg>
-          <span style={{ fontSize: "9px", fontWeight: "600", color: dark ? "#6b7280" : "#9ca3af" }}>Alerts</span>
-        </a>
-        <a href="/about" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={dark ? "#6b7280" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span style={{ fontSize: "9px", fontWeight: "600", color: dark ? "#6b7280" : "#9ca3af" }}>About</span>
-        </a>
-        <a href="/history" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={dark ? "#6b7280" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <span style={{ fontSize: "9px", fontWeight: "600", color: dark ? "#6b7280" : "#9ca3af" }}>History</span>
-        </a>
-        <a href="/stableguard" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", textDecoration: "none", padding: "4px 0" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={dark ? "#6b7280" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-          <span style={{ fontSize: "9px", fontWeight: "600", color: dark ? "#6b7280" : "#9ca3af" }}>Guard</span>
-        </a>
-      </div>
+      <BottomNav dark={dark} />
 
     </main>
   );

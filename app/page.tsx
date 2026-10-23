@@ -785,6 +785,52 @@ export default function Home() {
         </div>
       )}
 
+      {/* More from PegCheck */}
+      <div style={{ padding: "16px 20px 12px" }}>
+        <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "10px" }}>More from PegCheck</div>
+        <style>{`.more-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}@media(max-width:700px){.more-grid{grid-template-columns:1fr}}`}</style>
+        <div className="more-grid">
+
+          <a href="/stableguard" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}` }}>
+            <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "linear-gradient(135deg, #1a56db, #0e3fa8)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "2px" }}>StableGuard</div>
+              <div style={{ fontSize: "12px", color: textSecondary, lineHeight: "1.4" }}>Automatic depeg protection for stablecoin vaults</div>
+            </div>
+          </a>
+
+          <a href="/agent" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}` }}>
+            <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "linear-gradient(135deg, #7c3aed, #5b21b6)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "2px" }}>PegCheck Agent</div>
+              <div style={{ fontSize: "12px", color: textSecondary, lineHeight: "1.4" }}>Watch our bot trade depegs with practice money, every decision explained</div>
+            </div>
+          </a>
+
+          <a href="/positions" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}` }}>
+            <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "linear-gradient(135deg, #059669, #047857)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7"/>
+                <line x1="16.5" y1="16.5" x2="22" y2="22"/>
+              </svg>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "2px" }}>LiquidLens</div>
+              <div style={{ fontSize: "12px", color: textSecondary, lineHeight: "1.4" }}>Check the stablecoins in your wallet</div>
+            </div>
+          </a>
+
+        </div>
+      </div>
+
       <div style={{ padding: "12px 20px 4px", textAlign: "center" }}>
         <div style={{ fontSize: "10px", color: dark ? "#4b5563" : "#9ca3af", marginBottom: "8px" }}>Not financial advice</div>
         <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>

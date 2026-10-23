@@ -62,14 +62,6 @@ export default function BottomNav({ dark }: { dark: boolean }) {
         <span style={label("/history")}>History</span>
       </a>
 
-      {/* LiquidLens */}
-      <a href="/positions" style={tab}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c("/positions")} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="7"/>
-          <line x1="16.5" y1="16.5" x2="22" y2="22"/>
-        </svg>
-        <span style={label("/positions")}>LiquidLens</span>
-      </a>
 
     </div>
   );
