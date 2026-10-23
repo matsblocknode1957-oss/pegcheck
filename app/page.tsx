@@ -788,7 +788,7 @@ export default function Home() {
       {/* More from PegCheck */}
       <div style={{ padding: "16px 20px 12px" }}>
         <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "10px" }}>More from PegCheck</div>
-        <style>{`.more-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}@media(max-width:700px){.more-grid{grid-template-columns:1fr}}`}</style>
+        <style>{`.more-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:900px){.more-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.more-grid{grid-template-columns:1fr}}`}</style>
         <div className="more-grid">
 
           <a href="/stableguard" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}` }}>
@@ -825,6 +825,23 @@ export default function Home() {
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "2px" }}>LiquidLens</div>
               <div style={{ fontSize: "12px", color: textSecondary, lineHeight: "1.4" }}>Check the stablecoins in your wallet</div>
+            </div>
+          </a>
+
+          <a href="/rwa" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}` }}>
+            <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "linear-gradient(135deg, #d97706, #b45309)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="22" x2="21" y2="22"/>
+                <line x1="6" y1="18" x2="6" y2="11"/>
+                <line x1="10" y1="18" x2="10" y2="11"/>
+                <line x1="14" y1="18" x2="14" y2="11"/>
+                <line x1="18" y1="18" x2="18" y2="11"/>
+                <polygon points="12 2 20 7 4 7"/>
+              </svg>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "2px" }}>RWA Monitor</div>
+              <div style={{ fontSize: "12px", color: textSecondary, lineHeight: "1.4" }}>Track tokenised real-world assets</div>
             </div>
           </a>
 
