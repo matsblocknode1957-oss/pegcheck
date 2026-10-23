@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
         destination: "/stableguard-replay.html",
         permanent: false,
       },
+      {
+        source: "/positions",
+        destination: "https://liquidlens.uk",
+        permanent: false,
+      },
     ];
   },
 };

@@ -815,7 +815,7 @@ export default function Home() {
             </div>
           </a>
 
-          <a href="/positions" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}` }}>
+          <a href="https://liquidlens.uk" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}` }}>
             <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "linear-gradient(135deg, #059669, #047857)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="7"/>
@@ -824,7 +824,7 @@ export default function Home() {
             </div>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: "14px", fontWeight: "700", color: textPrimary, marginBottom: "2px" }}>LiquidLens</div>
-              <div style={{ fontSize: "12px", color: textSecondary, lineHeight: "1.4" }}>Check the stablecoins in your wallet</div>
+              <div style={{ fontSize: "12px", color: textSecondary, lineHeight: "1.4" }}>Liquidation risk across Aave, Compound and MakerDAO</div>
             </div>
           </a>
 
