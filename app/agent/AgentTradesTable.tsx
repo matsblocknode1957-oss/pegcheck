@@ -2,6 +2,7 @@
 
 import { Fragment, useState, useMemo } from "react";
 import type { AgentTrade, AgentSummary } from "./page";
+import AgentReplay from "./AgentReplay";
 
 type Filter = "trades" | "skipped" | "all";
 
@@ -759,6 +760,8 @@ export default function AgentTradesTable({
             )}
           </p>
         )}
+
+        <AgentReplay />
 
         {/* Tab buttons */}
         <div
