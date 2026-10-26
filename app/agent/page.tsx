@@ -6,8 +6,8 @@ import { BANKROLL_USD } from "@/lib/agent/config";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Agent Practice Trades | PegCheck",
-  description: "PegCheck Agent practice trading activity — pretend money only.",
+  title: "PegCheck Agent — Trade Log | PegCheck",
+  description: "Our bot buys stablecoin dips on its own with pretend money, using PegCheck prices. Every decision and result is logged.",
   robots: { index: false, follow: false },
 };
 

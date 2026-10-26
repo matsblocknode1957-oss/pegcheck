@@ -670,10 +670,10 @@ export default function AgentTradesTable({
         {/* Title */}
         <div style={{ marginBottom: "28px" }}>
           <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#f8fafc", margin: "0 0 6px" }}>
-            PegCheck Agent — Practice Trades
+            PegCheck Agent — Trade Log
           </h1>
           <p style={{ fontSize: "12px", color: "#475569", margin: 0, fontStyle: "italic" }}>
-            Practice trades with pretend money. Not financial advice.
+            Our bot buys stablecoin dips on its own, using PegCheck prices and fixed rules, with $3,000 of pretend money. You can&apos;t trade here: this page logs every decision it made, and why. Not financial advice.
           </p>
         </div>
 
