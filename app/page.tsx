@@ -341,18 +341,18 @@ export default function Home() {
     return Object.values(s).filter((v) => v > 0).length;
   };
 
-  const getStatus = (price: number | null, peg: number | null, slug = ''): string => {
+  const getStatus = (price: number | null, peg: number | null, slug = '', sourceCount: number | null = null): string => {
     if (price === null || peg === null) return "No data";
     const { healthy, caution } = getThresholds(slug);
     const diff = Math.abs(price - peg) / peg;
-    if (diff <= healthy) return "Healthy";
-    if (diff <= caution) return "Caution";
-    return "Depeg";
+    const raw = diff <= healthy ? "Healthy" : diff <= caution ? "Caution" : "Depeg";
+    if (sourceCount === 1 && (raw === "Caution" || raw === "Depeg")) return "Unconfirmed: 1 source";
+    return raw;
   };
 
   const statusColor = (status: string) => {
     if (status === "Healthy") return "#16a34a";
-    if (status === "Caution") return "#d97706";
+    if (status === "Caution" || status === "Unconfirmed: 1 source") return "#d97706";
     if (status === "No data" || status === "Loading...") return "#6b7280";
     return "#dc2626";
   };
@@ -360,19 +360,19 @@ export default function Home() {
   const statusBg = (status: string) => {
     if (dark) {
       if (status === "Healthy") return "#052e16";
-      if (status === "Caution") return "#451a03";
+      if (status === "Caution" || status === "Unconfirmed: 1 source") return "#451a03";
       if (status === "No data" || status === "Loading...") return "#111827";
       return "#450a0a";
     }
     if (status === "Healthy") return "#f0fdf4";
-    if (status === "Caution") return "#fffbeb";
+    if (status === "Caution" || status === "Unconfirmed: 1 source") return "#fffbeb";
     if (status === "No data" || status === "Loading...") return "#f3f4f6";
     return "#fef2f2";
   };
 
-  const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug) === "Healthy").length;
-  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug) === "Caution").length;
-  const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug) === "Depeg").length;
+  const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug)) === "Healthy").length;
+  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug)) === "Caution").length;
+  const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug)) === "Depeg").length;
 
   const holdings = walletAddress
     ? stablecoins.filter((coin) => {
@@ -406,7 +406,7 @@ export default function Home() {
       const weight = (amount * price) / portfolioTotal;
       const peg = getEffectivePeg(coin.slug);
       if (peg === null) continue;
-      const status = getStatus(price, peg, coin.slug);
+      const status = getStatus(price, peg, coin.slug, getSourceCount(coin.slug));
       const pts = status === "Depeg" ? 10 : status === "Caution" ? 5 : 1;
       weighted += weight * pts;
     }
@@ -558,10 +558,10 @@ export default function Home() {
         {stablecoins.map((coin) => {
           const livePrice = getLivePrice(coin.slug);
           const noDataLabel = pricesLoaded ? "No data" : "Loading...";
-          const liveStatus = livePrice !== null
-            ? getStatus(livePrice, getEffectivePeg(coin.slug), coin.slug)
-            : noDataLabel;
           const sourceCount = getSourceCount(coin.slug);
+          const liveStatus = livePrice !== null
+            ? getStatus(livePrice, getEffectivePeg(coin.slug), coin.slug, sourceCount)
+            : noDataLabel;
           return (
             <Link
               key={coin.name}

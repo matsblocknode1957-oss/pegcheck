@@ -369,28 +369,29 @@ export default function CoinDetailPage() {
 
   const coinPeg = slug === "eurc" ? eurUsd : (COIN_PEGS[slug] ?? 1.0);
   const { healthy: healthyT, caution: cautionT } = getThresholds(slug);
+  const sourceCount = Object.values(sourcePrices).filter(p => (p as number) > 0).length;
 
   const getStatus = (p: number) => {
     const diff = Math.abs(p - coinPeg) / coinPeg;
-    if (diff <= healthyT) return "Healthy";
-    if (diff <= cautionT) return "Caution";
-    return "Depeg";
+    const raw = diff <= healthyT ? "Healthy" : diff <= cautionT ? "Caution" : "Depeg";
+    if (sourceCount === 1 && (raw === "Caution" || raw === "Depeg")) return "Unconfirmed: 1 source";
+    return raw;
   };
 
   const statusColor = (s: string) => {
     if (s === "Healthy") return "#16a34a";
-    if (s === "Caution") return "#d97706";
+    if (s === "Caution" || s === "Unconfirmed: 1 source") return "#d97706";
     return "#dc2626";
   };
 
   const statusBg = (s: string) => {
     if (dark) {
       if (s === "Healthy") return "#052e16";
-      if (s === "Caution") return "#451a03";
+      if (s === "Caution" || s === "Unconfirmed: 1 source") return "#451a03";
       return "#450a0a";
     }
     if (s === "Healthy") return "#f0fdf4";
-    if (s === "Caution") return "#fffbeb";
+    if (s === "Caution" || s === "Unconfirmed: 1 source") return "#fffbeb";
     return "#fef2f2";
   };
 
@@ -616,28 +617,36 @@ export default function CoinDetailPage() {
       {uniswapEntry && (
         <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${headerBorder}` }}>
           <div style={{ fontSize: "13px", fontWeight: "700", color: textPrimary, marginBottom: "12px" }}>DEX Divergence</div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: uniswapEntry.pool_price > 0 && isFinite(uniswapEntry.pool_price) ? "8px" : "0" }}>
             <span style={{ fontSize: "12px", color: textSecondary }}>Uniswap V3 Pool Price</span>
-            <span style={{ fontFamily: "monospace", fontSize: "12px", color: textPrimary }}>${uniswapEntry.pool_price.toFixed(5)}</span>
+            {uniswapEntry.pool_price > 0 && isFinite(uniswapEntry.pool_price) ? (
+              <span style={{ fontFamily: "monospace", fontSize: "12px", color: textPrimary }}>${uniswapEntry.pool_price.toFixed(5)}</span>
+            ) : (
+              <span style={{ fontSize: "12px", color: textSecondary }}>Unavailable</span>
+            )}
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-            <span style={{ fontSize: "12px", color: textSecondary }}>Divergence vs Consensus</span>
-            <span style={{ fontFamily: "monospace", fontSize: "12px", color: textPrimary }}>{uniswapEntry.divergence_bps} bps</span>
-          </div>
-          {(() => {
-            const bps = uniswapEntry.divergence_bps;
-            const d = bps < 5
-              ? { text: "Tight",    color: "#22c55e", bg: dark ? "#052e16" : "#f0fdf4", border: dark ? "#166534" : "#bbf7d0" }
-              : bps <= 20
-              ? { text: "Moderate", color: "#f59e0b", bg: dark ? "#451a03" : "#fffbeb", border: dark ? "#92400e" : "#fde68a" }
-              : { text: "Wide",     color: "#ef4444", bg: dark ? "#450a0a" : "#fef2f2", border: dark ? "#991b1b" : "#fecaca" };
-            return (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "5px 12px", borderRadius: "8px", background: d.bg, border: `1px solid ${d.border}` }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: d.color, display: "inline-block" }} />
-                <span style={{ fontSize: "12px", fontWeight: "700", color: d.color }}>{d.text}</span>
+          {uniswapEntry.pool_price > 0 && isFinite(uniswapEntry.pool_price) && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <span style={{ fontSize: "12px", color: textSecondary }}>Divergence vs Consensus</span>
+                <span style={{ fontFamily: "monospace", fontSize: "12px", color: textPrimary }}>{uniswapEntry.divergence_bps} bps</span>
               </div>
-            );
-          })()}
+              {(() => {
+                const bps = uniswapEntry.divergence_bps;
+                const d = bps < 5
+                  ? { text: "Tight",    color: "#22c55e", bg: dark ? "#052e16" : "#f0fdf4", border: dark ? "#166534" : "#bbf7d0" }
+                  : bps <= 20
+                  ? { text: "Moderate", color: "#f59e0b", bg: dark ? "#451a03" : "#fffbeb", border: dark ? "#92400e" : "#fde68a" }
+                  : { text: "Wide",     color: "#ef4444", bg: dark ? "#450a0a" : "#fef2f2", border: dark ? "#991b1b" : "#fecaca" };
+                return (
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "5px 12px", borderRadius: "8px", background: d.bg, border: `1px solid ${d.border}` }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: d.color, display: "inline-block" }} />
+                    <span style={{ fontSize: "12px", fontWeight: "700", color: d.color }}>{d.text}</span>
+                  </div>
+                );
+              })()}
+            </>
+          )}
         </div>
       )}
 
