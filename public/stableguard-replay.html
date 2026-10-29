@@ -225,6 +225,17 @@ h3 { text-wrap: balance; }
 @media (prefers-reduced-motion: reduce) {
   .log .row, .tag, .steps li, .pill { transition: none; }
 }
+
+/* Contracts section */
+.clist { display: flex; flex-direction: column; gap: 22px; }
+.cnet { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px; }
+.cgroup { display: grid; }
+.citem { display: grid; grid-template-columns: 210px minmax(0, 1fr) auto; gap: 6px 20px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.cgroup > .citem:last-child { border-bottom: 1px solid var(--line); }
+.cname { font-size: 14px; font-weight: 600; }
+.caddr { font-family: var(--mono); font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.cscan { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+@media (max-width: 580px) { .citem { grid-template-columns: 1fr auto; } .caddr { grid-column: 1 / -1; } }
 </style>
 
 <a href="/" style="display:block;padding:14px max(16px,env(safe-area-inset-left,0px)) 4px;font-family:var(--mono);font-size:13px;color:var(--muted);text-decoration:none;letter-spacing:0.04em;">← PegCheck</a>
@@ -350,6 +361,13 @@ h3 { text-wrap: balance; }
     </div>
     <ol class="record">
       <li>
+        <time datetime="2026-10-29">29 Oct 2026</time>
+        <div>
+          <h3>Rush alarm live on 20 Morpho markets</h3>
+          <p>Read-only alerts now run every 30 minutes on the 20 largest stablecoin lending markets on Morpho. Tested first on three real collapses (xUSD, sdeUSD and Resolv), where it warned 13 to 41 hours before the lock-ups, and on 36 healthy markets over 90 days to measure false alarms. Alerts go to a human; nothing is frozen automatically.</p>
+        </div>
+      </li>
+      <li>
         <time datetime="2026-10-21">21 Oct 2026</time>
         <div>
           <h3>Multi-source workflow, run in simulation</h3>
@@ -405,8 +423,8 @@ h3 { text-wrap: balance; }
     <div class="copy">
       <p class="eyebrow">Read-only pilot</p>
       <h2 id="h-pilot">Start with a read-only pilot</h2>
-      <p>60 days on the stablecoins you hold: real-time depeg alerts and a weekly risk report. No on-chain permissions, nothing to deploy.</p>
-      <p>Pilot alerts come from our live PegCheck engine, which checks 21 stablecoins every 5 minutes across up to 6 price sources. StableGuard's on-chain protection stays on testnet until you decide to go further.</p>
+      <p>30 days on the stablecoins you hold: real-time depeg alerts and a weekly risk report. No on-chain permissions, nothing to deploy.</p>
+      <p>Pilot alerts come from our live monitoring: PegCheck checks 21 stablecoins every 10 minutes across Chainlink, CoinGecko, CoinMarketCap and DefiLlama, and the rush alarm watches Morpho lending markets for money leaving fast. StableGuard's on-chain protection stays on testnet until you decide to go further.</p>
     </div>
     <div class="contact">
       <span class="label">Email Mat Boyle, founder</span>
@@ -416,6 +434,76 @@ h3 { text-wrap: balance; }
         <a class="btn ghost" href="mailto:fintechcheckadmin1@gmail.com?subject=StableGuard%20read-only%20pilot">Open in email app</a>
       </div>
       <p class="small">The live engine is at <a href="https://pegcheck.uk" target="_blank" rel="noopener">pegcheck.uk ↗</a></p>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="h-contracts">
+    <div class="sec-head">
+      <p class="eyebrow">On-chain</p>
+      <h2 id="h-contracts">Deployed contracts</h2>
+      <p class="note">Deployed and wired on Ethereum Sepolia and Arbitrum Sepolia (2026-09-10). Arbitrum receiver redeployed 2026-10-02 with ERC-165 support. Testnet only.</p>
+    </div>
+    <div class="clist">
+      <div>
+        <p class="cnet">Ethereum Sepolia</p>
+        <div class="cgroup">
+          <div class="citem">
+            <span class="cname">ExposureRegistry</span>
+            <code class="caddr">0xC60Ceb4faB3B63495534B2a9A5EB3F6C3f668789</code>
+            <a class="cscan" href="https://sepolia.etherscan.io/address/0xC60Ceb4faB3B63495534B2a9A5EB3F6C3f668789" target="_blank" rel="noopener">Etherscan ↗</a>
+          </div>
+          <div class="citem">
+            <span class="cname">DepegEventRegistry</span>
+            <code class="caddr">0x1A28535abc3Ad99A42CaF5439e8219Cc450AbfF6</code>
+            <a class="cscan" href="https://sepolia.etherscan.io/address/0x1A28535abc3Ad99A42CaF5439e8219Cc450AbfF6" target="_blank" rel="noopener">Etherscan ↗</a>
+          </div>
+          <div class="citem">
+            <span class="cname">ProtectionHoldLedger</span>
+            <code class="caddr">0x55fc74c807dd5aC468Cf2e9B5c26Abb9b1149945</code>
+            <a class="cscan" href="https://sepolia.etherscan.io/address/0x55fc74c807dd5aC468Cf2e9B5c26Abb9b1149945" target="_blank" rel="noopener">Etherscan ↗</a>
+          </div>
+          <div class="citem">
+            <span class="cname">StableGuardVault</span>
+            <code class="caddr">0xAa940C87f3D3251fD297894b5cef7dC7e71b3665</code>
+            <a class="cscan" href="https://sepolia.etherscan.io/address/0xAa940C87f3D3251fD297894b5cef7dC7e71b3665" target="_blank" rel="noopener">Etherscan ↗</a>
+          </div>
+          <div class="citem">
+            <span class="cname">StableGuardCREReceiver</span>
+            <code class="caddr">0xA3175824EEF5964bA5A839CdBc01e6F8F1F3444b</code>
+            <a class="cscan" href="https://sepolia.etherscan.io/address/0xA3175824EEF5964bA5A839CdBc01e6F8F1F3444b" target="_blank" rel="noopener">Etherscan ↗</a>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="cnet">Arbitrum Sepolia</p>
+        <div class="cgroup">
+          <div class="citem">
+            <span class="cname">ExposureRegistry</span>
+            <code class="caddr">0x55fc74c807dd5aC468Cf2e9B5c26Abb9b1149945</code>
+            <a class="cscan" href="https://sepolia.arbiscan.io/address/0x55fc74c807dd5aC468Cf2e9B5c26Abb9b1149945" target="_blank" rel="noopener">Arbiscan ↗</a>
+          </div>
+          <div class="citem">
+            <span class="cname">DepegEventRegistry</span>
+            <code class="caddr">0xAa940C87f3D3251fD297894b5cef7dC7e71b3665</code>
+            <a class="cscan" href="https://sepolia.arbiscan.io/address/0xAa940C87f3D3251fD297894b5cef7dC7e71b3665" target="_blank" rel="noopener">Arbiscan ↗</a>
+          </div>
+          <div class="citem">
+            <span class="cname">ProtectionHoldLedger</span>
+            <code class="caddr">0xA3175824EEF5964bA5A839CdBc01e6F8F1F3444b</code>
+            <a class="cscan" href="https://sepolia.arbiscan.io/address/0xA3175824EEF5964bA5A839CdBc01e6F8F1F3444b" target="_blank" rel="noopener">Arbiscan ↗</a>
+          </div>
+          <div class="citem">
+            <span class="cname">StableGuardVault</span>
+            <code class="caddr">0x86602cDeC52Df65Bc8D66528De429EB11A9E0497</code>
+            <a class="cscan" href="https://sepolia.arbiscan.io/address/0x86602cDeC52Df65Bc8D66528De429EB11A9E0497" target="_blank" rel="noopener">Arbiscan ↗</a>
+          </div>
+          <div class="citem">
+            <span class="cname">StableGuardCREReceiver</span>
+            <code class="caddr">0xac83a85Ee4dF1FfF44DFdEF055e95Db4886a9aD8</code>
+            <a class="cscan" href="https://sepolia.arbiscan.io/address/0xac83a85Ee4dF1FfF44DFdEF055e95Db4886a9aD8" target="_blank" rel="noopener">Arbiscan ↗</a>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 

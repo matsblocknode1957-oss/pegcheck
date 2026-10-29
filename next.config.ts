@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
       {
         source: "/stableguard",
         destination: "/stableguard-replay.html",
-        permanent: false,
+        permanent: true,
       },
       {
         source: "/positions",
