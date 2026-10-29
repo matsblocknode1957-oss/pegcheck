@@ -29,6 +29,9 @@ const CHAINLINK_FEEDS: Record<string, string> = {
   usds: "0xfF30586cD0F29eD462364C7e81375FC0C71219b1",
   tusd: "0xec746eCF986E2927Abd291a2A1716c940100f8Ba",
   frax: "0x9B4a96210bc8D9D55b1908B465D8B0de68B7fF83",
+  usd1: "0xF0d9bb015Cd7BfAb877B7156146dc09Bf461370d",
+  u:    "0xF6351B2dCF0110E76c71C1d319Af2f410454B6f3",
+  usdf: "0xb177857a1799aA5F7fEb5799Fdf12CbE8fdF78B1",
 };
 
 // ETH/USD Chainlink feed (Ethereum Mainnet, 8 decimals)
@@ -183,6 +186,8 @@ export async function GET() {
       bold: "Liquity BOLD",
       frax: "Frax USD",
       usds: "Sky Dollar",
+      u:    "United Stables",
+      usdf: "Falcon USD",
     };
     Object.entries(dlNameOverrides).forEach(([slug, exactName]) => {
       const match = dlCoins.find((c: { name: string; price: number }) => c.name === exactName);
@@ -238,6 +243,10 @@ export async function GET() {
       alusd:  median([dlResults["alusd"]  ?? 0]),
       bold:   median([dlResults["bold"]   ?? 0]),
       usdg:   median([dlResults["usdg"]   ?? 0]),
+      usd1:   median([dlResults["usd1"]   ?? 0, clResults["usd1"]  ?? 0]),
+      u:      median([dlResults["u"]      ?? 0, clResults["u"]     ?? 0]),
+      usdgo:  median([dlResults["usdgo"]  ?? 0]),
+      usdf:   median([dlResults["usdf"]   ?? 0, clResults["usdf"]  ?? 0]),
     };
 
     const sources = {
@@ -262,6 +271,10 @@ export async function GET() {
       alusd:  { defillama: dlResults["alusd"]  ?? 0 },
       bold:   { defillama: dlResults["bold"]   ?? 0 },
       usdg:   { defillama: dlResults["usdg"]   ?? 0 },
+      usd1:   { defillama: dlResults["usd1"]   ?? 0, chainlink: clResults["usd1"]  ?? 0 },
+      u:      { defillama: dlResults["u"]      ?? 0, chainlink: clResults["u"]     ?? 0 },
+      usdgo:  { defillama: dlResults["usdgo"]  ?? 0 },
+      usdf:   { defillama: dlResults["usdf"]   ?? 0, chainlink: clResults["usdf"]  ?? 0 },
     };
 
     const uniswap = {

@@ -60,6 +60,9 @@ const CHAINLINK_FEEDS: Record<string, string> = {
   usds: "0xfF30586cD0F29eD462364C7e81375FC0C71219b1",
   tusd: "0xec746eCF986E2927Abd291a2A1716c940100f8Ba",
   frax: "0x9B4a96210bc8D9D55b1908B465D8B0de68B7fF83",
+  usd1: "0xF0d9bb015Cd7BfAb877B7156146dc09Bf461370d",
+  u:    "0xF6351B2dCF0110E76c71C1d319Af2f410454B6f3",
+  usdf: "0xb177857a1799aA5F7fEb5799Fdf12CbE8fdF78B1",
 };
 
 // Chainlink Proof of Reserve feed contracts (Ethereum Mainnet, 8 decimals)
@@ -198,6 +201,8 @@ export async function GET(request: Request) {
       bold: "Liquity BOLD",
       frax: "Frax USD",
       usds: "Sky Dollar",
+      u:    "United Stables",
+      usdf: "Falcon USD",
     };
     Object.entries(dlNameOverrides).forEach(([slug, exactName]) => {
       const match = dlCoins.find((c: { name: string; price: number }) => c.name === exactName);
@@ -277,6 +282,10 @@ export async function GET(request: Request) {
       { slug: "alusd",  address: "0xBC6DA0FE9aD5f3b0d58160288917AA56653660e9", decimals: 18 },
       { slug: "bold",   address: "0x6440f144b7e50d6a8439336510312d2f54beb01d", decimals: 18 },
       { slug: "usdg",   address: "0xe343167631d89B6Ffc58B88d6b7fB0228795491D", decimals: 6  },
+      { slug: "usd1",   address: "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d", decimals: 18 },
+      { slug: "u",      address: "0xcE24439F2D9C6a2289F741120FE202248B666666", decimals: 18 },
+      { slug: "usdgo",  address: "0x4CF5920Df52F5b1f246e2E38E1786Ae1Cf03ECF5", decimals: 6  },
+      { slug: "usdf",   address: "0xFa2B947eEc368f42195f24F36d2aF29f7c24CeC2", decimals: 18 },
     ];
 
     for (const coin of contracts) {
@@ -346,6 +355,10 @@ export async function GET(request: Request) {
       alusd:  { coingecko: cg("alusd"),                                                                                                              defillama: dlResults["alusd"] ?? 0 },
       bold:   { coingecko: cg("bold"),                                                                                                               defillama: dlResults["bold"]  ?? 0 },
       usdg:   { coingecko: cg("usdg"),                                                                                                               defillama: dlResults["usdg"]  ?? 0 },
+      usd1:   { coingecko: cg("usd1"),                                                                                                               defillama: dlResults["usd1"]  ?? 0, chainlink: clResults["usd1"]  ?? 0 },
+      u:      { coingecko: cg("u"),                                                                                                                  defillama: dlResults["u"]     ?? 0, chainlink: clResults["u"]     ?? 0 },
+      usdgo:  { coingecko: cg("usdgo"),                                                                                                              defillama: dlResults["usdgo"] ?? 0 },
+      usdf:   { coingecko: cg("usdf"),                                                                                                               defillama: dlResults["usdf"]  ?? 0, chainlink: clResults["usdf"]  ?? 0 },
     };
     // Inject CMC prices — adds source_prices.cmc and widens the median pool
     for (const [slug, price] of Object.entries(cmcResults)) {
@@ -382,6 +395,10 @@ export async function GET(request: Request) {
       alusd:  "alUSD (Alchemix)",
       bold:   "BOLD (Liquity V2)",
       usdg:   "USDG (Global Dollar)",
+      usd1:   "USD1 (World Liberty Financial)",
+      u:      "U (United Stables)",
+      usdgo:  "USDGO (Anchorage/OSL)",
+      usdf:   "USDf (Falcon Finance)",
     };
 
     // Save Price Snapshot

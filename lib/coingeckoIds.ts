@@ -20,4 +20,8 @@ export const COINGECKO_IDS: Record<string, string> = {
   alusd:  "alchemix-usd",
   bold:   "liquity-bold-2",
   usdg:   "global-dollar",
+  usd1:   "usd1-wlfi",
+  u:      "united-stables",
+  usdgo:  "usdgo",
+  usdf:   "falcon-finance",
 };

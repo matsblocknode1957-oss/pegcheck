@@ -200,6 +200,42 @@ const COIN_DATA: Record<string, {
     description: "USDG (Global Dollar) is issued by Paxos Digital Singapore Pte. Ltd., regulated by the Monetary Authority of Singapore (MAS). Reserves are held in cash and short-term US Treasuries, attested monthly by an independent auditor.",
     contractAddress: "0xe343167631d89B6Ffc58B88d6b7fB0228795491D",
   },
+  usd1: {
+    name: "USD1", issuer: "World Liberty Financial", icon: "/icons/usd1.svg", bgColor: "#1a2744",
+    collateral: "Short-Term US Treasuries & Cash Equivalents (issuer-stated)",
+    collateralRatio: "100% (issuer-stated)",
+    reserveAudit: "Monthly Attestation (issuer-stated)",
+    auditDate: "Monthly",
+    description: "USD1 is a fiat-backed stablecoin issued by World Liberty Financial (WLFI). It is pegged 1:1 to the US dollar, backed by short-term US Treasuries and cash equivalents held with BitGo, with monthly attestations per the issuer.",
+    contractAddress: "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d",
+  },
+  u: {
+    name: "U", issuer: "United Stables", icon: "/icons/u.svg", bgColor: "#1e3a5f",
+    collateral: "Cash, USDC, USDT & USD1 (issuer-stated)",
+    collateralRatio: "See issuer",
+    reserveAudit: "See issuer",
+    auditDate: "See issuer",
+    description: "U is a fiat-backed stablecoin issued by United Stables, pegged 1:1 to the US dollar. Per the issuer, reserves consist of cash, USDC, USDT, and USD1. It circulates on BNB Chain and Ethereum.",
+    contractAddress: "0xcE24439F2D9C6a2289F741120FE202248B666666",
+  },
+  usdgo: {
+    name: "USDGO", issuer: "Anchorage Digital / OSL", icon: "/icons/usdgo.svg", bgColor: "#0f2140",
+    collateral: "See issuer",
+    collateralRatio: "See issuer",
+    reserveAudit: "See issuer",
+    auditDate: "See issuer",
+    description: "USDGO is a stablecoin issued by Anchorage Digital Bank and distributed by OSL. It is pegged 1:1 to the US dollar and targets institutional and regulated markets. Supply is primarily on Solana, with a smaller amount on Ethereum.",
+    contractAddress: "0x4CF5920Df52F5b1f246e2E38E1786Ae1Cf03ECF5",
+  },
+  usdf: {
+    name: "USDf", issuer: "Falcon Finance", icon: "/icons/usdf.svg", bgColor: "#1a1040",
+    collateral: "Yield-bearing crypto assets (synthetic, delta-neutral)",
+    collateralRatio: "Overcollateralised (issuer-stated)",
+    reserveAudit: "See issuer",
+    auditDate: "See issuer",
+    description: "USDf is a synthetic dollar issued by Falcon Finance. Per the issuer, it is overcollateralised by yield-bearing crypto assets via delta-neutral positions. It is issued on Ethereum and BNB Chain and targets institutional DeFi participants. As a synthetic stablecoin it carries smart contract and counterparty risk.",
+    contractAddress: "0xFa2B947eEc368f42195f24F36d2aF29f7c24CeC2",
+  },
 };
 
 function LargeTransactions({ slug, dark, cardBorder, textSecondary, textPrimary }: {

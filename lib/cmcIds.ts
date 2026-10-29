@@ -28,4 +28,8 @@ export const CMC_IDS: Record<string, CmcEntry> = {
   mkusd:  { id: 28094, symbol: "mkUSD"  },
   bold:   { id: 38407, symbol: "BOLD"   },
   usdg:   { id: 33793, symbol: "USDG"   },
+  usd1:   { id: 36148, symbol: "USD1"   },
+  u:      { id: 39120, symbol: "U"      },
+  usdgo:  { id: 39683, symbol: "USDGO"  },
+  usdf:   { id: 35721, symbol: "USDf"   },
 };
