@@ -8,27 +8,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// CoinMarketCap IDs — used as an optional third source when CMC_API_KEY is set
-const CMC_IDS: Record<string, number> = {
-  usdt:   825,
-  usdc:   3408,
-  dai:    4943,
-  usds:   4943,
-  ethena: 29470,
-  pyusd:  27772,
-  fdusd:  26081,
-  rlusd:  35394,
-  tusd:   2563,
-  frax:   36039,
-  gho:    23508,
-  crvusd: 23121,
-  lusd:   15024,
-  usdp:   3330,
-  usdd:   19891,
-  eurc:   20641,
-  dola:   18153,
-  alusd:  9694,
-};
 
 function deviationBps(price: number, peg = 1.0): number {
   return Math.round(Math.abs(price - peg) * 10000);
@@ -62,8 +41,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const cmcId = CMC_IDS[slug];
-  const cmcApiKey = process.env.CMC_API_KEY;
   const peg = slug === "eurc" ? await fetchEurUsd() : 1.0;
 
   try {
@@ -77,18 +54,9 @@ export async function GET(request: NextRequest) {
         .single() as unknown as Promise<unknown>,
     ];
 
-    if (cmcId && cmcApiKey) {
-      fetches.push(
-        fetch(
-          `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=${cmcId}&convert=USD`,
-          { headers: { "X-CMC_PRO_API_KEY": cmcApiKey }, next: { revalidate: 60 } }
-        ).then((r) => r.json())
-      );
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const results = await Promise.allSettled(fetches) as PromiseSettledResult<any>[];
-    const [supabaseResult, cmcResult] = results;
+    const [supabaseResult] = results;
 
     let pegcheckSource: { price: number; deviation_bps: number | null; source: string } | null = null;
     if (supabaseResult.status === "fulfilled" && !supabaseResult.value.error && supabaseResult.value.data) {
@@ -106,10 +74,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // CMC price is read from the latest cron snapshot (source_prices.cmc) — no live call
     let cmcSource: { price: number; deviation_bps: number | null; source: string } | null = null;
-    if (cmcResult?.status === "fulfilled" && cmcId) {
-      const cmcPrice = cmcResult.value?.data?.[String(cmcId)]?.quote?.USD?.price;
-      if (cmcPrice != null) {
+    if (supabaseResult.status === "fulfilled" && !supabaseResult.value.error && supabaseResult.value.data) {
+      const cmcPrice = supabaseResult.value.data.source_prices?.cmc;
+      if (cmcPrice != null && Number(cmcPrice) > 0) {
         const price = Number(cmcPrice);
         cmcSource = { price, deviation_bps: peg !== null ? deviationBps(price, peg) : null, source: "CoinMarketCap" };
       }

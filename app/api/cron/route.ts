@@ -3,6 +3,7 @@ import { COIN_PEGS } from "@/lib/coinPegs";
 import { fetchEurUsd } from "@/lib/fetchEurUsd";
 import { fetchChainlinkPoR } from "@/lib/chainlinkPoR";
 import { COINGECKO_IDS } from "@/lib/coingeckoIds";
+import { CMC_IDS } from "@/lib/cmcIds";
 
 // Temporarily excluded from alerts — persistent depeg, remove when recovered
 const EXCLUDED_FROM_ALERTS: string[] = [];
@@ -224,6 +225,35 @@ export async function GET(request: Request) {
       })
     );
 
+    // CoinMarketCap — one batched call for all tracked coins
+    const cmcResults: Record<string, number> = {};
+    const cmcApiKey = process.env.CMC_API_KEY;
+    if (cmcApiKey) {
+      try {
+        const ids = Object.values(CMC_IDS).map(e => e.id).join(",");
+        const cmcRes = await fetch(
+          `https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?id=${ids}&convert=USD`,
+          { headers: { "X-CMC_PRO_API_KEY": cmcApiKey }, signal: AbortSignal.timeout(10000) }
+        );
+        if (!cmcRes.ok) throw new Error(`HTTP ${cmcRes.status}`);
+        const cmcJson = await cmcRes.json();
+        const cmcData: Record<string, { symbol?: string; quote?: { USD?: { price?: number } } }> = cmcJson.data ?? {};
+        for (const [slug, entry] of Object.entries(CMC_IDS)) {
+          const coin = cmcData[String(entry.id)];
+          if (!coin) { console.warn(`CMC: no data for ${slug} (id ${entry.id})`); continue; }
+          if (coin.symbol?.toLowerCase() !== entry.symbol.toLowerCase()) {
+            console.warn(`CMC: symbol mismatch for ${slug} — expected ${entry.symbol}, got ${coin.symbol ?? "?"}, skipping`);
+            continue;
+          }
+          const price = coin.quote?.USD?.price;
+          if (price != null && Number(price) > 0) cmcResults[slug] = Number(price);
+        }
+        console.log("CMC source:", Object.keys(cmcResults).length, "prices fetched");
+      } catch (e: unknown) {
+        console.error("CMC source failed:", e instanceof Error ? e.message : String(e));
+      }
+    }
+
     // Etherscan — Large Transactions for all coins
     const contracts: { slug: string; address: string; decimals: number }[] = [
       { slug: "usdt",   address: "0xdac17f958d2ee523a2206206994597c13d831ec7", decimals: 6  },
@@ -317,6 +347,11 @@ export async function GET(request: Request) {
       bold:   { coingecko: cg("bold"),                                                                                                               defillama: dlResults["bold"]  ?? 0 },
       usdg:   { coingecko: cg("usdg"),                                                                                                               defillama: dlResults["usdg"]  ?? 0 },
     };
+    // Inject CMC prices — adds source_prices.cmc and widens the median pool
+    for (const [slug, price] of Object.entries(cmcResults)) {
+      if (sourcePrices[slug]) sourcePrices[slug].cmc = price;
+    }
+
     const prices: Record<string, number | null> = Object.fromEntries(
       Object.keys(sourcePrices).map(slug => [slug, median(Object.values(sourcePrices[slug]))])
     );
