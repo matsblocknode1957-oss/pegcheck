@@ -64,25 +64,17 @@ export async function GET(request: NextRequest) {
 
   const cmcId = CMC_IDS[slug];
   const cmcApiKey = process.env.CMC_API_KEY;
-  const cgKey = process.env.COINGECKO_API_KEY;
   const peg = slug === "eurc" ? await fetchEurUsd() : 1.0;
 
   try {
     const fetches: Promise<unknown>[] = [
       supabase
         .from("price_history")
-        .select("price, created_at")
+        .select("price, source_prices, created_at")
         .eq("slug", slug)
         .order("created_at", { ascending: false })
         .limit(1)
         .single() as unknown as Promise<unknown>,
-      fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd`,
-        {
-          next: { revalidate: 60 },
-          ...(cgKey ? { headers: { "x-cg-demo-api-key": cgKey } } : {}),
-        }
-      ).then((r) => r.json()),
     ];
 
     if (cmcId && cmcApiKey) {
@@ -96,7 +88,7 @@ export async function GET(request: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const results = await Promise.allSettled(fetches) as PromiseSettledResult<any>[];
-    const [supabaseResult, cgResult, cmcResult] = results;
+    const [supabaseResult, cmcResult] = results;
 
     let pegcheckSource: { price: number; deviation_bps: number | null; source: string } | null = null;
     if (supabaseResult.status === "fulfilled" && !supabaseResult.value.error && supabaseResult.value.data) {
@@ -104,10 +96,14 @@ export async function GET(request: NextRequest) {
       pegcheckSource = { price, deviation_bps: peg !== null ? deviationBps(price, peg) : null, source: "Chainlink" };
     }
 
+    // CoinGecko price is read from the latest cron snapshot (source_prices.coingecko) — no live call
     let coingeckoSource: { price: number; deviation_bps: number | null; source: string } | null = null;
-    if (cgResult.status === "fulfilled" && cgResult.value?.[cgId]?.usd != null) {
-      const price = Number(cgResult.value[cgId].usd);
-      coingeckoSource = { price, deviation_bps: peg !== null ? deviationBps(price, peg) : null, source: "CoinGecko" };
+    if (supabaseResult.status === "fulfilled" && !supabaseResult.value.error && supabaseResult.value.data) {
+      const cgPrice = supabaseResult.value.data.source_prices?.coingecko;
+      if (cgPrice != null && Number(cgPrice) > 0) {
+        const price = Number(cgPrice);
+        coingeckoSource = { price, deviation_bps: peg !== null ? deviationBps(price, peg) : null, source: "CoinGecko" };
+      }
     }
 
     let cmcSource: { price: number; deviation_bps: number | null; source: string } | null = null;

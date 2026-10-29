@@ -2,7 +2,17 @@ const CHAINLINK_EUR_USD = "0xb49f677943BC038e9857d61E7d053CaA2C1734C1";
 const MAINNET_RPC = "https://ethereum-rpc.publicnode.com";
 const MAX_AGE_SECONDS = 90000;
 
+// In-memory cache: survives warm invocation reuse; limits CoinGecko fallback to once per hour
+let _cachedRate: number | null = null;
+let _cachedAt = 0;
+const CACHE_TTL_MS = 60 * 60 * 1000; // 60 minutes
+
 export async function fetchEurUsd(): Promise<number | null> {
+  // Return cached value if still fresh
+  if (_cachedRate !== null && Date.now() - _cachedAt < CACHE_TTL_MS) {
+    return _cachedRate;
+  }
+
   // Primary: Chainlink EUR/USD mainnet feed (8 decimals, latestRoundData)
   try {
     const res = await fetch(MAINNET_RPC, {
@@ -22,11 +32,16 @@ export async function fetchEurUsd(): Promise<number | null> {
       const rate      = Number(BigInt("0x" + answerHex))    / 1e8;
       const updatedAt = Number(BigInt("0x" + updatedAtHex));
       const age = Math.floor(Date.now() / 1000) - updatedAt;
-      if (rate > 0.5 && rate < 2.0 && age <= MAX_AGE_SECONDS) return rate;
+      if (rate > 0.5 && rate < 2.0 && age <= MAX_AGE_SECONDS) {
+        _cachedRate = rate;
+        _cachedAt = Date.now();
+        return rate;
+      }
     }
   } catch {
     // fall through
   }
+
   // Fallback: derive from BTC priced in USD and EUR (avoids euro-coin/EURC circularity)
   try {
     const cgKey = process.env.COINGECKO_API_KEY;
@@ -42,10 +57,17 @@ export async function fetchEurUsd(): Promise<number | null> {
     const btcEur = data?.bitcoin?.eur;
     if (btcUsd > 0 && btcEur > 0) {
       const rate = btcUsd / btcEur;
-      if (rate > 0.5 && rate < 2.0) return rate;
+      if (rate > 0.5 && rate < 2.0) {
+        _cachedRate = rate;
+        _cachedAt = Date.now();
+        return rate;
+      }
     }
   } catch {
     // fall through
   }
+
+  // Both sources failed — return stale cached value if available
+  if (_cachedRate !== null) return _cachedRate;
   return null;
 }
