@@ -18,14 +18,14 @@ export const CMC_IDS: Record<string, CmcEntry> = {
   tusd:   { id: 2563,  symbol: "TUSD"   },
   frax:   { id: 36039, symbol: "frxUSD" },
   gho:    { id: 23508, symbol: "GHO"    },
-  crvusd: { id: 23121, symbol: "crvUSD" },
-  lusd:   { id: 15024, symbol: "LUSD"   },
+  crvusd: { id: 24927, symbol: "CRVUSD" },
+  lusd:   { id: 9566,  symbol: "LUSD"   },
   usdp:   { id: 3330,  symbol: "USDP"   },
   usdd:   { id: 19891, symbol: "USDD"   },
   eurc:   { id: 20641, symbol: "EURC"   },
-  dola:   { id: 18153, symbol: "DOLA"   },
-  alusd:  { id: 9694,  symbol: "alUSD"  },
+  dola:   { id: 19191, symbol: "DOLA"   },
+  alusd:  { id: 8614,  symbol: "ALUSD"  },
   mkusd:  { id: 28094, symbol: "mkUSD"  },
-  // bold: ID 4730 looks implausibly low for a 2024 launch — verify at coinmarketcap.com
-  // usdg: ID 4964 looks implausibly low for a 2024 launch — verify at coinmarketcap.com
+  bold:   { id: 38407, symbol: "BOLD"   },
+  usdg:   { id: 33793, symbol: "USDG"   },
 };
