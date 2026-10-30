@@ -12,18 +12,24 @@ const COIN_NAMES: Record<string, string> = {
   gho:    "GHO",    crvusd: "crvUSD", lusd:   "LUSD",
   usdp:   "USDP",   usdd:   "USDD",   mkusd:  "mkUSD",
   eurc:   "EURC",   dola:   "DOLA",   alusd:  "alUSD",
-  bold:   "BOLD",   usdg:   "USDG",
+  bold:   "BOLD",   usdg:   "USDG",   usd1:   "USD1",
+  u:      "U",      usdgo:  "USDGO",  usdf:   "USDf",
 };
 
 const COIN_ISSUERS: Record<string, string> = {
-  usdt:   "Tether",         usdc:   "Circle",        dai:    "Sky (MakerDAO)", usds:   "Sky",
-  ethena: "Ethena Labs",    pyusd:  "PayPal",         fdusd:  "First Digital",
-  rlusd:  "Ripple",         tusd:   "TrueUSD",        frax:   "Frax Finance",
-  gho:    "Aave",           crvusd: "Curve Finance",  lusd:   "Liquity",
-  usdp:   "Paxos",          usdd:   "TRON DAO",       mkusd:  "Prisma Finance",
-  eurc:   "Circle",         dola:   "Inverse Finance", alusd: "Alchemix",
-  bold:   "Liquity V2",     usdg:   "Paxos",
+  usdt:   "Tether",           usdc:   "Circle",           dai:    "Sky (MakerDAO)",
+  usds:   "Sky",              ethena: "Ethena Labs",       pyusd:  "PayPal",
+  fdusd:  "First Digital",    rlusd:  "Ripple",            tusd:   "TrueUSD",
+  frax:   "Frax Finance",     gho:    "Aave",              crvusd: "Curve Finance",
+  lusd:   "Liquity",          usdp:   "Paxos",             usdd:   "TRON DAO",
+  mkusd:  "Prisma Finance",   eurc:   "Circle",            dola:   "Inverse Finance",
+  alusd:  "Alchemix",         bold:   "Liquity V2",        usdg:   "Paxos",
+  usd1:   "World Liberty Financial", u: "United Stables", usdgo: "Anchorage / OSL",
+  usdf:   "Falcon Finance",
 };
+
+// Coins that are structurally off-peg and should not trigger a depeg alarm in the subject line.
+const CHRONIC_DEPEG = new Set(["alusd"]);
 
 interface PriceStatRow {
   slug:            string;
@@ -35,12 +41,14 @@ interface PriceStatRow {
   trend_direction: string;
 }
 
+type CoinStatus = "Healthy" | "Caution" | "Depeg" | "Depeg (ongoing)" | "Above peg";
+
 interface CoinStats {
   slug: string; name: string; issuer: string;
   currentPrice: number; peg: number;
   high7d: number; low7d: number;
   stabilityPct: number; trend: "up" | "stable" | "down";
-  status: "Healthy" | "Caution" | "Depeg";
+  status: CoinStatus;
   dataPoints: number;
 }
 
@@ -61,12 +69,18 @@ interface CoinWhaleStats {
   totalVolume: number;
 }
 
-function getStatus(price: number, slug: string, peg: number): "Healthy" | "Caution" | "Depeg" {
+function getStatus(price: number, slug: string, peg: number, high7d?: number): CoinStatus {
   const { healthy, caution } = getThresholds(slug);
-  const diff = Math.abs(price - peg) / peg;
-  if (diff <= healthy) return "Healthy";
-  if (diff <= caution) return "Caution";
-  return "Depeg";
+  const signedDiff = (price - peg) / peg;
+  const absDiff    = Math.abs(signedDiff);
+  if (absDiff <= healthy) return "Healthy";
+  if (signedDiff > 0)     return "Above peg";
+  if (absDiff <= caution) return "Caution";
+  // Ongoing depeg: manual override OR 7-day high still below the caution threshold
+  // (meaning the coin never recovered above the depeg line all week)
+  const isOngoing = CHRONIC_DEPEG.has(slug) ||
+    (high7d !== undefined && high7d < peg * (1 - caution));
+  return isOngoing ? "Depeg (ongoing)" : "Depeg";
 }
 
 function weekLabel(): string {
@@ -82,10 +96,10 @@ function trendColor(t: "up" | "stable" | "down"): string {
   return t === "up" ? "#10b981" : t === "down" ? "#ef4444" : "#6b7280";
 }
 
-function statusBadgeStyle(s: string): string {
-  if (s === "Healthy") return "background:#052e16;color:#86efac;border:1px solid rgba(34,197,94,.3)";
-  if (s === "Caution") return "background:#2d1f00;color:#fcd34d;border:1px solid rgba(234,179,8,.3)";
-  return "background:#2d0a0a;color:#fca5a5;border:1px solid rgba(239,68,68,.3)";
+function statusBadgeStyle(s: CoinStatus): string {
+  if (s === "Healthy")                         return "background:#052e16;color:#86efac;border:1px solid rgba(34,197,94,.3)";
+  if (s === "Caution" || s === "Above peg")    return "background:#2d1f00;color:#fcd34d;border:1px solid rgba(234,179,8,.3)";
+  return                                              "background:#2d0a0a;color:#fca5a5;border:1px solid rgba(239,68,68,.3)";
 }
 
 function fmtVolume(n: number): string {
@@ -94,23 +108,76 @@ function fmtVolume(n: number): string {
   return `$${n.toLocaleString()}`;
 }
 
-function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: CoinWhaleStats[], weekOf: string, marketScore: number, unsubscribeUrl: string): string {
-  const healthyCoins = coins.filter(c => c.status === "Healthy");
-  const cautionCoins = coins.filter(c => c.status === "Caution");
-  const depegCoins   = coins.filter(c => c.status === "Depeg");
-  const riskCoins    = coins.filter(c => c.status !== "Healthy").sort((a, b) => a.stabilityPct - b.stabilityPct);
+function buildHtml(
+  coins: CoinStats[],
+  whale: WhaleStats,
+  topCoinsByVolume: CoinWhaleStats[],
+  weekOf: string,
+  marketScore: number,
+  pegScore: number,
+  fearGreedScore: number | null,
+  maxSources: number,
+  unsubscribeUrl: string,
+): string {
+  const healthyCoins   = coins.filter(c => c.status === "Healthy");
+  const abovePegCoins  = coins.filter(c => c.status === "Above peg");
+  const cautionCoins   = coins.filter(c => c.status === "Caution");
+  const acuteDepeg     = coins.filter(c => c.status === "Depeg");
+  const ongoingDepeg   = coins.filter(c => c.status === "Depeg (ongoing)");
+  const depegCoins     = [...acuteDepeg, ...ongoingDepeg];
+  // Caution pill includes "Above peg" coins (same amber colour, not red)
+  const cautionPlusAbove = coins.filter(c => c.status === "Caution" || c.status === "Above peg");
+  const riskCoins = coins
+    .filter(c => c.status !== "Healthy")
+    .sort((a, b) => {
+      // Acute depeg first, then ongoing, then above peg, then caution
+      const ord = (s: CoinStatus) =>
+        s === "Depeg" ? 0 : s === "Depeg (ongoing)" ? 1 : s === "Above peg" ? 2 : 3;
+      if (ord(a.status) !== ord(b.status)) return ord(a.status) - ord(b.status);
+      return a.stabilityPct - b.stabilityPct;
+    });
 
   const marketHealth = marketScore >= 80 ? "Healthy" : marketScore >= 60 ? "Caution" : marketScore >= 40 ? "Elevated Risk" : "High Risk";
   const marketColor  = marketScore >= 80 ? "#10b981" : marketScore >= 60 ? "#f59e0b" : "#ef4444";
+  const pegColor     = pegScore   >= 80 ? "#10b981" : pegScore   >= 60 ? "#f59e0b" : "#ef4444";
+  const fgColor      = fearGreedScore === null ? "#6b7280"
+    : fearGreedScore <= 24 ? "#ef4444"
+    : fearGreedScore <= 49 ? "#ea580c"
+    : fearGreedScore <= 55 ? "#6b7280"
+    : fearGreedScore <= 74 ? "#10b981"
+    : "#15803d";
+
+  // Summary narrative
+  const summaryText = (() => {
+    const parts: string[] = [];
+    if (acuteDepeg.length > 0) {
+      parts.push(`${acuteDepeg.length} coin${acuteDepeg.length > 1 ? "s" : ""} in depeg territory: <strong style="color:#fca5a5">${acuteDepeg.map(c => c.name).join(", ")}</strong>.`);
+    }
+    if (ongoingDepeg.length > 0) {
+      parts.push(`${ongoingDepeg.length} coin${ongoingDepeg.length > 1 ? "s" : ""} in ongoing structural depeg: <strong style="color:#fca5a5">${ongoingDepeg.map(c => c.name).join(", ")}</strong>.`);
+    }
+    if (abovePegCoins.length > 0) {
+      parts.push(`${abovePegCoins.length} coin${abovePegCoins.length > 1 ? "s" : ""} trading above peg: <strong style="color:#fcd34d">${abovePegCoins.map(c => c.name).join(", ")}</strong>.`);
+    }
+    if (cautionCoins.length > 0) {
+      parts.push(`${cautionCoins.length} in caution: <strong style="color:#fcd34d">${cautionCoins.map(c => c.name).join(", ")}</strong>.`);
+    }
+    if (parts.length === 0) {
+      return `All ${coins.length} tracked stablecoins maintained healthy peg proximity this week. No significant deviations detected across any monitored protocol.`;
+    }
+    return parts.join(" ");
+  })();
 
   const coinRows = coins.map(c => {
-    const devBps = Math.round(((c.currentPrice - c.peg) / c.peg) * 10000);
-    const devStr = devBps === 0 ? "±0" : (devBps > 0 ? `+${devBps}` : `${devBps}`);
-    const { healthy: healthyFrac, caution: cautionFrac } = getThresholds(c.slug);
-    const healthyBps = Math.round(healthyFrac * 10000);
-    const cautionBps  = Math.round(cautionFrac * 10000);
-    const absBps = Math.abs(devBps);
-    const devColor = absBps > cautionBps ? "#ef4444" : absBps > healthyBps ? "#f59e0b" : "#10b981";
+    const signedBps = Math.round(((c.currentPrice - c.peg) / c.peg) * 10000);
+    const devStr    = signedBps === 0 ? "±0" : (signedBps > 0 ? `+${signedBps}` : `${signedBps}`);
+    const absBps    = Math.abs(signedBps);
+    const { healthy: hFrac, caution: cFrac } = getThresholds(c.slug);
+    const hBps = Math.round(hFrac * 10000);
+    const cBps = Math.round(cFrac * 10000);
+    const devColor = absBps > cBps ? "#ef4444"
+      : (c.status === "Above peg" || absBps > hBps) ? "#f59e0b"
+      : "#10b981";
     return `
       <tr style="border-bottom:1px solid #1e2a40">
         <td style="padding:9px 12px;font-size:13px;font-weight:700;color:#f9fafb">${c.name}</td>
@@ -128,18 +195,37 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
 
   const riskSection = riskCoins.length === 0
     ? `<p style="color:#6b7280;font-size:13px;margin:0">No coins showed significant stress this week. All ${coins.length} tracked stablecoins remained in healthy or near-healthy ranges.</p>`
-    : riskCoins.map(c => `
-        <div style="padding:12px 16px;background:#12192b;border-radius:8px;border-left:3px solid ${c.status === "Depeg" ? "#ef4444" : "#f59e0b"};margin-bottom:8px">
+    : riskCoins.map(c => {
+        const isRed       = c.status === "Depeg" || c.status === "Depeg (ongoing)";
+        const borderColor = isRed ? "#ef4444" : "#f59e0b";
+        const labelColor  = isRed ? "#fca5a5" : "#fcd34d";
+        const rangeLabel  = c.status === "Above peg"
+          ? `7d high <strong style="color:#fcd34d">$${c.high7d.toFixed(4)}</strong>`
+          : `7d low <strong style="color:#fca5a5">$${c.low7d.toFixed(4)}</strong>`;
+        return `
+        <div style="padding:12px 16px;background:#12192b;border-radius:8px;border-left:3px solid ${borderColor};margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <span style="font-size:14px;font-weight:700;color:#f9fafb">${c.name} <span style="font-size:11px;color:#6b7280;font-weight:400">${c.issuer}</span></span>
-            <span style="font-size:12px;font-family:monospace;font-weight:700;color:${c.status === "Depeg" ? "#fca5a5" : "#fcd34d"}">${c.status}</span>
+            <span style="font-size:12px;font-family:monospace;font-weight:700;color:${labelColor}">${c.status}</span>
           </div>
           <div style="margin-top:6px;font-size:12px;color:#9ca3af">
             Current <strong style="color:#f9fafb">$${c.currentPrice.toFixed(4)}</strong> ·
-            7d low <strong style="color:#fca5a5">$${c.low7d.toFixed(4)}</strong> ·
-            Stability <strong style="color:#f9fafb">${c.stabilityPct.toFixed(0)}%</strong>
+            ${rangeLabel} ·
+            Near peg <strong style="color:#f9fafb">${c.stabilityPct.toFixed(0)}%</strong>
           </div>
-        </div>`).join("");
+        </div>`;
+      }).join("");
+
+  const fgLabel = fearGreedScore === null ? "N/A"
+    : fearGreedScore <= 24 ? "Extreme Fear"
+    : fearGreedScore <= 49 ? "Fear"
+    : fearGreedScore <= 55 ? "Neutral"
+    : fearGreedScore <= 74 ? "Greed"
+    : "Extreme Greed";
+
+  const hiNote = fearGreedScore !== null
+    ? `50% peg&nbsp;+&nbsp;50% F&amp;G`
+    : `Peg score only`;
 
   return `<!DOCTYPE html>
 <html>
@@ -171,29 +257,30 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
   <!-- Executive Summary -->
   <tr><td style="background:#0d1628;padding:24px 32px;border-left:1px solid #1e2a40;border-right:1px solid #1e2a40">
     <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px">Executive Summary</div>
-    <table width="100%" cellpadding="0" cellspacing="0">
+    <!-- Three metric boxes -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px">
       <tr>
-        <td width="33%" style="text-align:center;padding:16px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
-          <div style="font-size:32px;font-weight:800;color:${marketColor};font-family:monospace">${marketScore}</div>
-          <div style="font-size:10px;color:#6b7280;margin-top:4px;text-transform:uppercase;letter-spacing:1px">Health Index</div>
-          <div style="font-size:12px;font-weight:700;color:${marketColor};margin-top:2px">${marketHealth}</div>
+        <td width="30%" style="text-align:center;padding:14px 10px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
+          <div style="font-size:26px;font-weight:800;color:${pegColor};font-family:monospace;line-height:1">${pegScore}</div>
+          <div style="font-size:9px;color:#6b7280;margin-top:5px;text-transform:uppercase;letter-spacing:1px">Peg Score</div>
+          <div style="font-size:10px;color:#4b5563;margin-top:2px">Price deviation</div>
         </td>
         <td width="4%"></td>
-        <td width="63%" style="vertical-align:top">
-          <p style="margin:0 0 10px;font-size:13px;color:#9ca3af;line-height:1.6">
-            ${depegCoins.length === 0 && cautionCoins.length === 0
-              ? `All ${coins.length} tracked stablecoins maintained healthy peg proximity this week. No significant deviations detected across any monitored protocol.`
-              : depegCoins.length > 0
-              ? `This week saw ${depegCoins.length} coin${depegCoins.length > 1 ? "s" : ""} fall into depeg territory: <strong style="color:#fca5a5">${depegCoins.map(c => c.name).join(", ")}</strong>. ${cautionCoins.length > 0 ? `A further ${cautionCoins.length} showed caution signals.` : ""}`
-              : `${cautionCoins.length} coin${cautionCoins.length > 1 ? "s" : ""} entered caution zones this week: <strong style="color:#fcd34d">${cautionCoins.map(c => c.name).join(", ")}</strong>. No full depegs detected.`
-            }
-          </p>
-          <p style="margin:0;font-size:12px;color:#4b5563">
-            ${whale.count} large on-chain transfers (≥$1M) tracked this week.
-          </p>
+        <td width="30%" style="text-align:center;padding:14px 10px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
+          <div style="font-size:26px;font-weight:800;color:${fgColor};font-family:monospace;line-height:1">${fearGreedScore ?? "N/A"}</div>
+          <div style="font-size:9px;color:#6b7280;margin-top:5px;text-transform:uppercase;letter-spacing:1px">Fear &amp; Greed</div>
+          <div style="font-size:10px;color:#4b5563;margin-top:2px">${fearGreedScore !== null ? fgLabel : "Unavailable"}</div>
+        </td>
+        <td width="4%"></td>
+        <td width="32%" style="text-align:center;padding:14px 10px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
+          <div style="font-size:26px;font-weight:800;color:${marketColor};font-family:monospace;line-height:1">${marketScore}</div>
+          <div style="font-size:9px;color:#6b7280;margin-top:5px;text-transform:uppercase;letter-spacing:1px">Health Index</div>
+          <div style="font-size:10px;color:#4b5563;margin-top:2px">${hiNote}</div>
         </td>
       </tr>
     </table>
+    <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6">${summaryText}</p>
+    <p style="margin:8px 0 0;font-size:12px;color:#4b5563">${whale.count} large on-chain transfers (≥$1M) tracked this week.</p>
   </td></tr>
 
   <!-- Traffic Lights -->
@@ -206,7 +293,7 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
         </td>
         <td width="4%"></td>
         <td width="32%" style="text-align:center;padding:14px;background:#2d1f00;border-radius:8px;border:1px solid rgba(234,179,8,.2)">
-          <div style="font-size:28px;font-weight:800;color:#f59e0b;font-family:monospace">${cautionCoins.length}</div>
+          <div style="font-size:28px;font-weight:800;color:#f59e0b;font-family:monospace">${cautionPlusAbove.length}</div>
           <div style="font-size:11px;font-weight:700;color:#f59e0b;margin-top:2px">▲ CAUTION</div>
         </td>
         <td width="4%"></td>
@@ -237,12 +324,12 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
           <th style="text-align:left;padding:6px 12px;font-size:9px;color:#4b5563;font-weight:700;letter-spacing:1px;text-transform:uppercase">7D</th>
           <th style="text-align:left;padding:6px 12px;font-size:9px;color:#4b5563;font-weight:700;letter-spacing:1px;text-transform:uppercase">RANGE</th>
           <th style="text-align:left;padding:6px 8px;font-size:9px;color:#4b5563;font-weight:700;letter-spacing:1px;text-transform:uppercase">STATUS</th>
-          <th style="text-align:left;padding:6px 12px;font-size:9px;color:#4b5563;font-weight:700;letter-spacing:1px;text-transform:uppercase">STAB</th>
+          <th style="text-align:left;padding:6px 12px;font-size:9px;color:#4b5563;font-weight:700;letter-spacing:1px;text-transform:uppercase">NEAR PEG</th>
         </tr>
       </thead>
       <tbody>${coinRows}</tbody>
     </table>
-    <p style="margin:12px 0 0;font-size:11px;color:#4b5563">Stab = % of the last 7 days&apos; price readings within ±10 bps of peg (±50 bps for LUSD &amp; mkUSD).</p>
+    <p style="margin:12px 0 0;font-size:11px;color:#4b5563">Near peg = % of 7-day readings within the coin&apos;s healthy band (±20 bps fiat-backed · ±30 bps DeFi/synthetic · ±50 bps high-variance). Ranges exclude single-source blips.</p>
   </td></tr>
 
   <!-- Large transfers spotted -->
@@ -267,7 +354,7 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
     ${whale.count === 0
       ? `<p style="margin:0;font-size:13px;color:#6b7280">No transfers ≥$1M detected this week across monitored stablecoin contracts.</p>`
       : `<div style="font-size:11px;font-weight:700;color:#4b5563;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Top Transfers</div>
-         ${whale.top3.map((tx, i) => {
+         ${whale.top3.map((tx) => {
            const coinName = COIN_NAMES[tx.slug] ?? tx.slug.toUpperCase();
            const actionColor = tx.action === "mint" ? "#10b981" : tx.action === "burn" ? "#ef4444" : "#3b82f6";
            const actionLabel = tx.action.replace("_", " ").toUpperCase();
@@ -322,7 +409,7 @@ function buildHtml(coins: CoinStats[], whale: WhaleStats, topCoinsByVolume: Coin
             <span style="color:#1a56db">P✓</span> Powered by FintechCheck
           </div>
           <div style="font-size:11px;color:#4b5563;margin-top:3px">
-            Real-time stablecoin monitoring · up to 6 price sources · ${coins.length} coins tracked
+            Real-time stablecoin monitoring · up to ${maxSources} price sources · ${coins.length} coins tracked
           </div>
           <a href="https://pegcheck.uk" style="font-size:12px;color:#1a56db;text-decoration:none;margin-top:6px;display:inline-block">pegcheck.uk →</a>
         </td>
@@ -352,9 +439,6 @@ export async function POST(request: Request) {
     const to          = (body.to ?? ADMIN_EMAIL) as string;
     const unsubscribeToken = (body.unsubscribeToken ?? null) as string | null;
 
-    // Automated sends require CRON_SECRET. The Netlify scheduled function
-    // (netlify/functions/weekly-report-scheduler.mts) → GET /api/cron/weekly-report
-    // → POST here with x-cron-secret forwarded. Missing secret = misconfiguration.
     if (isAutomated) {
       const secret = process.env.CRON_SECRET;
       if (!secret) {
@@ -366,8 +450,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Manual sends (from the admin page) require Basic auth.
-    // Same realm as middleware so the browser reuses its cached credentials.
     if (!isAutomated) {
       const deny = checkAdminAuth(request.headers.get("authorization"));
       if (deny) {
@@ -416,10 +498,45 @@ export async function POST(request: Request) {
     const { data: coinVolRows, error: coinVolError } = await supabase
       .rpc("whale_volume_by_coin", { since_ts: sinceIso, min_amount: 1000000 });
 
-    if (priceError)   console.error("Price stats RPC error:",   JSON.stringify(priceError));
-    if (whaleError)   console.error("Whale query error:",       JSON.stringify(whaleError));
-    if (volError)     console.error("Volume SUM error:",        JSON.stringify(volError));
-    if (coinVolError) console.error("Coin vol RPC error:",      JSON.stringify(coinVolError));
+    // Max source count: query a recent sample of price_history rows
+    let maxSources = 6;
+    try {
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+      const { data: recentRows } = await supabase
+        .from("price_history")
+        .select("source_prices")
+        .gte("created_at", twoHoursAgo)
+        .not("source_prices", "is", null)
+        .limit(150);
+      if (recentRows) {
+        for (const row of recentRows as { source_prices: Record<string, number> | null }[]) {
+          if (row.source_prices && typeof row.source_prices === "object") {
+            const cnt = Object.values(row.source_prices).filter(v => v > 0).length;
+            if (cnt > maxSources) maxSources = cnt;
+          }
+        }
+      }
+    } catch { /* fall back to default */ }
+
+    // ── Price data gate: never send a report built from fallback values ─────────
+    const priceRowCount = (priceStats as PriceStatRow[] | null)?.length ?? 0;
+    if (priceError || priceRowCount < 20) {
+      const reason = priceError
+        ? `weekly_price_stats RPC failed: ${priceError.message}`
+        : `weekly_price_stats returned ${priceRowCount} rows — minimum 20 required`;
+      console.error("Weekly report NOT sent (price data):", reason);
+      await resend.emails.send({
+        from: "FintechCheck <alerts@fintechcheck.uk>",
+        to:   "matsblocknode1957@gmail.com",
+        subject: "Weekly report NOT sent: price data missing",
+        html: `<div style="font-family:sans-serif;max-width:520px"><p>The weekly stablecoin report was <strong>not sent</strong> to subscribers.</p><pre style="background:#f5f5f5;padding:12px;font-size:12px;white-space:pre-wrap">${reason}</pre><p style="color:#6b7280;font-size:12px">Retrigger: POST /api/reports/weekly</p></div>`,
+      }).catch(e => console.error("Price-gate alert email failed:", e));
+      return NextResponse.json({ aborted: true, reason, priceRowCount });
+    }
+
+    if (whaleError)   console.error("Whale query error:",  JSON.stringify(whaleError));
+    if (volError)     console.error("Volume SUM error:",   JSON.stringify(volError));
+    if (coinVolError) console.error("Coin vol RPC error:", JSON.stringify(coinVolError));
 
     // ── Build coins array ──────────────────────────────────────────────────────
     const statsBySlug: Record<string, PriceStatRow> = Object.fromEntries(
@@ -444,21 +561,18 @@ export async function POST(request: Request) {
         slug, peg, currentPrice, high7d, low7d, stabilityPct, trend,
         name:       COIN_NAMES[slug],
         issuer:     COIN_ISSUERS[slug],
-        status:     getStatus(currentPrice, slug, peg),
+        status:     getStatus(currentPrice, slug, peg, high7d),
         dataPoints: row ? Number(row.reading_count) : 0,
       };
     });
 
-    // ── Safety guard — abort if data looks blank or broken ─────────────────────
+    // ── Safety guard ───────────────────────────────────────────────────────────
     const coinsWithData   = coins.filter(c => c.dataPoints > 0).length;
     const coinsWithPrices = coins.filter(c => c.dataPoints > 0);
-    // allAtPeg: every coin that returned data has currentPrice === its peg exactly,
-    // which only happens when the TypeScript fallback fires (no rows from the RPC).
     const allAtPeg = coinsWithPrices.length > 0 &&
                      coinsWithPrices.every(c => c.currentPrice === c.peg);
 
     const abortReason: string | null =
-      priceError   ? `price_stats RPC failed: ${priceError.message}` :
       whaleError   ? `large_transactions query failed: ${whaleError.message}` :
       volError     ? `volume SUM query failed: ${volError.message}` :
       coinVolError ? `whale_volume_by_coin RPC failed: ${coinVolError.message}` :
@@ -498,7 +612,7 @@ export async function POST(request: Request) {
         email: ADMIN_EMAIL,
         report_date: abortDate,
         type: "aborted",
-      }); // error ignored — don't let a log failure mask the abort response
+      });
 
       return NextResponse.json({ aborted: true, reason: abortReason, coinsWithData });
     }
@@ -545,15 +659,24 @@ export async function POST(request: Request) {
       : pegScore;
 
     const baseUrlForLinks = process.env.NEXT_PUBLIC_BASE_URL ?? "https://pegcheck.uk";
-    const depegList       = coins.filter(c => c.status === "Depeg").map(c => c.name);
-    const subjectSuffix   = depegList.length > 0
-      ? ` — ⚠ ${depegList.join(", ")} in depeg`
-      : " — All systems healthy";
+
+    // Subject: exclude chronic depeg coins and "Above peg" coins from the depeg alarm
+    const subjectDepegList = coins
+      .filter(c => c.status === "Depeg" && !CHRONIC_DEPEG.has(c.slug))
+      .map(c => c.name);
+    const subjectAbovePegList = coins
+      .filter(c => c.status === "Above peg" && !CHRONIC_DEPEG.has(c.slug))
+      .map(c => c.name);
+    const subjectSuffix =
+      subjectDepegList.length > 0
+        ? ` — ⚠ ${subjectDepegList.join(", ")} in depeg`
+        : subjectAbovePegList.length > 0
+        ? ` — ↑ ${subjectAbovePegList.join(", ")} above peg`
+        : " — All systems healthy";
     const reportDate = new Date().toISOString().split("T")[0];
 
     // ── Dispatch emails ────────────────────────────────────────────────────────
     if (isAutomated) {
-      // Data was fetched once above. Now fan out to all opted-in subscribers.
       const { data: subscribers, error: subError } = await supabase
         .from("subscribers")
         .select("email, unsubscribe_token")
@@ -567,15 +690,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: "No subscribers opted in to weekly reports", sent: 0 });
       }
 
-      // Sequential sends with a 600 ms gap to stay within Resend's ~2 req/s limit.
-      // resend.emails.send() returns { data, error } rather than throwing, so we
-      // check the error field explicitly.
       let sent = 0, failed = 0;
       for (const sub of subscribers) {
         const subUnsubUrl = sub.unsubscribe_token
           ? `${baseUrlForLinks}/api/unsubscribe?token=${sub.unsubscribe_token}`
           : `${baseUrlForLinks}/api/unsubscribe`;
-        const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, marketScore, subUnsubUrl);
+        const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, marketScore, pegScore, fearGreedScore, maxSources, subUnsubUrl);
         try {
           const { error: sendError } = await resend.emails.send(
             {
@@ -596,7 +716,7 @@ export async function POST(request: Request) {
           } else {
             await supabase.from("report_sends").insert({
               email: sub.email, report_date: reportDate, type: sendType,
-            }); // log error intentionally ignored
+            });
             sent++;
           }
         } catch (e) {
@@ -610,16 +730,15 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         success: true, sent, failed, total: subscribers.length,
-        marketScore, coinsWithData,
+        marketScore, pegScore, fearGreedScore, coinsWithData,
         whaleTransfers: whale.count, whaleTotalVolume: whale.totalVolume,
       });
 
     } else {
-      // Manual / preview send to a single address.
       const subUnsubUrl = unsubscribeToken
         ? `${baseUrlForLinks}/api/unsubscribe?token=${unsubscribeToken}`
         : `${baseUrlForLinks}/api/unsubscribe`;
-      const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, marketScore, subUnsubUrl);
+      const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, marketScore, pegScore, fearGreedScore, maxSources, subUnsubUrl);
 
       await resend.emails.send({
         from:    "FintechCheck <alerts@fintechcheck.uk>",
@@ -638,7 +757,7 @@ export async function POST(request: Request) {
       if (logError) console.error("report_sends log error:", logError.message);
 
       return NextResponse.json({
-        success: true, sentTo: to, marketScore, coinsWithData,
+        success: true, sentTo: to, marketScore, pegScore, fearGreedScore, coinsWithData,
         whaleTransfers: whale.count, whaleTotalVolume: whale.totalVolume,
       });
     }

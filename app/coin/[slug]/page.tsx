@@ -372,26 +372,31 @@ export default function CoinDetailPage() {
   const sourceCount = Object.values(sourcePrices).filter(p => (p as number) > 0).length;
 
   const getStatus = (p: number) => {
-    const diff = Math.abs(p - coinPeg) / coinPeg;
-    const raw = diff <= healthyT ? "Healthy" : diff <= cautionT ? "Caution" : "Depeg";
-    if (sourceCount === 1 && (raw === "Caution" || raw === "Depeg")) return "Unconfirmed: 1 source";
+    const signedDiff = (p - coinPeg) / coinPeg;
+    const absDiff = Math.abs(signedDiff);
+    let raw: string;
+    if (absDiff <= healthyT)      raw = "Healthy";
+    else if (signedDiff > 0)      raw = "Above peg";
+    else if (absDiff <= cautionT) raw = "Caution";
+    else                          raw = "Depeg";
+    if (sourceCount === 1 && (raw === "Caution" || raw === "Depeg" || raw === "Above peg")) return "Unconfirmed";
     return raw;
   };
 
   const statusColor = (s: string) => {
     if (s === "Healthy") return "#16a34a";
-    if (s === "Caution" || s === "Unconfirmed: 1 source") return "#d97706";
+    if (s === "Caution" || s === "Unconfirmed" || s === "Above peg") return "#d97706";
     return "#dc2626";
   };
 
   const statusBg = (s: string) => {
     if (dark) {
       if (s === "Healthy") return "#052e16";
-      if (s === "Caution" || s === "Unconfirmed: 1 source") return "#451a03";
+      if (s === "Caution" || s === "Unconfirmed" || s === "Above peg") return "#451a03";
       return "#450a0a";
     }
     if (s === "Healthy") return "#f0fdf4";
-    if (s === "Caution" || s === "Unconfirmed: 1 source") return "#fffbeb";
+    if (s === "Caution" || s === "Unconfirmed" || s === "Above peg") return "#fffbeb";
     return "#fef2f2";
   };
 

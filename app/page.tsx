@@ -348,15 +348,20 @@ export default function Home() {
   const getStatus = (price: number | null, peg: number | null, slug = '', sourceCount: number | null = null): string => {
     if (price === null || peg === null) return "No data";
     const { healthy, caution } = getThresholds(slug);
-    const diff = Math.abs(price - peg) / peg;
-    const raw = diff <= healthy ? "Healthy" : diff <= caution ? "Caution" : "Depeg";
-    if (sourceCount === 1 && (raw === "Caution" || raw === "Depeg")) return "Unconfirmed";
+    const signedDiff = (price - peg) / peg;
+    const absDiff = Math.abs(signedDiff);
+    let raw: string;
+    if (absDiff <= healthy)      raw = "Healthy";
+    else if (signedDiff > 0)     raw = "Above peg";
+    else if (absDiff <= caution) raw = "Caution";
+    else                         raw = "Depeg";
+    if (sourceCount === 1 && (raw === "Caution" || raw === "Depeg" || raw === "Above peg")) return "Unconfirmed";
     return raw;
   };
 
   const statusColor = (status: string) => {
     if (status === "Healthy") return "#16a34a";
-    if (status === "Caution" || status === "Unconfirmed") return "#d97706";
+    if (status === "Caution" || status === "Unconfirmed" || status === "Above peg") return "#d97706";
     if (status === "No data" || status === "Loading...") return "#6b7280";
     return "#dc2626";
   };
@@ -364,18 +369,18 @@ export default function Home() {
   const statusBg = (status: string) => {
     if (dark) {
       if (status === "Healthy") return "#052e16";
-      if (status === "Caution" || status === "Unconfirmed") return "#451a03";
+      if (status === "Caution" || status === "Unconfirmed" || status === "Above peg") return "#451a03";
       if (status === "No data" || status === "Loading...") return "#111827";
       return "#450a0a";
     }
     if (status === "Healthy") return "#f0fdf4";
-    if (status === "Caution" || status === "Unconfirmed") return "#fffbeb";
+    if (status === "Caution" || status === "Unconfirmed" || status === "Above peg") return "#fffbeb";
     if (status === "No data" || status === "Loading...") return "#f3f4f6";
     return "#fef2f2";
   };
 
   const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug)) === "Healthy").length;
-  const cautionCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug)) === "Caution").length;
+  const cautionCount = stablecoins.filter((c) => { const s = getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug)); return s === "Caution" || s === "Above peg"; }).length;
   const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug)) === "Depeg").length;
 
   const holdings = walletAddress
