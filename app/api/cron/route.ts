@@ -119,10 +119,10 @@ export async function GET(request: Request) {
 
     // CoinGecko
     const cgKey = process.env.COINGECKO_API_KEY;
-    let cgData: Record<string, { usd?: number }> = {};
+    let cgData: Record<string, { usd?: number; usd_market_cap?: number }> = {};
     try {
       const cgRes = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${Object.values(COINGECKO_IDS).join(",")}&vs_currencies=usd`,
+        `https://api.coingecko.com/api/v3/simple/price?ids=${Object.values(COINGECKO_IDS).join(",")}&vs_currencies=usd&include_market_cap=true`,
         {
           signal: AbortSignal.timeout(10000),
           ...(cgKey ? { headers: { "x-cg-demo-api-key": cgKey } } : {}),
@@ -132,6 +132,13 @@ export async function GET(request: Request) {
       cgData = await cgRes.json();
     } catch (e: unknown) {
       console.error("CoinGecko source failed:", e instanceof Error ? e.message : String(e));
+    }
+
+    // Extract market caps from CoinGecko response
+    const cgMarketCaps: Record<string, number> = {};
+    for (const [slug, cgId] of Object.entries(COINGECKO_IDS)) {
+      const mc = cgData[cgId]?.usd_market_cap;
+      if (mc != null && mc > 0) cgMarketCaps[slug] = mc;
     }
 
     // Coinbase
@@ -402,7 +409,7 @@ export async function GET(request: Request) {
     };
 
     // Save Price Snapshot
-    const snapshots = Object.entries(prices)
+    const snapshotsWithCap = Object.entries(prices)
       .filter((e): e is [string, number] => e[1] !== null)
       .map(([slug, price]) => ({
         slug,
@@ -411,10 +418,16 @@ export async function GET(request: Request) {
         source_prices: Object.fromEntries(
           Object.entries(sourcePrices[slug] ?? {}).filter(([, v]) => v > 0)
         ),
+        market_cap_usd: cgMarketCaps[slug] ?? null,
       }));
-    const { error: priceError } = await supabase.from("price_history").insert(snapshots);
+    let { error: priceError } = await supabase.from("price_history").insert(snapshotsWithCap);
+    if (priceError && priceError.message?.includes("market_cap_usd")) {
+      // Column not yet created — retry without it
+      const snapshots = snapshotsWithCap.map(({ market_cap_usd: _, ...rest }) => rest);
+      ({ error: priceError } = await supabase.from("price_history").insert(snapshots));
+    }
     if (priceError) console.error("Price history insert error:", priceError);
-    else console.log("Price history saved:", snapshots.length, "rows");
+    else console.log("Price history saved:", snapshotsWithCap.length, "rows");
 
     // Save RWA NAV Snapshot
     try {

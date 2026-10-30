@@ -57,6 +57,13 @@ function truncateAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+function formatMarketCap(mc: number): string {
+  if (mc >= 1e12) return `$${(mc / 1e12).toFixed(1)}T`;
+  if (mc >= 1e9)  return `$${(mc / 1e9).toFixed(1)}B`;
+  if (mc >= 1e6)  return `$${(mc / 1e6).toFixed(0)}M`;
+  return `$${mc.toLocaleString()}`;
+}
+
 export default function Home() {
   const stablecoins = [
     { name: "USDT",   issuer: "Tether",         peg: 1.0,   icon: "/icons/usdt.png",   slug: "usdt",   bgColor: "#26a17b" },
@@ -119,6 +126,7 @@ export default function Home() {
   const [balancesLoading, setBalancesLoading] = useState(false);
   const [scoreCopied, setScoreCopied] = useState(false);
   const [scoreHistory, setScoreHistory] = useState<{ risk_score: number; created_at: string }[]>([]);
+  const [marketCaps, setMarketCaps] = useState<Record<string, number>>({});
   const snapshotSentRef = useRef<string | null>(null);
 
   const toggleDark = () => {
@@ -291,6 +299,7 @@ export default function Home() {
           setPrices(data.prices);
           if (data.sources) setCoinSources(data.sources);
           setEurUsd(data.eurUsd ?? null);
+          if (data.marketCaps) setMarketCaps(data.marketCaps);
           const now = new Date();
           setLastUpdated(now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
         }
@@ -441,6 +450,15 @@ export default function Home() {
   const navBorder = dark ? "#1e2a40" : "#eaecf0";
   const dotBorder = dark ? "#0d1628" : "#ffffff";
 
+  const sortedCoins = [...stablecoins].sort((a, b) => {
+    const mcA = marketCaps[a.slug];
+    const mcB = marketCaps[b.slug];
+    if (mcA != null && mcB != null) return mcB - mcA;
+    if (mcA != null) return -1;
+    if (mcB != null) return 1;
+    return 0;
+  });
+
   return (
     <main style={{ fontFamily: "'Segoe UI', sans-serif", background: bg, minHeight: "100vh", paddingBottom: "70px", transition: "background 0.2s ease" }}>
 
@@ -564,7 +582,7 @@ export default function Home() {
 
       {/* Coin list */}
       <div style={{ background: cardBg, transition: "background 0.2s ease" }}>
-        {stablecoins.map((coin) => {
+        {sortedCoins.map((coin) => {
           const livePrice = getLivePrice(coin.slug);
           const noDataLabel = pricesLoaded ? "No data" : "Loading...";
           const sourceCount = getSourceCount(coin.slug);
@@ -598,9 +616,19 @@ export default function Home() {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <span style={{ fontSize: "14px", fontWeight: "700", color: textPrimary }}>{coin.name}</span>
-                  <span style={{ fontSize: "11px", color: textSecondary }}>
-                    {coin.issuer}{sourceCount !== null ? ` · ${sourceCount} ${sourceCount === 1 ? "source" : "sources"}` : ""}
-                  </span>
+                  <div className="coin-sub-wrap" style={{ color: textSecondary }}>
+                    <span style={{ whiteSpace: "nowrap" }}>{coin.issuer}</span>
+                    {marketCaps[coin.slug] != null && (
+                      <span className="coin-sub-cap" style={{ whiteSpace: "nowrap" }}>
+                        {formatMarketCap(marketCaps[coin.slug])}
+                      </span>
+                    )}
+                    {sourceCount !== null && (
+                      <span className="coin-sub-src" style={{ whiteSpace: "nowrap" }}>
+                        {sourceCount}&nbsp;{sourceCount === 1 ? "source" : "sources"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div style={{ fontFamily: "monospace", fontSize: "13px", fontWeight: "500", color: (livePrice !== null && livePrice < 0.995) ? statusColor(liveStatus) : (dark ? "#d1d5db" : "#374151"), textAlign: "center" }}>
@@ -797,7 +825,7 @@ export default function Home() {
       {/* More from PegCheck */}
       <div style={{ padding: "16px 20px 12px" }}>
         <div style={{ fontSize: "11px", fontWeight: "700", color: textSecondary, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "10px" }}>More from PegCheck</div>
-        <style>{`.more-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:900px){.more-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.more-grid{grid-template-columns:1fr}}`}</style>
+        <style>{`.more-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:900px){.more-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.more-grid{grid-template-columns:1fr}}.coin-sub-wrap{display:flex;flex-wrap:wrap;align-items:baseline;font-size:11px}.coin-sub-cap::before,.coin-sub-src::before{content:' · '}@media(max-width:499px){.coin-sub-cap{order:3;width:100%;font-size:10px;margin-top:1px}.coin-sub-cap::before{content:''}.coin-sub-src{order:1}}`}</style>
         <div className="more-grid">
 
           <a href="/stableguard" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", background: cardBg, borderRadius: "12px", border: `1px solid ${cardBorder}` }}>

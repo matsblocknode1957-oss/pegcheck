@@ -128,6 +128,8 @@ export async function GET() {
     type CacheRow = { price: number; source_prices: Record<string, number> };
     const freshCache = new Map<string, CacheRow>();
 
+    const marketCaps: Record<string, number> = {};
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (supabaseUrl && supabaseKey) {
@@ -147,6 +149,24 @@ export async function GET() {
             if (!freshCache.has(row.slug) &&
                 row.source_prices && typeof row.source_prices === "object") {
               freshCache.set(row.slug, { price: row.price, source_prices: row.source_prices });
+            }
+          }
+        }
+
+        // Latest market cap per slug — silently skipped if column doesn't exist yet
+        const { data: capRows, error: capError } = await supabase
+          .from("price_history")
+          .select("slug, market_cap_usd")
+          .in("slug", ALL_PRICE_SLUGS)
+          .not("market_cap_usd", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (!capError && capRows) {
+          const seen = new Set<string>();
+          for (const row of capRows as Array<{ slug: string; market_cap_usd: number }>) {
+            if (!seen.has(row.slug) && row.market_cap_usd > 0) {
+              marketCaps[row.slug] = row.market_cap_usd;
+              seen.add(row.slug);
             }
           }
         }
@@ -357,7 +377,7 @@ export async function GET() {
       },
     };
 
-    return NextResponse.json({ prices, sources, uniswap, eurUsd });
+    return NextResponse.json({ prices, sources, uniswap, eurUsd, marketCaps });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch prices" }, { status: 500 });
   }

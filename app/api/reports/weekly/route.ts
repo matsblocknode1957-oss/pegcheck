@@ -566,6 +566,36 @@ export async function POST(request: Request) {
       };
     });
 
+    // ── Sort coins by market cap, largest first ────────────────────────────────
+    const marketCapsByCoin: Record<string, number> = {};
+    try {
+      const { data: mcRows, error: mcError } = await supabase
+        .from("price_history")
+        .select("slug, market_cap_usd")
+        .in("slug", slugs)
+        .not("market_cap_usd", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (!mcError && mcRows) {
+        const seen = new Set<string>();
+        for (const row of mcRows as Array<{ slug: string; market_cap_usd: number }>) {
+          if (!seen.has(row.slug) && row.market_cap_usd > 0) {
+            marketCapsByCoin[row.slug] = row.market_cap_usd;
+            seen.add(row.slug);
+          }
+        }
+      }
+    } catch { /* column not yet created */ }
+
+    coins.sort((a, b) => {
+      const mcA = marketCapsByCoin[a.slug];
+      const mcB = marketCapsByCoin[b.slug];
+      if (mcA != null && mcB != null) return mcB - mcA;
+      if (mcA != null) return -1;
+      if (mcB != null) return 1;
+      return 0;
+    });
+
     // ── Safety guard ───────────────────────────────────────────────────────────
     const coinsWithData   = coins.filter(c => c.dataPoints > 0).length;
     const coinsWithPrices = coins.filter(c => c.dataPoints > 0);
