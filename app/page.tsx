@@ -80,6 +80,10 @@ export default function Home() {
     { name: "alUSD",  issuer: "Alchemix",        peg: 1.0,   icon: "/icons/alusd.png",  slug: "alusd",  bgColor: "#f59e0b" },
     { name: "BOLD",   issuer: "Liquity V2",      peg: 1.0,   icon: "/icons/bold.svg",   slug: "bold",   bgColor: "#0f766e" },
     { name: "USDG",   issuer: "Paxos",           peg: 1.0,   icon: "/icons/usdg.png",   slug: "usdg",   bgColor: "#00735b" },
+    { name: "USD1",   issuer: "World Liberty Financial", peg: 1.0, icon: "/icons/usd1.svg", slug: "usd1",  bgColor: "#1a2744" },
+    { name: "U",      issuer: "United Stables",  peg: 1.0,   icon: "/icons/u.svg",      slug: "u",      bgColor: "#1e3a5f" },
+    { name: "USDGO",  issuer: "Anchorage Digital / OSL", peg: 1.0, icon: "/icons/usdgo.svg", slug: "usdgo", bgColor: "#0f2140" },
+    { name: "USDf",   issuer: "Falcon Finance",  peg: 1.0,   icon: "/icons/usdf.svg",   slug: "usdf",   bgColor: "#1a1040" },
   ];
 
   type FearGreedData = {
@@ -346,13 +350,13 @@ export default function Home() {
     const { healthy, caution } = getThresholds(slug);
     const diff = Math.abs(price - peg) / peg;
     const raw = diff <= healthy ? "Healthy" : diff <= caution ? "Caution" : "Depeg";
-    if (sourceCount === 1 && (raw === "Caution" || raw === "Depeg")) return "Unconfirmed: 1 source";
+    if (sourceCount === 1 && (raw === "Caution" || raw === "Depeg")) return "Unconfirmed";
     return raw;
   };
 
   const statusColor = (status: string) => {
     if (status === "Healthy") return "#16a34a";
-    if (status === "Caution" || status === "Unconfirmed: 1 source") return "#d97706";
+    if (status === "Caution" || status === "Unconfirmed") return "#d97706";
     if (status === "No data" || status === "Loading...") return "#6b7280";
     return "#dc2626";
   };
@@ -360,12 +364,12 @@ export default function Home() {
   const statusBg = (status: string) => {
     if (dark) {
       if (status === "Healthy") return "#052e16";
-      if (status === "Caution" || status === "Unconfirmed: 1 source") return "#451a03";
+      if (status === "Caution" || status === "Unconfirmed") return "#451a03";
       if (status === "No data" || status === "Loading...") return "#111827";
       return "#450a0a";
     }
     if (status === "Healthy") return "#f0fdf4";
-    if (status === "Caution" || status === "Unconfirmed: 1 source") return "#fffbeb";
+    if (status === "Caution" || status === "Unconfirmed") return "#fffbeb";
     if (status === "No data" || status === "Loading...") return "#f3f4f6";
     return "#fef2f2";
   };

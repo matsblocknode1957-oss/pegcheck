@@ -1,7 +1,18 @@
+import { createClient } from "@supabase/supabase-js";
 import { fetchEurUsd } from "@/lib/fetchEurUsd";
 import { NextResponse } from "next/server";
 
 const MAINNET_FALLBACK = "https://ethereum-rpc.publicnode.com";
+
+// Supabase cache: prefer the latest cron snapshot when it is < 25 min old.
+// Falls back to live fetching only for coins whose row is missing or stale.
+const CACHE_MAX_AGE_MS = 25 * 60 * 1000;
+
+const ALL_PRICE_SLUGS = [
+  "usdt","usdc","dai","usds","ethena","pyusd","fdusd","rlusd","tusd","frax",
+  "gho","crvusd","lusd","usdp","usdd","mkusd","eurc","dola","alusd","bold",
+  "usdg","usd1","u","usdgo","usdf",
+];
 
 function median(values: number[]): number | null {
   const valid = values.filter(v => isFinite(v) && v > 0);
@@ -111,104 +122,145 @@ export async function GET() {
     // EUR/USD for EURC peg (Chainlink primary, BTC/CG fallback — not a live price source here)
     const eurUsd = await fetchEurUsd();
 
-    // Source 2 — Coinbase
-    const cbSlugs = ["USDT-USD","USDC-USD","DAI-USD","USDS-USD","PYUSD-USD"];
-    const cbResults: Record<string, number> = {};
-    await Promise.allSettled(
-      cbSlugs.map(async (pair) => {
-        const r = await fetch(`https://api.coinbase.com/v2/prices/${pair}/spot`);
-        const d = await r.json();
-        cbResults[pair] = parseFloat(d?.data?.amount ?? "0");
-      })
-    );
+    // ── 1. Supabase cache ─────────────────────────────────────────────────
+    // Use the latest cron snapshot for any coin whose row is < 25 min old.
+    // If ALL coins are fresh, the live fetches below are skipped entirely.
+    type CacheRow = { price: number; source_prices: Record<string, number> };
+    const freshCache = new Map<string, CacheRow>();
 
-    // Source 3 — Binance (individual requests; USDT has no valid self-pair on Binance)
-    const bnPairs: [string, string][] = [
-      ["usdc", "USDCUSDT"],
-      ["tusd", "TUSDUSDT"],
-    ];
-    const bnResults: Record<string, number> = {};
-    await Promise.allSettled(
-      bnPairs.map(async ([slug, symbol]) => {
-        try {
-          const r = await fetch(
-            `https://api.binance.us/api/v3/ticker/price?symbol=${symbol}`,
-            { cache: "no-store" }
-          );
-          if (!r.ok) return;
-          const d = await r.json();
-          if (typeof d?.price === "string") bnResults[slug] = parseFloat(d.price);
-        } catch {
-          // individual coin failure — continue with other sources
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const cutoff = new Date(Date.now() - CACHE_MAX_AGE_MS).toISOString();
+        const { data } = await supabase
+          .from("price_history")
+          .select("slug, price, source_prices, created_at")
+          .in("slug", ALL_PRICE_SLUGS)
+          .gte("created_at", cutoff)
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (data) {
+          for (const row of data as Array<{ slug: string } & CacheRow>) {
+            // keep only the most-recent row per slug (results ordered desc)
+            if (!freshCache.has(row.slug) &&
+                row.source_prices && typeof row.source_prices === "object") {
+              freshCache.set(row.slug, { price: row.price, source_prices: row.source_prices });
+            }
+          }
         }
-      })
-    );
-
-    // Source 4 — Kraken (individual requests; result key may differ from queried pair name)
-    const krPairs: [string, string][] = [
-      ["usdt",  "USDTUSD"],
-      ["usdc",  "USDCUSD"],
-      ["dai",   "DAIUSD"],
-      ["usds",  "USDSUSD"],
-      ["pyusd", "PYUSDUSD"],
-    ];
-    const krResults: Record<string, number> = {};
-    await Promise.allSettled(
-      krPairs.map(async ([slug, pair]) => {
-        const r = await fetch(`https://api.kraken.com/0/public/Ticker?pair=${pair}`);
-        const d = await r.json();
-        const first = Object.values(d?.result ?? {})[0] as any;
-        if (first?.c?.[0]) krResults[slug] = parseFloat(first.c[0]);
-      })
-    );
-
-    // Source 5 — DefiLlama
-    let dlCoins: { symbol: string; name: string; price: number }[] = [];
-    try {
-      const dlRes = await fetch("https://stablecoins.llama.fi/stablecoins?includePrices=true", {
-        signal: AbortSignal.timeout(10000),
-      });
-      if (!dlRes.ok) throw new Error(`HTTP ${dlRes.status}`);
-      const dlData = await dlRes.json();
-      dlCoins = dlData?.peggedAssets ?? [];
-    } catch (e: unknown) {
-      console.error("DefiLlama source failed:", e instanceof Error ? e.message : String(e));
+      } catch (e) {
+        console.error("Supabase cache:", e instanceof Error ? e.message : String(e));
+      }
     }
-    const dlResults: Record<string, number> = {};
-    dlCoins.forEach((coin: { symbol: string; price: number }) => {
-      dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;
-    });
-    // Name-exact overrides for coins where multiple tokens share the same symbol.
-    // If the exact name is not found, set to 0 so the wrong token is never used.
-    const dlNameOverrides: Record<string, string> = {
-      usde: "Ethena USDe",
-      usdp: "Pax Dollar",
-      bold: "Liquity BOLD",
-      frax: "Frax USD",
-      usds: "Sky Dollar",
-      u:    "United Stables",
-      usdf: "Falcon USD",
-    };
-    Object.entries(dlNameOverrides).forEach(([slug, exactName]) => {
-      const match = dlCoins.find((c: { name: string; price: number }) => c.name === exactName);
-      dlResults[slug] = match ? (match.price ?? 0) : 0;
-    });
 
-    // Source 6 — Chainlink on-chain price feeds
-    const clResults: Record<string, number> = {};
-    const rpcUrl = process.env.ALCHEMY_RPC_URL ?? "";
-    await Promise.allSettled(
-      Object.entries(CHAINLINK_FEEDS).map(async ([slug, contract]) => {
-        try {
-          clResults[slug] = await fetchChainlinkPrice(contract, rpcUrl);
-        } catch {
-          // skip this feed, median continues with remaining sources
-        }
-      })
-    );
+    // Only hit external APIs for coins whose cache row is missing or stale
+    const needLive = ALL_PRICE_SLUGS.some(s => !freshCache.has(s));
 
-    // Source 7 — Uniswap V3 on-chain DEX prices (not included in median)
+    // ── 2. Live sources (skipped when every coin has a fresh cache row) ───
+    let cbResults: Record<string, number> = {};
+    let bnResults: Record<string, number> = {};
+    let krResults: Record<string, number> = {};
+    let dlResults: Record<string, number> = {};
+    let clResults: Record<string, number> = {};
+
+    if (needLive) {
+      // Source 2 — Coinbase
+      const cbSlugs = ["USDT-USD","USDC-USD","DAI-USD","USDS-USD","PYUSD-USD"];
+      await Promise.allSettled(
+        cbSlugs.map(async (pair) => {
+          const r = await fetch(`https://api.coinbase.com/v2/prices/${pair}/spot`);
+          const d = await r.json();
+          cbResults[pair] = parseFloat(d?.data?.amount ?? "0");
+        })
+      );
+
+      // Source 3 — Binance (individual requests; USDT has no valid self-pair on Binance)
+      const bnPairs: [string, string][] = [
+        ["usdc", "USDCUSDT"],
+        ["tusd", "TUSDUSDT"],
+      ];
+      await Promise.allSettled(
+        bnPairs.map(async ([slug, symbol]) => {
+          try {
+            const r = await fetch(
+              `https://api.binance.us/api/v3/ticker/price?symbol=${symbol}`,
+              { cache: "no-store" }
+            );
+            if (!r.ok) return;
+            const d = await r.json();
+            if (typeof d?.price === "string") bnResults[slug] = parseFloat(d.price);
+          } catch {
+            // individual coin failure — continue with other sources
+          }
+        })
+      );
+
+      // Source 4 — Kraken (individual requests; result key may differ from queried pair name)
+      const krPairs: [string, string][] = [
+        ["usdt",  "USDTUSD"],
+        ["usdc",  "USDCUSD"],
+        ["dai",   "DAIUSD"],
+        ["usds",  "USDSUSD"],
+        ["pyusd", "PYUSDUSD"],
+      ];
+      await Promise.allSettled(
+        krPairs.map(async ([slug, pair]) => {
+          const r = await fetch(`https://api.kraken.com/0/public/Ticker?pair=${pair}`);
+          const d = await r.json();
+          const first = Object.values(d?.result ?? {})[0] as any;
+          if (first?.c?.[0]) krResults[slug] = parseFloat(first.c[0]);
+        })
+      );
+
+      // Source 5 — DefiLlama
+      let dlCoins: { symbol: string; name: string; price: number }[] = [];
+      try {
+        const dlRes = await fetch("https://stablecoins.llama.fi/stablecoins?includePrices=true", {
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!dlRes.ok) throw new Error(`HTTP ${dlRes.status}`);
+        const dlData = await dlRes.json();
+        dlCoins = dlData?.peggedAssets ?? [];
+      } catch (e: unknown) {
+        console.error("DefiLlama source failed:", e instanceof Error ? e.message : String(e));
+      }
+      dlCoins.forEach((coin: { symbol: string; price: number }) => {
+        dlResults[coin.symbol.toLowerCase()] = coin.price ?? 0;
+      });
+      // Name-exact overrides for coins where multiple tokens share the same symbol.
+      // If the exact name is not found, set to 0 so the wrong token is never used.
+      const dlNameOverrides: Record<string, string> = {
+        usde: "Ethena USDe",
+        usdp: "Pax Dollar",
+        bold: "Liquity BOLD",
+        frax: "Frax USD",
+        usds: "Sky Dollar",
+        u:    "United Stables",
+        usdf: "Falcon USD",
+      };
+      Object.entries(dlNameOverrides).forEach(([slug, exactName]) => {
+        const match = dlCoins.find((c: { name: string; price: number }) => c.name === exactName);
+        dlResults[slug] = match ? (match.price ?? 0) : 0;
+      });
+
+      // Source 6 — Chainlink on-chain price feeds
+      const rpcUrl = process.env.ALCHEMY_RPC_URL ?? "";
+      await Promise.allSettled(
+        Object.entries(CHAINLINK_FEEDS).map(async ([slug, contract]) => {
+          try {
+            clResults[slug] = await fetchChainlinkPrice(contract, rpcUrl);
+          } catch {
+            // skip this feed, median continues with remaining sources
+          }
+        })
+      );
+    }
+
+    // ── 3. Uniswap V3 on-chain DEX prices (always live — informational only) ─
     const uniswapResults: Record<string, number> = {};
+    const rpcUrl = process.env.ALCHEMY_RPC_URL ?? "";
     if (rpcUrl) {
       const [ethUsd, usdcEthPerStable, usdtEthPerStable] = await Promise.all([
         fetchChainlinkPrice(ETH_USD_FEED, rpcUrl).catch(() => 0),
@@ -221,7 +273,8 @@ export async function GET() {
       }
     }
 
-    const prices = {
+    // ── 4. Build prices + sources from live data (zeros when needLive=false) ─
+    const prices: Record<string, number | null> = {
       usdt:   median([cbResults["USDT-USD"] ?? 0,                    krResults["usdt"]  ?? 0, dlResults["usdt"]  ?? 0, clResults["usdt"]  ?? 0]),
       usdc:   median([cbResults["USDC-USD"] ?? 0,  bnResults["usdc"]  ?? 0, krResults["usdc"]  ?? 0, dlResults["usdc"]  ?? 0, clResults["usdc"]  ?? 0]),
       dai:    median([cbResults["DAI-USD"]  ?? 0,                    krResults["dai"]   ?? 0, dlResults["dai"]   ?? 0, clResults["dai"]   ?? 0]),
@@ -249,7 +302,7 @@ export async function GET() {
       usdf:   median([dlResults["usdf"]   ?? 0, clResults["usdf"]  ?? 0]),
     };
 
-    const sources = {
+    const sources: Record<string, Record<string, number>> = {
       usdt:   { coinbase: cbResults["USDT-USD"] ?? 0,                                    kraken: krResults["usdt"]  ?? 0, defillama: dlResults["usdt"]  ?? 0, chainlink: clResults["usdt"]  ?? 0 },
       usdc:   { coinbase: cbResults["USDC-USD"] ?? 0,  binance: bnResults["usdc"]  ?? 0, kraken: krResults["usdc"]  ?? 0, defillama: dlResults["usdc"]  ?? 0, chainlink: clResults["usdc"]  ?? 0 },
       dai:    { coinbase: cbResults["DAI-USD"]  ?? 0,                                    kraken: krResults["dai"]   ?? 0, defillama: dlResults["dai"]   ?? 0, chainlink: clResults["dai"]   ?? 0 },
@@ -276,6 +329,16 @@ export async function GET() {
       usdgo:  { defillama: dlResults["usdgo"]  ?? 0 },
       usdf:   { defillama: dlResults["usdf"]   ?? 0, chainlink: clResults["usdf"]  ?? 0 },
     };
+
+    // ── 5. Overlay fresh Supabase rows ─────────────────────────────────────
+    // The cron snapshot carries richer source coverage (CoinGecko, CMC, etc.)
+    // and is the authoritative price for any coin whose row is < 25 min old.
+    for (const [slug, row] of freshCache) {
+      if (slug in prices) {
+        prices[slug] = row.price;
+        sources[slug] = row.source_prices;
+      }
+    }
 
     const uniswap = {
       usdc: {
