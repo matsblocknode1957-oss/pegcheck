@@ -45,9 +45,7 @@ export async function GET() {
     if (typeof fgData.score === "number") fearGreedScore = fgData.score;
   }
 
-  const score = fearGreedScore !== null
-    ? Math.round(0.5 * pegScore + 0.5 * fearGreedScore)
-    : pegScore;
+  const score = pegScore;
 
   return NextResponse.json({
     score,

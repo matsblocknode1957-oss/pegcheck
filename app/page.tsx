@@ -105,6 +105,7 @@ export default function Home() {
   const [coinSources, setCoinSources] = useState<Record<string, Record<string, number>>>({});
   const [eurUsd, setEurUsd] = useState<number | null>(null);
   const [fearGreed, setFearGreed] = useState<FearGreedData | null>(null);
+  const [persistentDepeg, setPersistentDepeg] = useState<Set<string>>(new Set());
   const [lastUpdated, setLastUpdated] = useState<string>("Loading...");
   const [hoveredCoin, setHoveredCoin] = useState<string | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -322,6 +323,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    fetch("/api/persistent-depeg")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data.persistentDepeg)) setPersistentDepeg(new Set(data.persistentDepeg)); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -354,7 +362,7 @@ export default function Home() {
     return Object.values(s).filter((v) => v > 0).length;
   };
 
-  const getStatus = (price: number | null, peg: number | null, slug = '', sourceCount: number | null = null): string => {
+  const getStatus = (price: number | null, peg: number | null, slug = '', sourceCount: number | null = null, isKnownOngoing = false): string => {
     if (price === null || peg === null) return "No data";
     const { healthy, caution } = getThresholds(slug);
     const signedDiff = (price - peg) / peg;
@@ -363,8 +371,8 @@ export default function Home() {
     if (absDiff <= healthy)      raw = "Healthy";
     else if (signedDiff > 0)     raw = "Above peg";
     else if (absDiff <= caution) raw = "Caution";
-    else                         raw = "Depeg";
-    if (sourceCount === 1 && (raw === "Caution" || raw === "Depeg" || raw === "Above peg")) return "Unconfirmed";
+    else                         raw = isKnownOngoing ? "Depeg (ongoing)" : "Depeg";
+    if (sourceCount === 1 && (raw === "Caution" || raw === "Depeg" || raw === "Depeg (ongoing)" || raw === "Above peg")) return "Unconfirmed";
     return raw;
   };
 
@@ -388,9 +396,9 @@ export default function Home() {
     return "#fef2f2";
   };
 
-  const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug)) === "Healthy").length;
-  const cautionCount = stablecoins.filter((c) => { const s = getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug)); return s === "Caution" || s === "Above peg"; }).length;
-  const warningCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug)) === "Depeg").length;
+  const healthyCount = stablecoins.filter((c) => getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug), persistentDepeg.has(c.slug)) === "Healthy").length;
+  const cautionCount = stablecoins.filter((c) => { const s = getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug), persistentDepeg.has(c.slug)); return s === "Caution" || s === "Above peg"; }).length;
+  const warningCount = stablecoins.filter((c) => { const s = getStatus(getLivePrice(c.slug), getEffectivePeg(c.slug), c.slug, getSourceCount(c.slug), persistentDepeg.has(c.slug)); return s === "Depeg" || s === "Depeg (ongoing)"; }).length;
 
   const holdings = walletAddress
     ? stablecoins.filter((coin) => {
@@ -424,8 +432,8 @@ export default function Home() {
       const weight = (amount * price) / portfolioTotal;
       const peg = getEffectivePeg(coin.slug);
       if (peg === null) continue;
-      const status = getStatus(price, peg, coin.slug, getSourceCount(coin.slug));
-      const pts = status === "Depeg" ? 10 : status === "Caution" ? 5 : 1;
+      const status = getStatus(price, peg, coin.slug, getSourceCount(coin.slug), persistentDepeg.has(coin.slug));
+      const pts = (status === "Depeg" || status === "Depeg (ongoing)") ? 10 : status === "Caution" ? 5 : 1;
       weighted += weight * pts;
     }
     return Math.round(weighted * 10) / 10;
@@ -468,7 +476,7 @@ export default function Home() {
           <div style={{ width: "38px", height: "38px", flexShrink: 0, background: "linear-gradient(135deg, #1a56db, #0e3fa8)", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "15px" }}>P✓</div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: "20px", fontWeight: "700", color: textPrimary, lineHeight: "1.2" }}>PegCheck</div>
-            <div style={{ fontSize: "12px", color: textSecondary, marginTop: "3px" }}>Up to 6 price sources per coin</div>
+            <div style={{ fontSize: "12px", color: textSecondary, marginTop: "3px" }}>Up to 7 price sources per coin</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -516,9 +524,7 @@ export default function Home() {
         }
         if (scoreCount === 0) return null;
         const pegScore = scoreSum / scoreCount;
-        const healthIndex = fearGreed
-          ? Math.round(0.5 * pegScore + 0.5 * fearGreed.score)
-          : Math.round(pegScore);
+        const healthIndex = Math.round(pegScore);
         const band = healthIndex >= 80 ? "Healthy"
           : healthIndex >= 60 ? "Caution"
           : healthIndex >= 40 ? "Elevated Risk"
@@ -587,7 +593,7 @@ export default function Home() {
           const noDataLabel = pricesLoaded ? "No data" : "Loading...";
           const sourceCount = getSourceCount(coin.slug);
           const liveStatus = livePrice !== null
-            ? getStatus(livePrice, getEffectivePeg(coin.slug), coin.slug, sourceCount)
+            ? getStatus(livePrice, getEffectivePeg(coin.slug), coin.slug, sourceCount, persistentDepeg.has(coin.slug))
             : noDataLabel;
           return (
             <Link
@@ -760,7 +766,7 @@ export default function Home() {
               const amount = formatBalance(bal.balance, bal.decimals);
               const holdingPrice = getLivePrice(coin.slug);
               const holdingStatus = holdingPrice !== null
-                ? getStatus(holdingPrice, getEffectivePeg(coin.slug), coin.slug)
+                ? getStatus(holdingPrice, getEffectivePeg(coin.slug), coin.slug, null, persistentDepeg.has(coin.slug))
                 : (pricesLoaded ? "No data" : "Loading...");
               return (
                 <Link

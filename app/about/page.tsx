@@ -56,7 +56,7 @@ export default function AboutPage() {
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>How it works</div>
-        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck pulls live price data every 5 minutes from up to 6 price sources (CoinGecko, Coinbase, Binance, Kraken, DefiLlama and Chainlink) and calculates a median consensus price to eliminate bad data. It also tracks Uniswap V3 on-chain prices as a separate divergence check. A dual-source confidence score flags when fewer than two sources agree. Each coin is evaluated against its own peg target and per-coin thresholds: most coins use ±0.1% healthy / ±0.5% caution, while coins designed to trade slightly above peg (like LUSD and mkUSD) use wider bands. Green means healthy. Amber means caution. Red means depeg detected.</p>
+        <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: 0 }}>PegCheck pulls live price data every 5 minutes from up to 7 price sources (CoinGecko, Coinbase, Binance, Kraken, DefiLlama, Chainlink and CoinMarketCap) and calculates a median consensus price to eliminate bad data. It also tracks Uniswap V3 on-chain prices as a separate divergence check. A dual-source confidence score flags when fewer than two sources agree. Each coin is evaluated against its own peg target and per-coin thresholds: most coins use ±0.1% healthy / ±0.5% caution, while coins designed to trade slightly above peg (like LUSD and mkUSD) use wider bands. Green means healthy. Amber means caution. Red means depeg detected.</p>
       </div>
 
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
@@ -96,7 +96,7 @@ export default function AboutPage() {
       <div style={{ margin: "16px 20px 0", background: cardBg, borderRadius: "12px", padding: "20px", border: `1px solid ${cardBorder}` }}>
         <div style={{ fontSize: "16px", fontWeight: "700", color: textPrimary, marginBottom: "8px" }}>🛠️ For Developers</div>
         <p style={{ fontSize: "14px", color: textSecondary, lineHeight: "1.6", margin: "0 0 12px 0" }}>
-          Building a wallet, exchange, or DeFi app? PegCheck offers a REST API with real-time data for all 25 stablecoins — prices, deviation, status, depeg history and Uniswap V3 DEX divergence (via the <code style={{ fontSize: "12px", background: dark ? "#1e2a40" : "#f3f4f6", padding: "1px 5px", borderRadius: "4px", color: textPrimary }}>uniswap</code> field in the response). Powered by up to 6 price sources with median consensus.
+          Building a wallet, exchange, or DeFi app? PegCheck offers a REST API with real-time data for all 25 stablecoins — prices, deviation, status, depeg history and Uniswap V3 DEX divergence (via the <code style={{ fontSize: "12px", background: dark ? "#1e2a40" : "#f3f4f6", padding: "1px 5px", borderRadius: "4px", color: textPrimary }}>uniswap</code> field in the response). Powered by up to 7 price sources with median consensus.
         </p>
         <a href="/developers" style={{ display: "inline-block", background: "#1a56db", color: "#fff", fontSize: "13px", fontWeight: "700", padding: "10px 20px", borderRadius: "8px", textDecoration: "none" }}>
           View API & Pricing →

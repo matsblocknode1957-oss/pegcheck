@@ -113,7 +113,6 @@ function buildHtml(
   whale: WhaleStats,
   topCoinsByVolume: CoinWhaleStats[],
   weekOf: string,
-  marketScore: number,
   pegScore: number,
   fearGreedScore: number | null,
   maxSources: number,
@@ -137,9 +136,7 @@ function buildHtml(
       return a.stabilityPct - b.stabilityPct;
     });
 
-  const marketHealth = marketScore >= 80 ? "Healthy" : marketScore >= 60 ? "Caution" : marketScore >= 40 ? "Elevated Risk" : "High Risk";
-  const marketColor  = marketScore >= 80 ? "#10b981" : marketScore >= 60 ? "#f59e0b" : "#ef4444";
-  const pegColor     = pegScore   >= 80 ? "#10b981" : pegScore   >= 60 ? "#f59e0b" : "#ef4444";
+  const pegColor = pegScore >= 80 ? "#10b981" : pegScore >= 60 ? "#f59e0b" : "#ef4444";
   const fgColor      = fearGreedScore === null ? "#6b7280"
     : fearGreedScore <= 24 ? "#ef4444"
     : fearGreedScore <= 49 ? "#ea580c"
@@ -223,10 +220,6 @@ function buildHtml(
     : fearGreedScore <= 74 ? "Greed"
     : "Extreme Greed";
 
-  const hiNote = fearGreedScore !== null
-    ? `50% peg&nbsp;+&nbsp;50% F&amp;G`
-    : `Peg score only`;
-
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FintechCheck Weekly Report</title></head>
@@ -257,25 +250,19 @@ function buildHtml(
   <!-- Executive Summary -->
   <tr><td style="background:#0d1628;padding:24px 32px;border-left:1px solid #1e2a40;border-right:1px solid #1e2a40">
     <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px">Executive Summary</div>
-    <!-- Three metric boxes -->
+    <!-- Two metric boxes -->
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px">
       <tr>
-        <td width="30%" style="text-align:center;padding:14px 10px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
+        <td width="47%" style="text-align:center;padding:14px 10px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
           <div style="font-size:26px;font-weight:800;color:${pegColor};font-family:monospace;line-height:1">${pegScore}</div>
-          <div style="font-size:9px;color:#6b7280;margin-top:5px;text-transform:uppercase;letter-spacing:1px">Peg Score</div>
+          <div style="font-size:9px;color:#6b7280;margin-top:5px;text-transform:uppercase;letter-spacing:1px">Peg Health</div>
           <div style="font-size:10px;color:#4b5563;margin-top:2px">Price deviation</div>
         </td>
-        <td width="4%"></td>
-        <td width="30%" style="text-align:center;padding:14px 10px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
+        <td width="6%"></td>
+        <td width="47%" style="text-align:center;padding:14px 10px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
           <div style="font-size:26px;font-weight:800;color:${fgColor};font-family:monospace;line-height:1">${fearGreedScore ?? "N/A"}</div>
           <div style="font-size:9px;color:#6b7280;margin-top:5px;text-transform:uppercase;letter-spacing:1px">Fear &amp; Greed</div>
           <div style="font-size:10px;color:#4b5563;margin-top:2px">${fearGreedScore !== null ? fgLabel : "Unavailable"}</div>
-        </td>
-        <td width="4%"></td>
-        <td width="32%" style="text-align:center;padding:14px 10px;background:#0a0e1a;border-radius:8px;border:1px solid #1e2a40">
-          <div style="font-size:26px;font-weight:800;color:${marketColor};font-family:monospace;line-height:1">${marketScore}</div>
-          <div style="font-size:9px;color:#6b7280;margin-top:5px;text-transform:uppercase;letter-spacing:1px">Health Index</div>
-          <div style="font-size:10px;color:#4b5563;margin-top:2px">${hiNote}</div>
         </td>
       </tr>
     </table>
@@ -499,7 +486,7 @@ export async function POST(request: Request) {
       .rpc("whale_volume_by_coin", { since_ts: sinceIso, min_amount: 1000000 });
 
     // Max source count: query a recent sample of price_history rows
-    let maxSources = 6;
+    let maxSources = 7;
     try {
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const { data: recentRows } = await supabase
@@ -684,9 +671,7 @@ export async function POST(request: Request) {
       }
     } catch {}
 
-    const marketScore = fearGreedScore !== null
-      ? Math.round(0.5 * pegScore + 0.5 * fearGreedScore)
-      : pegScore;
+    const marketScore = pegScore;
 
     const baseUrlForLinks = process.env.NEXT_PUBLIC_BASE_URL ?? "https://pegcheck.uk";
 
@@ -725,7 +710,7 @@ export async function POST(request: Request) {
         const subUnsubUrl = sub.unsubscribe_token
           ? `${baseUrlForLinks}/api/unsubscribe?token=${sub.unsubscribe_token}`
           : `${baseUrlForLinks}/api/unsubscribe`;
-        const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, marketScore, pegScore, fearGreedScore, maxSources, subUnsubUrl);
+        const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, pegScore, fearGreedScore, maxSources, subUnsubUrl);
         try {
           const { error: sendError } = await resend.emails.send(
             {
@@ -768,7 +753,7 @@ export async function POST(request: Request) {
       const subUnsubUrl = unsubscribeToken
         ? `${baseUrlForLinks}/api/unsubscribe?token=${unsubscribeToken}`
         : `${baseUrlForLinks}/api/unsubscribe`;
-      const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, marketScore, pegScore, fearGreedScore, maxSources, subUnsubUrl);
+      const html = buildHtml(coins, whale, topCoinsByVolume, weekOf, pegScore, fearGreedScore, maxSources, subUnsubUrl);
 
       await resend.emails.send({
         from:    "FintechCheck <alerts@fintechcheck.uk>",
