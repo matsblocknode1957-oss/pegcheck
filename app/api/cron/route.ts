@@ -266,78 +266,6 @@ export async function GET(request: Request) {
       }
     }
 
-    // Etherscan — Large Transactions for all coins
-    const contracts: { slug: string; address: string; decimals: number }[] = [
-      { slug: "usdt",   address: "0xdac17f958d2ee523a2206206994597c13d831ec7", decimals: 6  },
-      { slug: "usdc",   address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals: 6  },
-      { slug: "dai",    address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals: 18 },
-      { slug: "usds",   address: "0xdc035d45d973e3ec169d2276ddab16f1e407384f", decimals: 18 },
-      { slug: "ethena", address: "0x4c9edd5852cd905f086c759e8383e09bff1e68b3", decimals: 18 },
-      { slug: "pyusd",  address: "0x6c3ea9036406852006290770bedfcaba0e23a0e8", decimals: 6  },
-      { slug: "fdusd",  address: "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409", decimals: 18 },
-      { slug: "rlusd",  address: "0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD", decimals: 18 },
-      { slug: "tusd",   address: "0x0000000000085d4780B73119b644AE5ecd22b376", decimals: 18 },
-      { slug: "frax",   address: "0xcacd6fd266af91b8aed52accc382b4e165586e29", decimals: 18 },
-      { slug: "gho",    address: "0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f", decimals: 18 },
-      { slug: "crvusd", address: "0xf939E0A03FB07F59A73314E73794be0E57ac1b4E", decimals: 18 },
-      { slug: "lusd",   address: "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0", decimals: 18 },
-      { slug: "usdp",   address: "0x8E870D67F660D95d5be530380D0eC0bd388289E1", decimals: 18 },
-      { slug: "usdd",   address: "0x0C10bF8FcB7Bf5412187A595ab97a3609160b5c6", decimals: 18 },
-      { slug: "mkusd",  address: "0x4591DBfF62656E7859Afe5e45f6f47D3669fBB28", decimals: 18 },
-      { slug: "eurc",   address: "0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c", decimals: 6  },
-      { slug: "dola",   address: "0x865377367054516e17014CcDed1e7d814EDC9ce4", decimals: 18 },
-      { slug: "alusd",  address: "0xBC6DA0FE9aD5f3b0d58160288917AA56653660e9", decimals: 18 },
-      { slug: "bold",   address: "0x6440f144b7e50d6a8439336510312d2f54beb01d", decimals: 18 },
-      { slug: "usdg",   address: "0xe343167631d89B6Ffc58B88d6b7fB0228795491D", decimals: 6  },
-      { slug: "usd1",   address: "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d", decimals: 18 },
-      { slug: "u",      address: "0xcE24439F2D9C6a2289F741120FE202248B666666", decimals: 18 },
-      { slug: "usdgo",  address: "0x4CF5920Df52F5b1f246e2E38E1786Ae1Cf03ECF5", decimals: 6  },
-      { slug: "usdf",   address: "0xFa2B947eEc368f42195f24F36d2aF29f7c24CeC2", decimals: 18 },
-    ];
-
-    for (const coin of contracts) {
-      try {
-        const ethRes = await fetch(
-          `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx&address=${coin.address}&page=1&offset=50&sort=desc&apikey=${process.env.ETHERSCAN_API_KEY}`
-        );
-        const ethData = await ethRes.json();
-        const txList = ethData?.result ?? [];
-        console.log(`Etherscan ${coin.slug}:`, typeof txList === 'string' ? txList : `${txList.length} txs`);
-        if (Array.isArray(txList) && txList.length > 0) {
-          const zeroAddress = "0x0000000000000000000000000000000000000000";
-          const significant = txList.filter((tx: any) => {
-            const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
-            const isMintBurn = (tx.from === zeroAddress || tx.to === zeroAddress) && amount >= 1000 && amount <= 500000000;
-            const isLarge = amount >= 100000 && amount <= 500000000;
-            return isMintBurn || isLarge;
-          });
-          const rows = significant.map((tx: any) => {
-            const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
-            let action = "LARGE TRANSFER";
-            if (tx.from === zeroAddress) action = "MINT";
-            if (tx.to === zeroAddress) action = "BURN";
-            return {
-              slug: coin.slug,
-              action,
-              amount,
-              tx_hash: tx.hash,
-              wallet: tx.from,
-            };
-          });
-
-          if (rows.length > 0) {
-            const { error: txError } = await supabase.from("large_transactions").upsert(rows, { onConflict: "tx_hash", ignoreDuplicates: true });
-            if (txError) console.error("Large tx insert error:", txError);
-            else console.log("Large tx saved for", coin.slug, rows.length, "rows");
-          }
-        }
-      } catch (e) {
-        console.error(`Failed to fetch transactions for ${coin.slug}`, e);
-      }
-      // Delay between each coin to avoid Etherscan rate limit
-      await new Promise(r => setTimeout(r, 400));
-    }
-
     // Compute Median Prices
     const cg = (slug: string) => cgData[COINGECKO_IDS[slug]]?.usd ?? 0;
     const sourcePrices: Record<string, Record<string, number>> = {
@@ -428,6 +356,112 @@ export async function GET(request: Request) {
     }
     if (priceError) console.error("Price history insert error:", priceError);
     else console.log("Price history saved:", snapshotsWithCap.length, "rows");
+
+    // ── Whale tracker ─────────────────────────────────────────────────────────
+    // Runs AFTER the price snapshot so a timeout here never loses price data.
+    // Uses contractaddress= so all token transfers are scanned (not just ones
+    // where the contract address itself is sender/receiver).
+    // Every run: sort=desc (newest first), no startblock — deduplication is
+    // handled by the UNIQUE (tx_hash, wallet, to_addr) constraint.
+    // Hard 12-second budget: stops mid-list and resumes next run (USDT/USDC
+    // are first so they are always covered).
+    {
+      const whaleContracts: { slug: string; address: string; decimals: number }[] = [
+        { slug: "usdt",   address: "0xdac17f958d2ee523a2206206994597c13d831ec7", decimals: 6  },
+        { slug: "usdc",   address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals: 6  },
+        { slug: "dai",    address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals: 18 },
+        { slug: "usds",   address: "0xdc035d45d973e3ec169d2276ddab16f1e407384f", decimals: 18 },
+        { slug: "ethena", address: "0x4c9edd5852cd905f086c759e8383e09bff1e68b3", decimals: 18 },
+        { slug: "pyusd",  address: "0x6c3ea9036406852006290770bedfcaba0e23a0e8", decimals: 6  },
+        { slug: "fdusd",  address: "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409", decimals: 18 },
+        { slug: "rlusd",  address: "0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD", decimals: 18 },
+        { slug: "tusd",   address: "0x0000000000085d4780B73119b644AE5ecd22b376", decimals: 18 },
+        { slug: "frax",   address: "0xcacd6fd266af91b8aed52accc382b4e165586e29", decimals: 18 },
+        { slug: "gho",    address: "0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f", decimals: 18 },
+        { slug: "crvusd", address: "0xf939E0A03FB07F59A73314E73794be0E57ac1b4E", decimals: 18 },
+        { slug: "lusd",   address: "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0", decimals: 18 },
+        { slug: "usdp",   address: "0x8E870D67F660D95d5be530380D0eC0bd388289E1", decimals: 18 },
+        { slug: "usdd",   address: "0x0C10bF8FcB7Bf5412187A595ab97a3609160b5c6", decimals: 18 },
+        { slug: "mkusd",  address: "0x4591DBfF62656E7859Afe5e45f6f47D3669fBB28", decimals: 18 },
+        { slug: "eurc",   address: "0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c", decimals: 6  },
+        { slug: "dola",   address: "0x865377367054516e17014CcDed1e7d814EDC9ce4", decimals: 18 },
+        { slug: "alusd",  address: "0xBC6DA0FE9aD5f3b0d58160288917AA56653660e9", decimals: 18 },
+        { slug: "bold",   address: "0x6440f144b7e50d6a8439336510312d2f54beb01d", decimals: 18 },
+        { slug: "usdg",   address: "0xe343167631d89B6Ffc58B88d6b7fB0228795491D", decimals: 6  },
+        { slug: "usd1",   address: "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d", decimals: 18 },
+        { slug: "u",      address: "0xcE24439F2D9C6a2289F741120FE202248B666666", decimals: 18 },
+        { slug: "usdgo",  address: "0x4CF5920Df52F5b1f246e2E38E1786Ae1Cf03ECF5", decimals: 6  },
+        { slug: "usdf",   address: "0xFa2B947eEc368f42195f24F36d2aF29f7c24CeC2", decimals: 18 },
+      ];
+
+      const WHALE_BUDGET_MS = 12_000;
+      const whaleStart      = Date.now();
+
+      for (const coin of whaleContracts) {
+        if (Date.now() - whaleStart >= WHALE_BUDGET_MS) {
+          console.log("Whale tracker: 12 s budget reached — will continue next run");
+          break;
+        }
+
+        try {
+          const offset = (coin.slug === "usdt" || coin.slug === "usdc") ? 1000 : 200;
+
+          const url =
+            `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx` +
+            `&contractaddress=${coin.address}&page=1&offset=${offset}&sort=desc` +
+            `&apikey=${process.env.ETHERSCAN_API_KEY}`;
+
+          const ethRes  = await fetch(url, { signal: AbortSignal.timeout(8_000) });
+          const ethData = await ethRes.json();
+          const txList  = ethData?.result ?? [];
+
+          console.log(
+            `Etherscan ${coin.slug}:`,
+            typeof txList === "string" ? txList : `${txList.length} txs`
+          );
+
+          if (Array.isArray(txList) && txList.length > 0) {
+            const zeroAddress = "0x0000000000000000000000000000000000000000";
+            const significant = txList.filter((tx: any) => {
+              const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
+              const isMintBurn =
+                (tx.from === zeroAddress || tx.to === zeroAddress) &&
+                amount >= 1_000 && amount <= 500_000_000;
+              const isLarge = amount >= 100_000 && amount <= 500_000_000;
+              return isMintBurn || isLarge;
+            });
+
+            const rows = significant.map((tx: any) => {
+              const amount = parseFloat(tx.value) / Math.pow(10, coin.decimals);
+              let action: string = "LARGE TRANSFER";
+              if (tx.from === zeroAddress) action = "MINT";
+              if (tx.to === zeroAddress) action = "BURN";
+              return {
+                slug:         coin.slug,
+                action,
+                amount,
+                tx_hash:      tx.hash,
+                wallet:       tx.from,
+                to_addr:      tx.to ?? "",
+                block_number: parseInt(tx.blockNumber, 10),
+              };
+            });
+
+            if (rows.length > 0) {
+              const { error: txError } = await supabase
+                .from("large_transactions")
+                .upsert(rows, { onConflict: "tx_hash,wallet,to_addr", ignoreDuplicates: true });
+              if (txError) console.error("Large tx insert error:", txError);
+              else console.log(`Large tx saved for ${coin.slug}: ${rows.length} rows`);
+            }
+          }
+        } catch (e) {
+          console.error(`Whale tracker: failed for ${coin.slug}:`, e);
+        }
+
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
 
     // Save RWA NAV Snapshot
     try {
