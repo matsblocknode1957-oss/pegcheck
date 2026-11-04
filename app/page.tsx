@@ -58,10 +58,11 @@ function truncateAddress(addr: string): string {
 }
 
 function formatMarketCap(mc: number): string {
-  if (mc >= 1e12) return `$${(mc / 1e12).toFixed(1)}T`;
-  if (mc >= 1e9)  return `$${(mc / 1e9).toFixed(1)}B`;
-  if (mc >= 1e6)  return `$${(mc / 1e6).toFixed(0)}M`;
-  return `$${mc.toLocaleString()}`;
+  const n = Number(mc);
+  if (n >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
+  if (n >= 1e9)  return `$${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6)  return `$${(n / 1e6).toFixed(0)}M`;
+  return `$${n.toLocaleString()}`;
 }
 
 export default function Home() {
@@ -624,7 +625,7 @@ export default function Home() {
                   <span style={{ fontSize: "14px", fontWeight: "700", color: textPrimary }}>{coin.name}</span>
                   <div className="coin-sub-wrap" style={{ color: textSecondary }}>
                     <span style={{ whiteSpace: "nowrap" }}>{coin.issuer}</span>
-                    {marketCaps[coin.slug] != null && (
+                    {marketCaps[coin.slug] != null && coin.slug !== "mkusd" && (
                       <span className="coin-sub-cap" style={{ whiteSpace: "nowrap" }}>
                         {formatMarketCap(marketCaps[coin.slug])}
                       </span>

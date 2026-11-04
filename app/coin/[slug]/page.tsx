@@ -550,14 +550,14 @@ export default function CoinDetailPage() {
               d={`M ${CL},${CB} ${priceHistory.map((h, i) => `L ${indexToX(i)},${priceToY(h.price)}`).join(" ")} L ${indexToX(priceHistory.length - 1)},${CB} Z`}
               fill="url(#chartFill)"
             />
-            {/* Peg reference line at $1.0000 */}
+            {/* Peg reference line */}
             {showPeg && (
               <>
                 <line x1={CL} y1={pegY} x2={CR} y2={pegY}
                   stroke={dark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.2)"}
                   strokeWidth="1" strokeDasharray="5,4" />
                 <text x={CR - 3} y={pegY - 3} textAnchor="end" fontSize="7"
-                  fill={dark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.3)"}>Peg: $1.0000</text>
+                  fill={dark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.3)"}>{("Peg: $" + coinPeg.toFixed(4))}</text>
               </>
             )}
             {/* Y-axis labels */}

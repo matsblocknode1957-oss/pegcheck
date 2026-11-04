@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { COIN_PEGS, getThresholds } from "@/lib/coinPegs";
+import { fetchEurUsd } from "@/lib/fetchEurUsd";
 
 export const revalidate = 3600;
 
@@ -32,10 +33,14 @@ export async function GET() {
       return NextResponse.json({ persistentDepeg: [] });
     }
 
+    const eurUsd = await fetchEurUsd();
+    const effectivePeg = (slug: string) =>
+      slug === "eurc" ? (eurUsd ?? COIN_PEGS.eurc) : (COIN_PEGS[slug] ?? 1.0);
+
     const persistentDepeg = (data as { slug: string; max_price: number }[])
       .filter(row => {
         if (!row.max_price) return false;
-        const peg = COIN_PEGS[row.slug] ?? 1.0;
+        const peg = effectivePeg(row.slug);
         const { caution } = getThresholds(row.slug);
         return row.max_price < peg * (1 - caution);
       })
