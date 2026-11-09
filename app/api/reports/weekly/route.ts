@@ -460,24 +460,6 @@ export async function POST(request: Request) {
     // Computed early so the idempotency lock and report logging share the same value
     const reportDate = new Date().toISOString().split("T")[0];
 
-    // ── Send-once lock ─────────────────────────────────────────────────────────
-    // Netlify retries scheduled functions on timeout — this prevents a successful
-    // 08:00 send being replayed at 08:01 / 08:02.  Only active for automated sends.
-    if (isAutomated) {
-      const { data: lockRow, error: lockError } = await supabase
-        .from("weekly_report_runs")
-        .select("status")
-        .eq("report_date", reportDate)
-        .maybeSingle();
-      if (lockError) {
-        // Table may not exist yet — log and proceed rather than blocking the send
-        console.warn("weekly_report_runs check failed (table may not exist yet):", lockError.message);
-      } else if (lockRow?.status === "sent") {
-        console.log(`Weekly report: already sent for ${reportDate} — skipping duplicate run`);
-        return NextResponse.json({ skipped: true, reason: "already_sent", reportDate });
-      }
-    }
-
     const liveEurUsd = await fetchEurUsd().catch(() => null);
 
     const since    = new Date();
@@ -727,6 +709,27 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: "No subscribers opted in to weekly reports", sent: 0 });
       }
 
+      // ── Claim send slot before touching any emails (fail closed) ─────────────
+      // INSERT ... ON CONFLICT DO NOTHING: if a row already exists for this date
+      // (status 'sending' or 'sent'), .select() returns [] — another run owns the
+      // slot.  On DB error we refuse to send rather than risk duplicates.
+      const { data: lockData, error: lockInsertError } = await supabase
+        .from("weekly_report_runs")
+        .upsert({ report_date: reportDate, status: "sending" }, { onConflict: "report_date", ignoreDuplicates: true })
+        .select("report_date");
+
+      if (lockInsertError) {
+        console.error("weekly_report_runs insert failed:", lockInsertError.message);
+        return NextResponse.json(
+          { error: "lock table error", detail: lockInsertError.message },
+          { status: 500 },
+        );
+      }
+      if (!lockData || lockData.length === 0) {
+        console.log(`Weekly report: slot already claimed for ${reportDate} — skipping duplicate run`);
+        return NextResponse.json({ skipped: true, reason: "slot_claimed", reportDate });
+      }
+
       let sent = 0, failed = 0;
       for (const sub of subscribers) {
         const subUnsubUrl = sub.unsubscribe_token
@@ -765,13 +768,13 @@ export async function POST(request: Request) {
 
       console.log(`Weekly report: sent=${sent} failed=${failed} total=${subscribers.length} coinsWithData=${coinsWithData}`);
 
-      // Mark as sent so any Netlify retries exit without re-sending
+      // Advance the lock row from 'sending' → 'sent'
       if (sent > 0) {
-        const { error: lockUpsertError } = await supabase.from("weekly_report_runs").upsert(
-          { report_date: reportDate, status: "sent", sent_at: new Date().toISOString(), subscriber_count: sent },
-          { onConflict: "report_date" }
-        );
-        if (lockUpsertError) console.warn("weekly_report_runs upsert failed:", lockUpsertError.message);
+        const { error: lockUpdateError } = await supabase
+          .from("weekly_report_runs")
+          .update({ status: "sent", sent_at: new Date().toISOString(), subscriber_count: sent })
+          .eq("report_date", reportDate);
+        if (lockUpdateError) console.warn("weekly_report_runs update failed:", lockUpdateError.message);
       }
 
       return NextResponse.json({
