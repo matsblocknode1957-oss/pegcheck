@@ -457,6 +457,27 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // Computed early so the idempotency lock and report logging share the same value
+    const reportDate = new Date().toISOString().split("T")[0];
+
+    // ── Send-once lock ─────────────────────────────────────────────────────────
+    // Netlify retries scheduled functions on timeout — this prevents a successful
+    // 08:00 send being replayed at 08:01 / 08:02.  Only active for automated sends.
+    if (isAutomated) {
+      const { data: lockRow, error: lockError } = await supabase
+        .from("weekly_report_runs")
+        .select("status")
+        .eq("report_date", reportDate)
+        .maybeSingle();
+      if (lockError) {
+        // Table may not exist yet — log and proceed rather than blocking the send
+        console.warn("weekly_report_runs check failed (table may not exist yet):", lockError.message);
+      } else if (lockRow?.status === "sent") {
+        console.log(`Weekly report: already sent for ${reportDate} — skipping duplicate run`);
+        return NextResponse.json({ skipped: true, reason: "already_sent", reportDate });
+      }
+    }
+
     const liveEurUsd = await fetchEurUsd().catch(() => null);
 
     const since    = new Date();
@@ -467,19 +488,22 @@ export async function POST(request: Request) {
     const { data: priceStats, error: priceError } = await supabase
       .rpc("weekly_price_stats", { since: sinceIso });
 
-    const { data: whaleRows, count: whaleCount, error: whaleError } = await supabase
+    // Top 3 by amount — only the four columns used in the email template.
+    // No count:exact: that caused a full sequential scan for a COUNT(*) on every run.
+    const { data: whaleRows, error: whaleError } = await supabase
       .from("large_transactions")
-      .select("slug, amount, action, created_at, tx_hash, wallet", { count: "exact" })
+      .select("slug, amount, action, created_at")
       .gte("created_at", sinceIso)
-      .gte("amount", 1000000)
+      .gte("amount", 1_000_000)
       .order("amount", { ascending: false })
       .limit(3);
 
-    const { data: volData, error: volError } = await supabase
+    // Single aggregate scan for both total count and volume sum (replaces two passes).
+    const { data: aggData, error: aggError } = await supabase
       .from("large_transactions")
-      .select("amount.sum()")
+      .select("count(), amount.sum()")
       .gte("created_at", sinceIso)
-      .gte("amount", 1000000)
+      .gte("amount", 1_000_000)
       .single();
 
     const { data: coinVolRows, error: coinVolError } = await supabase
@@ -521,9 +545,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ aborted: true, reason, priceRowCount });
     }
 
-    if (whaleError)   console.error("Whale query error:",  JSON.stringify(whaleError));
-    if (volError)     console.error("Volume SUM error:",   JSON.stringify(volError));
-    if (coinVolError) console.error("Coin vol RPC error:", JSON.stringify(coinVolError));
+    if (whaleError)   console.error("Whale top-3 error:",     JSON.stringify(whaleError));
+    if (aggError)     console.error("Whale aggregate error:", JSON.stringify(aggError));
+    if (coinVolError) console.error("Coin vol RPC error:",    JSON.stringify(coinVolError));
 
     // ── Build coins array ──────────────────────────────────────────────────────
     const statsBySlug: Record<string, PriceStatRow> = Object.fromEntries(
@@ -591,7 +615,7 @@ export async function POST(request: Request) {
 
     const abortReason: string | null =
       whaleError   ? `large_transactions query failed: ${whaleError.message}` :
-      volError     ? `volume SUM query failed: ${volError.message}` :
+      aggError     ? `large_transactions aggregate failed: ${aggError.message}` :
       coinVolError ? `whale_volume_by_coin RPC failed: ${coinVolError.message}` :
       coinsWithData < Math.floor(slugs.length / 2)
         ? `only ${coinsWithData}/${slugs.length} coins have price data` :
@@ -636,8 +660,8 @@ export async function POST(request: Request) {
 
     // ── Process whale data ─────────────────────────────────────────────────────
     const whale: WhaleStats = {
-      count:       whaleCount ?? 0,
-      totalVolume: Number((volData as { sum: string | number } | null)?.sum ?? 0),
+      count:       Number((aggData as { count: string | number } | null)?.count ?? 0),
+      totalVolume: Number((aggData as { sum: string | number } | null)?.sum ?? 0),
       top3:        (whaleRows ?? []).slice(0, 3),
     };
 
@@ -688,8 +712,6 @@ export async function POST(request: Request) {
         : subjectAbovePegList.length > 0
         ? ` — ↑ ${subjectAbovePegList.join(", ")} above peg`
         : " — All systems healthy";
-    const reportDate = new Date().toISOString().split("T")[0];
-
     // ── Dispatch emails ────────────────────────────────────────────────────────
     if (isAutomated) {
       const { data: subscribers, error: subError } = await supabase
@@ -742,6 +764,15 @@ export async function POST(request: Request) {
       }
 
       console.log(`Weekly report: sent=${sent} failed=${failed} total=${subscribers.length} coinsWithData=${coinsWithData}`);
+
+      // Mark as sent so any Netlify retries exit without re-sending
+      if (sent > 0) {
+        const { error: lockUpsertError } = await supabase.from("weekly_report_runs").upsert(
+          { report_date: reportDate, status: "sent", sent_at: new Date().toISOString(), subscriber_count: sent },
+          { onConflict: "report_date" }
+        );
+        if (lockUpsertError) console.warn("weekly_report_runs upsert failed:", lockUpsertError.message);
+      }
 
       return NextResponse.json({
         success: true, sent, failed, total: subscribers.length,
