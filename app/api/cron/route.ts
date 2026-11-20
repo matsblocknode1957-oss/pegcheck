@@ -6,7 +6,7 @@ import { COINGECKO_IDS } from "@/lib/coingeckoIds";
 import { CMC_IDS } from "@/lib/cmcIds";
 
 // Temporarily excluded from alerts — persistent depeg, remove when recovered
-const EXCLUDED_FROM_ALERTS: string[] = [];
+const EXCLUDED_FROM_ALERTS: string[] = ["mkusd"];
 
 const MAINNET_FALLBACK = "https://ethereum-rpc.publicnode.com";
 
